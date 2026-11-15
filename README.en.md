@@ -6,7 +6,9 @@
 [![License: AGPLv3](https://img.shields.io/badge/License-AGPLv3-blue)](#license)
 [![Ko-fi](https://img.shields.io/badge/Ko--fi-Support%20me-FF5E5B?logo=kofi&logoColor=white)](https://ko-fi.com/burnersen)
 
-**[⬇️ Download the latest release](../../releases/latest)** · **[☕ Buy me a coffee](https://ko-fi.com/burnersen)**
+**[⬇️ Download the latest release](../../releases/latest)** · **[🌐 Website](https://tech.burnersen.de/en/tools/kaufen-en/)** · **[☕ Buy me a coffee](https://ko-fi.com/burnersen)**
+
+<sub>🇩🇪 Auf Deutsch: [tech.burnersen.de/tools/kaufen](https://tech.burnersen.de/tools/kaufen/)</sub>
 
 Shared shopping lists you host yourself, written in **plain PHP** and installed with a single file. No dependencies, no build step, no MySQL, no requests to third-party servers. Runs on basic web hosting.
 
