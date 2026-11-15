@@ -80,10 +80,14 @@ svg { width: 1.25rem; height: 1.25rem; flex: none; }
 
 /* Inhalt */
 #main { padding: .75rem .75rem calc(5rem + env(safe-area-inset-bottom)); }
-h2 { margin: 1.1rem 0 .5rem; font-size: 1.05rem; display: flex; align-items: baseline; gap: .5rem; }
+h2 { margin: 1.4rem 0 .6rem; font-size: 1.25rem; font-weight: 800; letter-spacing: -.01em; display: flex; align-items: center; gap: .55rem; }
 h2:first-child { margin-top: .25rem; }
-h2 small { font-weight: 500; color: var(--mut); font-size: .85rem; }
-.grp { margin: .6rem 0 .3rem; font-size: .78rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--mut); }
+h2 small { font-weight: 700; font-size: .8rem; letter-spacing: 0; }
+h2 small:not(:empty) { padding: .1rem .55rem; border-radius: 1rem; background: var(--acc-soft); color: var(--acc); }
+/* Überschrift einer Warengruppe: kräftige Schrift, dahinter eine feine Linie bis zum Rand */
+.grp { display: flex; align-items: center; gap: .6rem; margin: .95rem 0 .4rem; font-size: .8rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--text); }
+.grp::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+h2 + .grp { margin-top: .2rem; }
 .hint { color: var(--mut); margin: .5rem 0 1rem; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(5.1rem, 1fr)); gap: .4rem; }
 .tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .1rem; min-height: 3.5rem; padding: .4rem .3rem;
@@ -237,10 +241,10 @@ button.row { font-weight: 600; }
 .compact .grid { display: flex; flex-wrap: wrap; gap: .3rem; }
 .compact .tile { flex-direction: row; flex-wrap: wrap; align-items: center; align-content: center; column-gap: .35rem; min-height: 2.25rem; padding: .3rem .7rem; border-radius: 1.2rem;
                  font-size: .9rem; hyphens: manual; text-align: left; max-width: 100%; }
-.compact .grp { margin: .45rem 0 .25rem; }
+.compact .grp { margin: .7rem 0 .3rem; }
 .compact .cat { padding: .55rem .85rem; margin-top: .3rem; }
 .compact .cat + .grid { margin: .35rem 0 .6rem; }
-.compact h2 { margin-top: .8rem; }
+.compact h2 { margin-top: 1rem; }
 
 /* Eingabefelder nie kleiner als 16px: darunter zoomt das iPhone beim Antippen in die Seite hinein */
 .field input, .field select, .field textarea, .login input, .pick .hex, .sheet select, .sheet textarea { font-size: 1rem; }
@@ -253,4 +257,4 @@ button.row { font-weight: 600; }
 .shop .todo .tn { flex: 1 1 0; min-width: 0; }
 .shop .todo .tt { flex: none; max-width: 50%; font-size: 1rem; font-weight: 500; opacity: .9; text-align: right; }
 .shop .todo .tb { flex: 1 0 100%; padding-left: 1.95rem; font-size: .78rem; font-weight: 400; }
-.shop .grp { margin: .9rem 0 .4rem; font-size: .85rem; }
+.shop .grp { margin: 1.1rem 0 .45rem; font-size: .88rem; }
