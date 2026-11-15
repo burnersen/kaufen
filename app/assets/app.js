@@ -931,9 +931,37 @@ function editTemplate(tp, preset) {
 /* ---------- Katalog verwalten ---------- */
 function showCatalog() {
     const sh = sheet(tr('Katalog verwalten'), { wide: true, onclose: () => stateListeners.delete(draw) });
+    const qIn = h('input', { type: 'search', placeholder: tr('Produkt suchen oder neu anlegen'), 'aria-label': tr('Produkt suchen'), autocomplete: 'off', autocapitalize: 'sentences', enterkeyhint: 'done',
+        oninput: () => draw(),
+        onkeydown: e => {   // Enter: gibt es das Gesuchte noch nicht, geht es direkt ins Anlegen
+            if (e.key !== 'Enter') return;
+            e.preventDefault();
+            const name = qIn.value.trim().replace(/\s+/g, ' ');
+            if (!name) return;
+            const hit = S.catalog.products.find(p => norm(dn(p.n)) === norm(name) || norm(p.n) === norm(name));
+            if (hit) editProd(hit); else addNew(name);
+        } });
+    const addNew = name => S.catalog.cats.length ? addProd(S.catalog.cats[0], name) : toast(tr('Leg zuerst eine Warengruppe an.'));
+    const list = h('div');
+    put(sh.body, h('div', { class: 'search csearch' }, qIn,
+        h('button', { class: 'iconbtn', type: 'button', 'aria-label': tr('Suche leeren'), onclick: () => { qIn.value = ''; draw(); qIn.focus(); } }, icon(I.x))), list);
     function draw() {
         const byCat = prodsByCat();
-        fill(sh.body, 
+        const q = norm(qIn.value.trim());
+        if (q) {
+            const groups = S.catalog.cats.map(c => [c, (byCat.get(c.id) || []).filter(p => norm(dn(p.n)).includes(q) || norm(p.n).includes(q))]).filter(g => g[1].length);
+            const name = qIn.value.trim().replace(/\s+/g, ' ');
+            const exact = S.catalog.products.some(p => norm(dn(p.n)) === q || norm(p.n) === q);
+            fill(list,
+                !groups.length && h('p', { class: 'hint' }, tr('Kein Produkt gefunden.')),
+                groups.map(([c, prods]) => [
+                    h('div', { class: 'mcat' }, h('h4', null, dc(c.n), h('span', { class: 'badge' }, String(prods.length)))),
+                    h('div', { class: 'chips' }, prods.map(p => h('button', { class: 'chip', type: 'button', onclick: () => editProd(p) }, dn(p.n)))),
+                ]),
+                !exact && h('div', { class: 'btns' }, h('button', { class: 'btn small', type: 'button', onclick: () => addNew(name) }, tr('„{0}“ neu anlegen', name))));
+            return;
+        }
+        fill(list,
             h('p', { class: 'info' }, tr('{0} Produkte in {1} Warengruppen. Der Katalog gilt für alle Listen und alle Konten. Tippe ein Produkt an, um es zu ändern oder zu löschen.', S.catalog.products.length, S.catalog.cats.length)),
             h('div', { class: 'btns' },
                 h('button', { class: 'btn small', type: 'button', onclick: () => ask(tr('Neue Warengruppe'), [{ k: 'name', label: tr('Name'), max: 60 }], tr('Anlegen'), v => act('cat_add', { name: canonC(v.name.trim()) })) }, tr('+ Warengruppe')),
@@ -957,8 +985,8 @@ function showCatalog() {
 }
 const realCats = () => S.catalog.cats.map(c => [c.id, dc(c.n)]);
 /* Auf Englisch zeigen die Felder den übersetzten Namen. Bleibt er unverändert, wird der gespeicherte (deutsche) Name behalten. */
-function addProd(c) {
-    ask(tr('Neues Produkt'), [{ k: 'name', label: tr('Name'), max: 60 }, { k: 'cat', label: tr('Warengruppe'), type: 'select', value: c.id, options: realCats() }],
+function addProd(c, name) {
+    ask(tr('Neues Produkt'), [{ k: 'name', label: tr('Name'), value: name || '', max: 60 }, { k: 'cat', label: tr('Warengruppe'), type: 'select', value: c.id, options: realCats() }],
         tr('Anlegen'), v => {
             const name = canon(v.name.trim());
             if (S.catalog.products.some(p => low(p.n) === low(name))) throw new Error(tr('„{0}“ gibt es schon im Katalog.', dn(name)));

@@ -33,6 +33,9 @@ ui: {
     'Suche leeren': 'Clear search',
     'Zur Kachel-Ansicht': 'Switch to tile view',
     'Zur kompakten Ansicht': 'Switch to compact view',
+    'Kein Produkt gefunden.': 'No product found.',
+    '„{0}“ neu anlegen': 'Add “{0}”',
+    'Leg zuerst eine Warengruppe an.': 'Create a category first.',
     'Zum Laden-Modus': 'Switch to shopping mode',
 
     // Menge
