@@ -206,8 +206,9 @@ button.row { font-weight: 600; }
 .sl.sat { --track: linear-gradient(to right, hsl(var(--h) 0% var(--l)), hsl(var(--h) 100% var(--l))); }
 .sl.lig { --track: linear-gradient(to right, #000, hsl(var(--h) var(--s) 50%), #fff); }
 .pick { display: flex; align-items: center; gap: .75rem; margin: .2rem 0 .8rem; }
-.pick input { width: 2rem; height: 2rem; padding: 0; border: 1px solid var(--line); border-radius: .5rem; background: none; cursor: pointer; }
-.pick code { color: var(--mut); font-size: .9rem; }
+.pick input[type="color"] { width: 2rem; height: 2rem; padding: 0; border: 1px solid var(--line); border-radius: .5rem; background: none; cursor: pointer; }
+.pick .hex { flex: 1; min-width: 0; padding: .6rem .8rem; border: 1px solid var(--line); border-radius: .8rem; background: var(--card); outline: none; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .95rem; }
+.pick .hex:focus { border-color: var(--acc); box-shadow: 0 0 0 3px var(--acc-soft); }
 
 /* Anmeldung */
 .loginpage { min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; padding: 1.25rem; }

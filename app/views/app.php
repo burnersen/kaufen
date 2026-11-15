@@ -17,6 +17,7 @@ $kfV = function (string $f): string { return h('?action=asset&f=' . $f . '&v=' .
 <link rel="icon" href="?action=asset&amp;f=icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="?action=asset&amp;f=icon-192.png">
 <link rel="stylesheet" href="<?= $kfV('app.css') ?>">
+<script src="<?= $kfV('boot.js') ?>"></script>
 <script defer src="<?= $kfV('app.js') ?>"></script>
 </head>
 <body>

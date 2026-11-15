@@ -14,6 +14,7 @@ $kfName = h(kfClean($_POST['name'] ?? '', 30));
 <link rel="icon" href="?action=asset&amp;f=icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="?action=asset&amp;f=icon-192.png">
 <link rel="stylesheet" href="<?= h('?action=asset&f=app.css&v=' . KF_VERSION . '-' . (int)@filemtime(KF_APP . '/assets/app.css')) ?>">
+<script src="<?= h('?action=asset&f=boot.js&v=' . KF_VERSION . '-' . (int)@filemtime(KF_APP . '/assets/boot.js')) ?>"></script>
 </head>
 <body class="loginpage">
 <form class="login" method="post" action="?action=<?= $needSetup ? 'setup' : 'login' ?>">

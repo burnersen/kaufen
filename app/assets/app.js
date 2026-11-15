@@ -45,7 +45,7 @@ const I = {
 const LS = {
     get(k, d) { try { const v = localStorage.getItem('kf_' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
     set(k, v) { try { localStorage.setItem('kf_' + k, JSON.stringify(v)); } catch (e) {} },
-    clear() { try { Object.keys(localStorage).filter(k => k.startsWith('kf_') && !['kf_theme', 'kf_view', 'kf_palL', 'kf_palD', 'kf_look'].includes(k)).forEach(k => localStorage.removeItem(k)); } catch (e) {} },
+    clear() { try { Object.keys(localStorage).filter(k => k.startsWith('kf_') && !['kf_theme', 'kf_view', 'kf_palL', 'kf_palD', 'kf_look', 'kf_paint'].includes(k)).forEach(k => localStorage.removeItem(k)); } catch (e) {} },
 };
 
 const low = s => String(s).toLocaleLowerCase('de');
@@ -914,6 +914,11 @@ function applyTheme() {
     setVars(root, pal === 'eigen' ? look[mode === 'dark' ? 'cd' : 'cl'] : null);
     const meta = $('meta[name=theme-color]');
     if (meta) meta.content = getComputedStyle(root).getPropertyValue(mode === 'dark' ? '--bg' : '--acc').trim() || meta.content;
+    // Merkzettel für boot.js: so sieht dieses Gerät beim nächsten Start sofort richtig aus, auch auf der Anmeldeseite
+    const side = m => { const pal = palOf(m), c = pal === 'eigen' ? look[m === 'dark' ? 'cd' : 'cl'] : null; return { pal, vars: c ? derive(c) : null }; };
+    const paint = { mode: look.mode, light: side('light'), dark: side('dark') };
+    if (meta) paint[mode].tc = meta.content;
+    LS.set('paint', paint);
 }
 darkMq.addEventListener('change', applyTheme);
 let wakeLock = null;
@@ -961,7 +966,19 @@ function editLook(mode, redraw) {
     const [hueL, hue] = range('hue', 'Farbton', 360, 0), [satL, sat] = range('sat', 'Sättigung', 100, 1), [ligL, lig] = range('lig', 'Helligkeit', 100, 2);
     const sliders = h('div', { class: 'sliders' }, hueL, satL, ligL);
     const picker = h('input', { type: 'color', 'aria-label': 'Farbwähler', oninput: () => { col[part] = picker.value.toLowerCase(); hsl[part] = hex2hsl(col[part]); show(); } });
-    const code = h('code');
+    // Farbcode zum Eintippen oder Einfügen: #7c3aed, 7c3aed oder kurz #73e
+    const code = h('input', { type: 'text', class: 'hex', maxlength: 7, spellcheck: 'false', autocomplete: 'off', autocapitalize: 'none', 'aria-label': 'Farbcode', enterkeyhint: 'done',
+        onchange: () => {
+            let v = code.value.trim().toLowerCase().replace(/^#/, '');
+            if (/^[0-9a-f]{3}$/.test(v)) v = v.replace(/./g, '$&$&');
+            if (/^[0-9a-f]{6}$/.test(v)) { col[part] = '#' + v; hsl[part] = hex2hsl(col[part]); }
+            show();
+        },
+        onkeydown: e => { if (e.key === 'Enter') { e.preventDefault(); code.blur(); } } });
+    const load = c => { Object.assign(col, c); for (const [k] of PARTS) hsl[k] = hex2hsl(col[k]); show(); };
+    const base = h('select', { 'aria-label': 'Fertiges Design als Ausgangspunkt', onchange: () => { if (base.value) load(palColors(base.value)); base.value = ''; } },
+        h('option', { value: '' }, 'Von einem fertigen Design ausgehen …'),
+        [['Hell', PALS.light], ['Dunkel', PALS.dark]].map(([g, list]) => h('optgroup', { label: g }, list.map(([id, name]) => h('option', { value: id }, name)))));
     const warn = h('p', { class: 'err', hidden: true }, 'Die Schrift ist auf diesem Untergrund schwer zu lesen.');
     function show() {
         setVars(prev, col);
@@ -971,13 +988,14 @@ function editLook(mode, redraw) {
         hue.value = a; sat.value = b; lig.value = c;
         sliders.style.setProperty('--h', a); sliders.style.setProperty('--s', b + '%'); sliders.style.setProperty('--l', c + '%');
         picker.value = col[part];
-        code.textContent = col[part];
+        code.value = col[part];
         warn.hidden = Math.min(contrast(col.text, col.bg), contrast(col.text, col.card)) >= 3;
     }
     put(sh.body, prev, h('div', { class: 'segs' }, tabs), sliders,
-        h('div', { class: 'pick' }, h('label', { class: 'btn' }, picker, 'Farbwähler öffnen'), code), warn,
+        h('div', { class: 'pick' }, h('label', { class: 'btn' }, picker, 'Farbwähler'), code), warn,
+        h('label', { class: 'field' }, base),
         h('div', { class: 'btns' },
-            h('button', { class: 'btn', type: 'button', onclick: () => { Object.assign(col, start); for (const [k] of PARTS) hsl[k] = hex2hsl(col[k]); show(); } }, 'Zurücksetzen'),
+            h('button', { class: 'btn', type: 'button', onclick: () => load(start) }, 'Zurücksetzen'),
             h('button', { class: 'btn primary', type: 'button', onclick: () => sh.close() }, 'Fertig')));
     show();
 }

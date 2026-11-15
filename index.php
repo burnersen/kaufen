@@ -19,7 +19,7 @@ error_reporting(E_ALL);
 ini_set('display_errors', '0');
 date_default_timezone_set('Europe/Berlin');
 
-define('KF_VERSION', '1.0.0');
+define('KF_VERSION', '1.1.0');
 define('KF_ROOT', __DIR__);
 define('KF_APP', KF_ROOT . '/app');
 define('KF_DATA_DIR', KF_ROOT . '/data');
@@ -37,7 +37,7 @@ $action = isset($_GET['action']) && is_string($_GET['action']) ? $_GET['action']
 /* ---------- Dateien ohne Anmeldung: CSS, JavaScript, Symbole, Manifest, Service Worker ---------- */
 if ($action === 'asset') {
     $types = [
-        'app.css' => 'text/css; charset=utf-8', 'app.js' => 'text/javascript; charset=utf-8',
+        'app.css' => 'text/css; charset=utf-8', 'app.js' => 'text/javascript; charset=utf-8', 'boot.js' => 'text/javascript; charset=utf-8',
         'icon.svg' => 'image/svg+xml', 'icon-192.png' => 'image/png', 'icon-512.png' => 'image/png',
     ];
     $f = isset($_GET['f']) && is_string($_GET['f']) ? $_GET['f'] : '';
