@@ -174,6 +174,7 @@ function kfState(array $me): array {
         'interval' => max(1, min(60, (int)kfGet('interval', '5'))),
         'cv' => (int)kfGet('cv', '1'), 'lv' => (int)kfGet('lv', '1'),
         'startList' => (int)kfGet('start_list', '0'),
+        'push' => kfPushPublic(),   // öffentlicher Schlüssel für Mitteilungen, leer = dieser Server kann keine verschicken
         'users' => $users, 'lists' => $lists, 'catalog' => kfCatalog(), 'templates' => kfTemplates(),
     ];
 }
@@ -205,6 +206,7 @@ function kfApplyOps(array $me, int $lid, array $ops): void {
                 kfQ('INSERT INTO items (uid, list_id, name, cat_id, note, added_by, added_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
                     [$uid, $lid, $name, $cat, $note, (int)($t === 'restore' && !empty($op['by']) ? $op['by'] : $me['id']), $now]);
                 $changed = true;
+                if ($t === 'add') kfPushQueue($lid, $me['id'], $name);   // die anderen erfahren es gebündelt, siehe push.php
             }
             if ($t === 'restore') {
                 kfQ('UPDATE usage SET cnt = cnt - 1 WHERE list_id = ? AND name = ?', [$lid, $name]);
@@ -214,6 +216,7 @@ function kfApplyOps(array $me, int $lid, array $ops): void {
             $row = kfQ('SELECT name, cat_id, note FROM items WHERE uid = ? AND list_id = ?', [$uid, $lid])->fetch();
             if (!$row) continue;
             kfQ('DELETE FROM items WHERE uid = ?', [$uid]);
+            kfPushUnqueue($lid, $row['name']);
             if ($t === 'done') {
                 kfQ('INSERT INTO usage (list_id, name, cat_id, cnt, last_at, note) VALUES (?, ?, ?, 1, ?, ?)
                      ON CONFLICT(list_id, name) DO UPDATE SET cnt = cnt + 1, last_at = excluded.last_at, cat_id = excluded.cat_id, note = excluded.note',
@@ -236,6 +239,6 @@ function kfApplyOps(array $me, int $lid, array $ops): void {
 }
 
 function kfDeleteList(int $lid): void {
-    foreach (['items', 'usage', 'members', 'list_order'] as $t) kfQ("DELETE FROM $t WHERE list_id = ?", [$lid]);
+    foreach (['items', 'usage', 'members', 'list_order', 'push_pending'] as $t) kfQ("DELETE FROM $t WHERE list_id = ?", [$lid]);
     kfQ('DELETE FROM lists WHERE id = ?', [$lid]);
 }

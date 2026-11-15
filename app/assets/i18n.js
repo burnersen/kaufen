@@ -3,8 +3,9 @@
    cats  = Warengruppen des mitgelieferten Katalogs
    prods = Produkte des mitgelieferten Katalogs (amerikanisches Englisch)
    tpls  = mitgelieferte Vorlagen
-   Der Katalog selbst liegt deutsch in der Datenbank und wird nur für die Anzeige übersetzt. Selbst Angelegtes bleibt, wie es getippt wurde. */
-window.KF_EN = {
+   Der Katalog selbst liegt deutsch in der Datenbank und wird nur für die Anzeige übersetzt. Selbst Angelegtes bleibt, wie es getippt wurde.
+   Die Datei wird auch vom Service Worker geladen (Produktnamen in Mitteilungen), deshalb self statt window. */
+self.KF_EN = {
 ui: {
     // Allgemein
     'heute {0}': 'today {0}',
@@ -216,6 +217,16 @@ ui: {
     'Abmelden': 'Sign out',
     '{0} Änderungen sind noch nicht beim Server angekommen und gehen beim Abmelden verloren.': 'Changes that have not reached the server yet: {0}. They will be lost if you sign out.',
     'Trotzdem abmelden': 'Sign out anyway',
+
+    // Mitteilungen
+    'Mitteilungen auf diesem Gerät': 'Notifications on this device',
+    'Du bekommst eine Mitteilung, wenn jemand etwas auf eine Liste setzt, die ihr teilt. Mehrere Produkte kommen gebündelt in einer Mitteilung, sobald der andere Kaufen verlässt.': 'You get a notification when someone puts something on a list you share. Several products arrive bundled in one notification as soon as the other person leaves Kaufen.',
+    'Mitteilungen gehen auf diesem Gerät oder in diesem Browser nicht. Auf dem iPhone muss Kaufen dafür über „Zum Home-Bildschirm“ installiert sein (ab iOS 16.4).': 'Notifications are not available on this device or in this browser. On the iPhone Kaufen must be installed via “Add to Home Screen” for this (iOS 16.4 or later).',
+    'Dieser Server kann keine Mitteilungen verschicken.': 'This server cannot send notifications.',
+    'Mitteilungen sind für Kaufen gesperrt. Bitte in den Einstellungen des Geräts erlauben.': 'Notifications are blocked for Kaufen. Please allow them in the settings of your device.',
+    'Mitteilungen eingeschaltet, eine Probe ist unterwegs': 'Notifications are on, a test is on its way',
+    'Eingeschaltet, aber der Server erreicht den Mitteilungsdienst nicht (Antwort {0}). Vermutlich sperrt der Webspace ausgehende Verbindungen.': 'Turned on, but the server cannot reach the notification service (response {0}). The web host probably blocks outgoing connections.',
+    'Mitteilungen ausgeschaltet': 'Notifications are off',
 },
 
 cats: {
