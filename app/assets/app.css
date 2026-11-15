@@ -46,7 +46,8 @@
     --bg: #000000; --card: #111113; --text: #ededee; --mut: #9a9aa2; --line: #29292d;
     --acc: #e4e4e7; --acc-text: #111113; --acc-soft: #26262a; --danger: #ff8a7a; --shadow: none; color-scheme: dark; }
 * { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; }
+/* Kein Zoomen mit den Fingern: die Oberfläche passt sich der Breite an. pan-x pan-y lässt Rollen zu, aber kein Aufziehen und kein Doppeltipp-Zoom. */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; touch-action: pan-x pan-y; }
 body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
        -webkit-tap-highlight-color: transparent; overscroll-behavior-y: contain; }
 button, input, select, textarea { font: inherit; color: inherit; }
@@ -232,3 +233,6 @@ button.row { font-weight: 600; }
 .compact .cat { padding: .55rem .85rem; margin-top: .3rem; }
 .compact .cat + .grid { margin: .35rem 0 .6rem; }
 .compact h2 { margin-top: .8rem; }
+
+/* Eingabefelder nie kleiner als 16px: darunter zoomt das iPhone beim Antippen in die Seite hinein */
+.field input, .field select, .field textarea, .login input, .pick .hex, .sheet select, .sheet textarea { font-size: 1rem; }
