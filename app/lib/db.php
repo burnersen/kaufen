@@ -37,6 +37,7 @@ function kfConfig(): array {
         kfFatal('In den Ordner data/ kann nicht geschrieben werden. Bitte die Schreibrechte prüfen.');
     }
     @chmod($file, 0600);
+    if (function_exists('opcache_invalidate')) @opcache_invalidate($file, true);   // sonst liest PHP unter Umständen noch eine alte Fassung
     return $cfg;
 }
 
