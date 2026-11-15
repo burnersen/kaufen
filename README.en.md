@@ -21,7 +21,7 @@ Upload `kaufen-install.php`, open it in the browser, create the first account. T
 ## Features
 
 - **German and English:** each account picks its language in the settings. A German device starts in German, all others in English. Everything is translated, including the catalog. In a shared list one person sees "Milch" and the other sees "Milk", and it is still the same entry.
-- **Catalog** with about 520 products in 16 categories, in the order of a typical supermarket. Text only, no images.
+- **Catalog** with about 810 products in 16 categories, in the order of a typical supermarket. Text only, no images.
 - **Tap** to put a product on the list, tap it in the list to check it off. For a few seconds afterwards you can undo.
 - **Sync across all devices:** your own changes go to the server right away. Only while Kaufen is open and visible and nothing is going on does the device ask every few seconds whether something has changed. The administrator can set the interval (1 to 60 seconds, default 5).
 - **Search** across the whole catalog, in both languages: "milch" finds Milk as well. If a product does not exist, you create it right from the search and assign it to a category.
