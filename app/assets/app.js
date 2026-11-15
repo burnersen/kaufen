@@ -45,7 +45,7 @@ const I = {
 const LS = {
     get(k, d) { try { const v = localStorage.getItem('kf_' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
     set(k, v) { try { localStorage.setItem('kf_' + k, JSON.stringify(v)); } catch (e) {} },
-    clear() { try { Object.keys(localStorage).filter(k => k.startsWith('kf_') && !['kf_theme', 'kf_view', 'kf_palL', 'kf_palD', 'kf_look', 'kf_paint'].includes(k)).forEach(k => localStorage.removeItem(k)); } catch (e) {} },
+    clear() { try { Object.keys(localStorage).filter(k => k.startsWith('kf_') && !['kf_theme', 'kf_view', 'kf_who', 'kf_palL', 'kf_palD', 'kf_look', 'kf_paint'].includes(k)).forEach(k => localStorage.removeItem(k)); } catch (e) {} },
 };
 
 const low = s => String(s).toLocaleLowerCase('de');
@@ -619,7 +619,7 @@ function viewHome(l) {
     for (const [id, items] of groups) {
         if (!items.length) continue;
         out.push(h('div', { class: 'grp' }, catName(id)));
-        out.push(h('div', { class: 'grid' }, items.map(it => tile('on', { k: 'item', uid: it.uid }, dn(it.n), dnote(it.note), shared && it.by !== S.me.id && userName(it.by)))));
+        out.push(h('div', { class: 'grid' }, items.map(it => tile('on', { k: 'item', uid: it.uid }, dn(it.n), dnote(it.note), shared && LS.get('who', true) && it.by !== S.me.id && userName(it.by)))));
     }
 
     // Zuletzt gekauft: erst die jüngsten, dann aufgefüllt mit den häufigsten
@@ -1236,6 +1236,7 @@ function showSettings() {
     const theme = h('select', { onchange: () => setLook({ mode: theme.value }) },
         [['auto', 'Wie das Gerät'], ['light', 'Hell'], ['dark', 'Dunkel']].map(([v, s]) => h('option', { value: v, selected: look.mode === v }, tr(s))));
     const wakeBox = h('input', { type: 'checkbox', checked: LS.get('wake', true), onchange: () => { LS.set('wake', wakeBox.checked); wake(); } });
+    const whoBox = h('input', { type: 'checkbox', checked: LS.get('who', true), onchange: () => { LS.set('who', whoBox.checked); render(); } });
     const ivInput = h('input', { type: 'number', min: '1', max: '60', inputmode: 'numeric', value: String(S.interval) });
     const view = h('select', { onchange: () => { LS.set('view', view.value); applyView(); } },
         [['tiles', 'Kleine Kacheln'], ['compact', 'Kompakt']].map(([v, s]) => h('option', { value: v, selected: LS.get('view', 'tiles') === v }, tr(s))));
@@ -1260,6 +1261,7 @@ function showSettings() {
         h('div', { class: 'qlabel' }, tr('Design für hell')), swatches('light'),
         h('div', { class: 'qlabel' }, tr('Design für dunkel')), swatches('dark'),
         h('p', { class: 'info' }, tr('Design und Farben gehören zu deinem Konto und gelten überall, wo du angemeldet bist. „Eigenes“ öffnet den Farbmischer.')),
+        h('label', { class: 'check' }, whoBox, h('span', null, tr('Anzeigen, wer einen Artikel hinzugefügt hat (nur dieses Gerät)'))),
         h('label', { class: 'check' }, wakeBox, h('span', null, tr('Bildschirm anlassen, solange Kaufen offen ist'))),
         h('label', { class: 'check' }, keepBox, h('span', null, tr('Zuletzt benutzte Menge merken'))),
         h('p', { class: 'info' }, tr('Beim Abhaken merkt sich Kaufen, welche Menge am Produkt stand, und setzt es beim nächsten Mal wieder genauso auf die Liste. Ohne Haken steht immer 1 da.')),

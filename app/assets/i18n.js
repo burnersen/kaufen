@@ -194,6 +194,7 @@ ui: {
     // Einstellungen
     'Einstellungen': 'Settings',
     'Ansicht (nur dieses Gerät)': 'View (this device only)',
+    'Anzeigen, wer einen Artikel hinzugefügt hat (nur dieses Gerät)': 'Show who added an item (this device only)',
     'Hell oder dunkel': 'Light or dark',
     'Design für hell': 'Theme for light',
     'Design für dunkel': 'Theme for dark',
