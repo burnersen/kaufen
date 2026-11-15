@@ -158,7 +158,8 @@ try {
         $name = kfClean($in['name'] ?? '', 60);
         if ($name === '') kfFail(kfT('Bitte einen Namen eingeben.'));
         if (kfQ('SELECT 1 FROM cats WHERE name = ? AND id <> ?', [$name, $int('id')])->fetchColumn()) kfFail(kfT('Diese Warengruppe gibt es schon.'));
-        kfQ('UPDATE cats SET name = ? WHERE id = ?', [$name, $int('id')]);
+        // Bei einem neuen Namen passt der eigene englische Name nicht mehr
+        kfQ("UPDATE cats SET en = CASE WHEN name = ? THEN en ELSE '' END, name = ? WHERE id = ?", [$name, $name, $int('id')]);
         kfBump('cv');
         $state();
 
@@ -196,7 +197,7 @@ try {
         if ($name === '') kfFail(kfT('Bitte einen Namen eingeben.'));
         if (!kfQ('SELECT 1 FROM cats WHERE id = ?', [$cat])->fetchColumn()) kfFail(kfT('Bitte eine Warengruppe wählen.'));
         if (kfQ('SELECT 1 FROM products WHERE name = ? AND id <> ?', [$name, $int('id')])->fetchColumn()) kfFail(kfT('„%s“ gibt es schon im Katalog.', $name));
-        kfQ('UPDATE products SET name = ?, cat_id = ? WHERE id = ?', [$name, $cat, $int('id')]);
+        kfQ("UPDATE products SET en = CASE WHEN name = ? THEN en ELSE '' END, name = ?, cat_id = ? WHERE id = ?", [$name, $name, $cat, $int('id')]);
         kfBump('cv');
         $state();
 
@@ -219,6 +220,18 @@ try {
         kfDb()->beginTransaction();
         kfCatalogBackup('Vor „Standard wiederherstellen“');
         kfCatalogReplace(kfDefaultCatalog());
+        kfDb()->commit();
+        $state();
+
+    case 'catalog_import':   // ganzer Katalog aus einer Datei (CSV oder JSON, im Browser gelesen), ersetzt den bisherigen
+        $admin();
+        $data = is_array($in['data'] ?? null) ? array_values($in['data']) : [];
+        $n = 0;
+        foreach ($data as $c) $n += is_array($c) && is_array($c['products'] ?? null) ? count($c['products']) : 0;
+        if (!$data || count($data) > 200 || $n > 5000) kfFail(kfT('Die Datei enthält keinen brauchbaren Katalog.'));
+        kfDb()->beginTransaction();
+        kfCatalogBackup('Vor dem Import');
+        kfCatalogReplace(array_filter($data, 'is_array'));
         kfDb()->commit();
         $state();
 

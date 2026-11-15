@@ -2,7 +2,7 @@
 /* Kaufen – Datenordner, Datenbank (SQLite), Einstellungen */
 defined('KF_VERSION') || exit;
 
-define('KF_SCHEMA', 4);
+define('KF_SCHEMA', 5);
 
 function kfFatal(string $msg): void {
     http_response_code(500);
@@ -108,6 +108,11 @@ function kfMigrate(PDO $pdo, int $from): void {
         $pdo->exec("CREATE INDEX IF NOT EXISTS push_subs_user ON push_subs (user_id)");
         $pdo->exec("CREATE TABLE IF NOT EXISTS push_pending (list_id INTEGER NOT NULL, user_id INTEGER NOT NULL, name TEXT NOT NULL COLLATE NOCASE,
             at INTEGER NOT NULL, PRIMARY KEY (list_id, user_id, name))");
+    }
+    if ($from < 5) {
+        // Eigener englischer Name für Warengruppen und Produkte (aus dem Katalog-Import). Leer = eingebaute Übersetzung der App.
+        $pdo->exec("ALTER TABLE cats ADD COLUMN en TEXT NOT NULL DEFAULT ''");
+        $pdo->exec("ALTER TABLE products ADD COLUMN en TEXT NOT NULL DEFAULT ''");
     }
     $pdo->exec('PRAGMA user_version = ' . KF_SCHEMA);
     $pdo->commit();

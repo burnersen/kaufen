@@ -64,12 +64,24 @@ const lowMap = (o, rev) => new Map(Object.entries(o).map(([k, v]) => rev ? [low(
 const EN_P = lowMap(EN.prods), EN_C = lowMap(EN.cats), EN_T = lowMap(EN.tpls), DE_P = lowMap(EN.prods, true), DE_C = lowMap(EN.cats, true);
 /* Der mitgelieferte Katalog liegt deutsch in der Datenbank und wird nur für die Anzeige übersetzt: dn = Produkt, dc = Warengruppe, dt = Vorlage.
    canon geht den Weg zurück, damit „Milk“ und „Milch“ dasselbe Produkt bleiben. Selbst Angelegtes bleibt, wie es getippt wurde. */
-const enName = n => EN_P.get(low(n)) || '';
-const dn = n => lang === 'en' && EN_P.get(low(n)) || n;
-const dc = n => lang === 'en' && EN_C.get(low(n)) || n;
+/* Eigene englische Namen aus dem Katalog (Import) gehen der eingebauten Übersetzung vor. Neu aufgebaut, sobald sich der Katalog ändert. */
+let xFor = null, X = { p: new Map(), c: new Map(), rp: new Map(), rc: new Map() };
+const xm = () => {
+    if (S && S.catalog !== xFor) {
+        xFor = S.catalog;
+        X = { p: new Map(), c: new Map(), rp: new Map(), rc: new Map() };
+        for (const p of xFor.products) if (p.e) { X.p.set(low(p.n), p.e); X.rp.set(low(p.e), p.n); }
+        for (const c of xFor.cats) if (c.e) { X.c.set(low(c.n), c.e); X.rc.set(low(c.e), c.n); }
+    }
+    return X;
+};
+const enName = n => xm().p.get(low(n)) || EN_P.get(low(n)) || '';
+const enCat = n => xm().c.get(low(n)) || EN_C.get(low(n)) || '';
+const dn = n => lang === 'en' && enName(n) || n;
+const dc = n => lang === 'en' && enCat(n) || n;
 const dt = n => lang === 'en' && EN_T.get(low(n)) || n;
-const canon = n => lang === 'en' && DE_P.get(low(n)) || n;
-const canonC = n => lang === 'en' && DE_C.get(low(n)) || n;
+const canon = n => lang === 'en' && (xm().rp.get(low(n)) || DE_P.get(low(n))) || n;
+const canonC = n => lang === 'en' && (xm().rc.get(low(n)) || DE_C.get(low(n))) || n;
 
 function newUid() {
     const a = new Uint8Array(12);
@@ -965,6 +977,8 @@ function showCatalog() {
             h('p', { class: 'info' }, tr('{0} Produkte in {1} Warengruppen. Der Katalog gilt für alle Listen und alle Konten. Tippe ein Produkt an, um es zu ändern oder zu löschen.', S.catalog.products.length, S.catalog.cats.length)),
             h('div', { class: 'btns' },
                 h('button', { class: 'btn small', type: 'button', onclick: () => ask(tr('Neue Warengruppe'), [{ k: 'name', label: tr('Name'), max: 60 }], tr('Anlegen'), v => act('cat_add', { name: canonC(v.name.trim()) })) }, tr('+ Warengruppe')),
+                S.me.admin && h('button', { class: 'btn small', type: 'button', onclick: exportCatalog }, tr('Exportieren')),
+                S.me.admin && h('button', { class: 'btn small', type: 'button', onclick: importCatalog }, tr('Importieren')),
                 S.me.admin && h('button', { class: 'btn small', type: 'button', onclick: showBackups }, tr('Sicherungen')),
                 S.me.admin && h('button', { class: 'btn small', type: 'button', onclick: () => confirmDlg(tr('Standard wiederherstellen'),
                     tr('Der ganze Katalog wird durch den mitgelieferten Standard ersetzt. Eigene Produkte und Warengruppen gehen dabei verloren. Vorher wird eine Sicherung angelegt, Einkaufslisten bleiben wie sie sind.'),
@@ -982,6 +996,110 @@ function showCatalog() {
     }
     stateListeners.add(draw);
     draw();
+}
+
+/* ---------- Katalog exportieren und importieren (nur Administrator) ----------
+   Eine Datei enthält immer beide Sprachen. CSV: Warengruppe;Category;Produkt;Product, eine Zeile pro Produkt.
+   JSON: [{ de, en, products: [{ de, en }] }]. Die Reihenfolge der Warengruppen ist die der Datei. */
+function catalogData() {
+    const byCat = new Map();
+    for (const p of S.catalog.products) (byCat.get(p.c) || byCat.set(p.c, []).get(p.c)).push(p);
+    return S.catalog.cats.map(c => ({ de: c.n, en: enCat(c.n), products: (byCat.get(c.id) || []).map(p => ({ de: p.n, en: enName(p.n) })) }));
+}
+function download(name, text, type) {
+    const a = h('a', { href: URL.createObjectURL(new Blob([text], { type })), download: name });
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+}
+function exportCatalog() {
+    const sh = sheet(tr('Katalog exportieren'));
+    const csvCell = s => /[";\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    const go = kind => {
+        const data = catalogData();
+        if (kind === 'json') download('kaufen-katalog.json', JSON.stringify(data, null, 2), 'application/json');
+        else {
+            const rows = [['Warengruppe', 'Category', 'Produkt', 'Product']];
+            for (const c of data) for (const p of c.products.length ? c.products : [{ de: '', en: '' }]) rows.push([c.de, c.en, p.de, p.en]);
+            download('kaufen-katalog.csv', '\ufeff' + rows.map(r => r.map(csvCell).join(';')).join('\r\n') + '\r\n', 'text/csv;charset=utf-8');   // mit BOM, damit Excel die Umlaute richtig liest
+        }
+        sh.close();
+    };
+    put(sh.body,
+        h('p', { class: 'info' }, tr('Die Datei enthält alle Warengruppen und Produkte auf Deutsch und Englisch. CSV lässt sich in Excel bearbeiten, JSON in jedem Texteditor. Beide Formate kannst du wieder importieren.')),
+        h('div', { class: 'btns' }, h('button', { class: 'btn primary', type: 'button', onclick: () => go('csv') }, 'CSV'), h('button', { class: 'btn', type: 'button', onclick: () => go('json') }, 'JSON')));
+}
+/** CSV in Zeilen und Zellen zerlegen. Trennzeichen ; oder , (was in der Kopfzeile öfter vorkommt), Anführungszeichen wie in Excel. */
+function parseCsv(text) {
+    const head = text.split(/\r?\n/, 1)[0];
+    const sep = (head.match(/;/g) || []).length >= (head.match(/,/g) || []).length ? ';' : ',';
+    const rows = [];
+    let row = [], cell = '', inQ = false;
+    for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        if (inQ) {
+            if (ch === '"' && text[i + 1] === '"') { cell += '"'; i++; }
+            else if (ch === '"') inQ = false;
+            else cell += ch;
+        } else if (ch === '"' && cell === '') inQ = true;
+        else if (ch === sep) { row.push(cell); cell = ''; }
+        else if (ch === '\n' || ch === '\r') {
+            if (ch === '\r' && text[i + 1] === '\n') i++;
+            row.push(cell); cell = ''; rows.push(row); row = [];
+        } else cell += ch;
+    }
+    if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
+    return rows;
+}
+/** Dateiinhalt (CSV oder JSON) in die Form bringen, die der Server erwartet. Wirft einen Fehler, wenn nichts Brauchbares drin ist. */
+function parseCatalogFile(text) {
+    text = text.replace(/^\ufeff/, '');
+    const clean = s => String(s == null ? '' : s).trim().replace(/\s+/g, ' ').slice(0, 60);
+    const cats = [], idx = new Map(), seen = new Set();
+    const cat = (de, en) => {
+        const k = low(de);
+        if (!idx.has(k)) { idx.set(k, cats.length); cats.push({ name: de, en, products: [] }); }
+        const c = cats[idx.get(k)];
+        if (en && !c.en) c.en = en;
+        return c;
+    };
+    const prod = (c, de, en) => { if (de && !seen.has(low(de))) { seen.add(low(de)); c.products.push({ de, en }); } };
+    if (/^\s*[\[{]/.test(text)) {
+        let data;
+        try { data = JSON.parse(text); } catch (e) { throw new Error(tr('Die JSON-Datei ist fehlerhaft und lässt sich nicht lesen.')); }
+        for (const g of Array.isArray(data) ? data : []) {
+            const de = clean(g && (g.de || g.name));
+            if (!de) continue;
+            const c = cat(de, clean(g.en));
+            for (const p of Array.isArray(g.products) ? g.products : []) typeof p === 'string' ? prod(c, clean(p), '') : p && prod(c, clean(p.de || p.name), clean(p.en));
+        }
+    } else {
+        const rows = parseCsv(text).filter(r => r.some(x => x.trim()));
+        if (rows.length && ['warengruppe', 'category'].includes(low(rows[0][0].trim()))) rows.shift();
+        for (const r of rows) {
+            const de = clean(r[0]);
+            if (!de) continue;
+            prod(cat(de, clean(r[1])), clean(r[2]), clean(r[3]));
+        }
+    }
+    if (!cats.length) throw new Error(tr('Die Datei enthält keinen brauchbaren Katalog.'));
+    return cats;
+}
+function importCatalog() {
+    const inp = h('input', { type: 'file', accept: '.csv,.json,.txt,text/csv,application/json,text/plain', hidden: true, onchange: async () => {
+        const f = inp.files[0];
+        inp.remove();
+        if (!f) return;
+        try {
+            if (f.size > 2e6) throw new Error(tr('Die Datei ist zu groß.'));
+            const data = parseCatalogFile(await f.text());
+            const n = data.reduce((s, c) => s + c.products.length, 0);
+            confirmDlg(tr('Katalog importieren'),
+                tr('Gefunden: {0} Produkte in {1} Warengruppen. Der ganze Katalog wird dadurch ersetzt. Vorher wird eine Sicherung angelegt, Einkaufslisten bleiben wie sie sind.', n, data.length),
+                tr('Importieren'), () => act('catalog_import', { data }));
+        } catch (e) { toast(e.message); }
+    } });
+    document.body.append(inp);
+    inp.click();
 }
 const realCats = () => S.catalog.cats.map(c => [c.id, dc(c.n)]);
 /* Auf Englisch zeigen die Felder den übersetzten Namen. Bleibt er unverändert, wird der gespeicherte (deutsche) Name behalten. */
