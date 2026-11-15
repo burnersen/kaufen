@@ -39,13 +39,13 @@ function icon(path) {
 const I = {
     x: 'M6 6l12 12M18 6L6 18', down: 'M6 9l6 6 6-6', up: 'M6 15l6-6 6 6', more: 'M5 12h.01M12 12h.01M19 12h.01',
     edit: 'M4 20h4L19 9l-4-4L4 16v4zM14 6l4 4', grip: 'M5 9h14M5 15h14',
-    tiles: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z', compact: 'M3 6h8M14 6h7M3 12h5M11 12h10M3 18h9M15 18h6',
+    tiles: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z', compact: 'M3 6h8M14 6h7M3 12h5M11 12h10M3 18h9M15 18h6', shop: 'M3 4h18v6H3zM3 14h18v6H3z',
 };
 
 const LS = {
     get(k, d) { try { const v = localStorage.getItem('kf_' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
     set(k, v) { try { localStorage.setItem('kf_' + k, JSON.stringify(v)); } catch (e) {} },
-    clear() { try { Object.keys(localStorage).filter(k => k.startsWith('kf_') && !['kf_theme', 'kf_view', 'kf_who', 'kf_palL', 'kf_palD', 'kf_look', 'kf_paint'].includes(k)).forEach(k => localStorage.removeItem(k)); } catch (e) {} },
+    clear() { try { Object.keys(localStorage).filter(k => k.startsWith('kf_') && !['kf_theme', 'kf_view', 'kf_palL', 'kf_palD', 'kf_look', 'kf_paint'].includes(k)).forEach(k => localStorage.removeItem(k)); } catch (e) {} },
 };
 
 const low = s => String(s).toLocaleLowerCase('de');
@@ -619,7 +619,7 @@ function viewHome(l) {
     for (const [id, items] of groups) {
         if (!items.length) continue;
         out.push(h('div', { class: 'grp' }, catName(id)));
-        out.push(h('div', { class: 'grid' }, items.map(it => tile('on', { k: 'item', uid: it.uid }, dn(it.n), dnote(it.note), shared && LS.get('who', true) && it.by !== S.me.id && userName(it.by)))));
+        out.push(h('div', { class: 'grid todo' }, items.map(it => tile('on', { k: 'item', uid: it.uid }, dn(it.n), dnote(it.note), shared && look.who && it.by !== S.me.id && userName(it.by)))));
     }
 
     // Zuletzt gekauft: erst die jüngsten, dann aufgefüllt mit den häufigsten
@@ -1030,9 +1030,9 @@ const PARTS = [['bg', 'Hintergrund'], ['card', 'Kacheln'], ['text', 'Schrift'], 
 const okCols = c => c && PARTS.every(([k]) => /^#[0-9a-f]{6}$/.test(c[k])) ? Object.fromEntries(PARTS.map(([k]) => [k, c[k]])) : null;
 const okUnit = u => typeof u === 'string' && /^[^\d\s,;]{1,12}$/.test(u);
 const normLook = o => ({ mode: o && ['light', 'dark'].includes(o.mode) ? o.mode : 'auto', l: String(o && o.l || ''), d: String(o && o.d || ''), cl: okCols(o && o.cl), cd: okCols(o && o.cd),
-    lang: o && ['de', 'en'].includes(o.lang) ? o.lang : '', keep: !(o && o.keep === false), units: Array.isArray(o && o.units) ? o.units.filter(okUnit).slice(0, 12) : [] });
+    lang: o && ['de', 'en'].includes(o.lang) ? o.lang : '', keep: !(o && o.keep === false), who: !(o && o.who === false), units: Array.isArray(o && o.units) ? o.units.filter(okUnit).slice(0, 12) : [] });
 /** Einstellungen des Kontos: mode = auto|light|dark, l/d = gewähltes Design für hell/dunkel, cl/cd = eigene Farben,
-    lang = Sprache ('' = noch nicht gewählt), keep = zuletzt benutzte Menge merken, units = eigene Einheiten. Liegt auf dem Server, hier nur die Kopie. */
+    lang = Sprache ('' = noch nicht gewählt), keep = zuletzt benutzte Menge merken, who = anzeigen, wer einen Artikel hinzugefügt hat, units = eigene Einheiten. Liegt auf dem Server, hier nur die Kopie. */
 let look = normLook(LS.get('look', null) || { mode: LS.get('theme', 'auto'), l: LS.get('palL', ''), d: LS.get('palD', '') });
 const palOf = mode => {
     const v = look[mode === 'dark' ? 'd' : 'l'];
@@ -1130,13 +1130,16 @@ async function wake() {
     } catch (e) {}
 }
 
-/** Zwei Ansichten: kleine Kacheln oder kompakte Schildchen. Gemerkt pro Gerät. */
+/** Drei Ansichten: kleine Kacheln, kompakte Schildchen oder Laden-Modus (große Zeilen zum Abhaken). Gemerkt pro Gerät. */
+const VIEWS = ['tiles', 'compact', 'shop'];
+const curView = () => { const v = LS.get('view', 'tiles'); return VIEWS.includes(v) ? v : 'tiles'; };
 function applyView() {
-    const compact = LS.get('view', 'tiles') === 'compact';
-    main.classList.toggle('compact', compact);
+    const v = curView(), next = VIEWS[(VIEWS.indexOf(v) + 1) % VIEWS.length];
+    main.classList.toggle('compact', v === 'compact');
+    main.classList.toggle('shop', v === 'shop');
     const btn = $('#viewBtn');
-    fill(btn, icon(compact ? I.tiles : I.compact));   // der Knopf zeigt, wohin er umschaltet
-    btn.title = compact ? tr('Zur Kachel-Ansicht') : tr('Zur kompakten Ansicht');
+    fill(btn, icon(I[next]));   // der Knopf zeigt, wohin er umschaltet
+    btn.title = tr({ tiles: 'Zur Kachel-Ansicht', compact: 'Zur kompakten Ansicht', shop: 'Zum Laden-Modus' }[next]);
 }
 
 /** Sprache: was am Konto gewählt ist, sonst was dieses Gerät zuletzt hatte (Cookie, auch vom Umschalter der Anmeldeseite), sonst die Sprache des Geräts. */
@@ -1236,10 +1239,10 @@ function showSettings() {
     const theme = h('select', { onchange: () => setLook({ mode: theme.value }) },
         [['auto', 'Wie das Gerät'], ['light', 'Hell'], ['dark', 'Dunkel']].map(([v, s]) => h('option', { value: v, selected: look.mode === v }, tr(s))));
     const wakeBox = h('input', { type: 'checkbox', checked: LS.get('wake', true), onchange: () => { LS.set('wake', wakeBox.checked); wake(); } });
-    const whoBox = h('input', { type: 'checkbox', checked: LS.get('who', true), onchange: () => { LS.set('who', whoBox.checked); render(); } });
+    const whoBox = h('input', { type: 'checkbox', checked: look.who, onchange: () => { setLook({ who: whoBox.checked }); render(); } });
     const ivInput = h('input', { type: 'number', min: '1', max: '60', inputmode: 'numeric', value: String(S.interval) });
     const view = h('select', { onchange: () => { LS.set('view', view.value); applyView(); } },
-        [['tiles', 'Kleine Kacheln'], ['compact', 'Kompakt']].map(([v, s]) => h('option', { value: v, selected: LS.get('view', 'tiles') === v }, tr(s))));
+        [['tiles', 'Kleine Kacheln'], ['compact', 'Kompakt'], ['shop', 'Laden-Modus']].map(([v, s]) => h('option', { value: v, selected: curView() === v }, tr(s))));
     const swatches = mode => {
         const row = h('div', { class: 'pals', role: 'radiogroup', 'aria-label': mode === 'dark' ? tr('Dunkles Design') : tr('Helles Design') });
         const pk = mode === 'dark' ? 'd' : 'l', ck = mode === 'dark' ? 'cd' : 'cl';
@@ -1261,7 +1264,7 @@ function showSettings() {
         h('div', { class: 'qlabel' }, tr('Design für hell')), swatches('light'),
         h('div', { class: 'qlabel' }, tr('Design für dunkel')), swatches('dark'),
         h('p', { class: 'info' }, tr('Design und Farben gehören zu deinem Konto und gelten überall, wo du angemeldet bist. „Eigenes“ öffnet den Farbmischer.')),
-        h('label', { class: 'check' }, whoBox, h('span', null, tr('Anzeigen, wer einen Artikel hinzugefügt hat (nur dieses Gerät)'))),
+        h('label', { class: 'check' }, whoBox, h('span', null, tr('Anzeigen, wer einen Artikel hinzugefügt hat'))),
         h('label', { class: 'check' }, wakeBox, h('span', null, tr('Bildschirm anlassen, solange Kaufen offen ist'))),
         h('label', { class: 'check' }, keepBox, h('span', null, tr('Zuletzt benutzte Menge merken'))),
         h('p', { class: 'info' }, tr('Beim Abhaken merkt sich Kaufen, welche Menge am Produkt stand, und setzt es beim nächsten Mal wieder genauso auf die Liste. Ohne Haken steht immer 1 da.')),
@@ -1344,7 +1347,7 @@ function showMenu() {
 
 /* ---------- Start ---------- */
 $('#menuBtn').addEventListener('click', () => { if (S) showMenu(); });
-$('#viewBtn').addEventListener('click', () => { LS.set('view', LS.get('view', 'tiles') === 'compact' ? 'tiles' : 'compact'); applyView(); });
+$('#viewBtn').addEventListener('click', () => { LS.set('view', VIEWS[(VIEWS.indexOf(curView()) + 1) % VIEWS.length]); applyView(); });
 $('#listBtn').addEventListener('click', () => { if (S) showLists(); });
 document.addEventListener('visibilitychange', () => { wake(); if (document.hidden) { clearTimeout(timer); pushDone(); } else tick(); });
 window.addEventListener('pagehide', pushDone);

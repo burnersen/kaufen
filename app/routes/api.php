@@ -349,6 +349,7 @@ try {
         $src = function (string $k) use ($l, $old) { return array_key_exists($k, $l) ? $l[$k] : ($old[$k] ?? null); };
         $look['lang'] = in_array($src('lang'), ['de', 'en'], true) ? $src('lang') : '';
         $look['keep'] = $src('keep') !== false;
+        $look['who'] = $src('who') !== false;
         $look['units'] = [];
         foreach ((array)$src('units') as $u) {
             $u = kfClean($u, 12);

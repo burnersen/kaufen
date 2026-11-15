@@ -40,7 +40,7 @@ Upload `kaufen-install.php`, open it in the browser, create the first account. T
 - **Screen stays on** while the app is open (can be turned off).
 - **Manage the catalog:** create, rename, move and delete products and categories. The administrator can delete everything and restore the default. A backup is made automatically before every major change, the last 10 versions can be restored.
 - **Accounts:** the first account is the administrator, who creates the others. There is no open sign-up.
-- **Two views:** small tiles or compact, switched with the button at the top right, remembered per device.
+- **Three views:** small tiles, compact or shopping mode (large rows for ticking off in the store), switched with the button at the top right, remembered per device.
 - Installable as an app (PWA), light and dark mode, throttling against password guessing.
 
 ## Requirements

@@ -241,3 +241,13 @@ button.row { font-weight: 600; }
 
 /* Eingabefelder nie kleiner als 16px: darunter zoomt das iPhone beim Antippen in die Seite hinein */
 .field input, .field select, .field textarea, .login input, .pick .hex, .sheet select, .sheet textarea { font-size: 1rem; }
+
+/* Laden-Modus: die Einkaufsliste als große Zeilen zum Abhaken. Am Handy eine Spalte, auf breiten Bildschirmen mehrere nebeneinander. */
+.shop .todo { grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr)); gap: .45rem; }
+.shop .todo .tile { flex-direction: row; flex-wrap: wrap; justify-content: flex-start; align-items: center; column-gap: .6rem; min-height: 3.6rem; padding: .6rem 1rem;
+                    font-size: 1.15rem; text-align: left; hyphens: manual; }
+.shop .todo .tile::before { content: ""; flex: none; width: 1.35rem; height: 1.35rem; border: 2px solid currentColor; border-radius: 50%; opacity: .75; }
+.shop .todo .tn { flex: 1 1 0; min-width: 0; }
+.shop .todo .tt { flex: none; max-width: 50%; font-size: 1rem; font-weight: 500; opacity: .9; text-align: right; }
+.shop .todo .tb { flex: 1 0 100%; padding-left: 1.95rem; font-size: .78rem; font-weight: 400; }
+.shop .grp { margin: .9rem 0 .4rem; font-size: .85rem; }

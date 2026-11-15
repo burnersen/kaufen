@@ -33,6 +33,7 @@ ui: {
     'Suche leeren': 'Clear search',
     'Zur Kachel-Ansicht': 'Switch to tile view',
     'Zur kompakten Ansicht': 'Switch to compact view',
+    'Zum Laden-Modus': 'Switch to shopping mode',
 
     // Menge
     'Menge': 'Quantity',
@@ -173,7 +174,7 @@ ui: {
     'Lagune': 'Lagoon', 'Nacht': 'Night', 'Glut': 'Ember', 'Pflaume': 'Plum', 'Schwarz': 'Black',
     'Hintergrund': 'Background', 'Kacheln': 'Tiles', 'Schrift': 'Text', 'Akzent': 'Accent',
     'Hell': 'Light', 'Dunkel': 'Dark', 'Wie das Gerät': 'Same as device',
-    'Kleine Kacheln': 'Small tiles', 'Kompakt': 'Compact',
+    'Kleine Kacheln': 'Small tiles', 'Kompakt': 'Compact', 'Laden-Modus': 'Shopping mode',
     'Eigenes Design für dunkel': 'Custom theme for dark',
     'Eigenes Design für hell': 'Custom theme for light',
     'Knopf': 'Button',
@@ -194,7 +195,7 @@ ui: {
     // Einstellungen
     'Einstellungen': 'Settings',
     'Ansicht (nur dieses Gerät)': 'View (this device only)',
-    'Anzeigen, wer einen Artikel hinzugefügt hat (nur dieses Gerät)': 'Show who added an item (this device only)',
+    'Anzeigen, wer einen Artikel hinzugefügt hat': 'Show who added an item',
     'Hell oder dunkel': 'Light or dark',
     'Design für hell': 'Theme for light',
     'Design für dunkel': 'Theme for dark',
