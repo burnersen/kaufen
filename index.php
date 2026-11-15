@@ -3,7 +3,7 @@
  * Kaufen – gemeinsame Einkaufslisten zum Selbsthosten
  *
  * Diese Datei ist nur der Einstieg: Einstellungen und Reihenfolge. Der eigentliche Code liegt in app/:
- *   app/lib/     Funktionen (Datenbank, Konten, Listen, Katalog)
+ *   app/lib/     Funktionen (Sprache, Datenbank, Konten, Listen, Katalog)
  *   app/routes/  alle JSON-Aktionen
  *   app/views/   Anmeldeseite und Hauptseite
  *   app/assets/  CSS, JavaScript, Symbole (werden über diese Datei ausgeliefert)
@@ -19,7 +19,7 @@ error_reporting(E_ALL);
 ini_set('display_errors', '0');
 date_default_timezone_set('Europe/Berlin');
 
-define('KF_VERSION', '1.1.1');
+define('KF_VERSION', '1.2.0');
 define('KF_ROOT', __DIR__);
 define('KF_APP', KF_ROOT . '/app');
 define('KF_DATA_DIR', KF_ROOT . '/data');
@@ -28,6 +28,7 @@ define('KF_SESSION_DAYS', 180);   // so lange bleibt ein Gerät angemeldet, sola
 define('KF_BACKUP_KEEP', 10);     // so viele Katalog-Sicherungen werden aufbewahrt
 define('KF_MAX_USERS', 50);
 
+require KF_APP . '/lib/lang.php';
 require KF_APP . '/lib/db.php';
 require KF_APP . '/lib/auth.php';
 require KF_APP . '/lib/store.php';
@@ -37,7 +38,7 @@ $action = isset($_GET['action']) && is_string($_GET['action']) ? $_GET['action']
 /* ---------- Dateien ohne Anmeldung: CSS, JavaScript, Symbole, Manifest, Service Worker ---------- */
 if ($action === 'asset') {
     $types = [
-        'app.css' => 'text/css; charset=utf-8', 'app.js' => 'text/javascript; charset=utf-8', 'boot.js' => 'text/javascript; charset=utf-8',
+        'app.css' => 'text/css; charset=utf-8', 'app.js' => 'text/javascript; charset=utf-8', 'i18n.js' => 'text/javascript; charset=utf-8', 'boot.js' => 'text/javascript; charset=utf-8',
         'icon.svg' => 'image/svg+xml', 'icon-192.png' => 'image/png', 'icon-512.png' => 'image/png',
     ];
     $f = isset($_GET['f']) && is_string($_GET['f']) ? $_GET['f'] : '';
@@ -63,14 +64,23 @@ if ($action === 'manifest') {
     header('Content-Type: application/manifest+json; charset=utf-8');
     header('Cache-Control: no-cache');
     echo json_encode([
-        'name' => 'Kaufen', 'short_name' => 'Kaufen', 'description' => 'Gemeinsame Einkaufslisten',
-        'start_url' => './', 'scope' => './', 'display' => 'standalone', 'lang' => 'de',
+        'name' => 'Kaufen', 'short_name' => 'Kaufen', 'description' => kfT('Gemeinsame Einkaufslisten'),
+        'start_url' => './', 'scope' => './', 'display' => 'standalone', 'lang' => kfLang(),
         'background_color' => '#0f1720', 'theme_color' => '#0f766e',
         'icons' => [
             ['src' => '?action=asset&f=icon-192.png', 'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'any maskable'],
             ['src' => '?action=asset&f=icon-512.png', 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any maskable'],
         ],
     ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+/* ---------- Sprache umschalten (Anmeldeseite): im Cookie merken und zurück zur Seite ---------- */
+if ($action === '' && isset($_GET['lang']) && in_array($_GET['lang'], ['de', 'en'], true)) {
+    kfHeaders();
+    kfLangCookie($_GET['lang']);
+    header('Cache-Control: no-store');
+    header('Location: ./');
     exit;
 }
 

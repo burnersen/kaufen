@@ -37,14 +37,14 @@ function kfHasUsers(): bool {
 /** Prüft Name und Passwort eines neuen Kontos, liefert Fehlertext oder '' */
 function kfCheckName(string $name): string {
     $len = function_exists('mb_strlen') ? mb_strlen($name) : strlen($name);
-    if ($len < 2 || $len > 30) return 'Der Name muss 2 bis 30 Zeichen lang sein.';
-    if (preg_match('/[\x00-\x1f<>]/', $name)) return 'Der Name enthält unzulässige Zeichen.';
+    if ($len < 2 || $len > 30) return kfT('Der Name muss 2 bis 30 Zeichen lang sein.');
+    if (preg_match('/[\x00-\x1f<>]/', $name)) return kfT('Der Name enthält unzulässige Zeichen.');
     return '';
 }
 
 function kfCheckPass(string $pass): string {
-    if (strlen($pass) < 8) return 'Das Passwort muss mindestens 8 Zeichen lang sein.';
-    if (strlen($pass) > 200) return 'Das Passwort ist zu lang.';
+    if (strlen($pass) < 8) return kfT('Das Passwort muss mindestens 8 Zeichen lang sein.');
+    if (strlen($pass) > 200) return kfT('Das Passwort ist zu lang.');
     return '';
 }
 
@@ -131,13 +131,13 @@ function kfSetup(string $name, string $pass, string $pass2): string {
     $name = trim($name);
     if (($e = kfCheckName($name)) !== '') return $e;
     if (($e = kfCheckPass($pass)) !== '') return $e;
-    if ($pass !== $pass2) return 'Die beiden Passwörter stimmen nicht überein.';
+    if ($pass !== $pass2) return kfT('Die beiden Passwörter stimmen nicht überein.');
     $db = kfDb();
     $db->beginTransaction();
-    if ((int)$db->query('SELECT COUNT(*) FROM users')->fetchColumn() > 0) { $db->rollBack(); return 'Kaufen ist schon eingerichtet.'; }
+    if ((int)$db->query('SELECT COUNT(*) FROM users')->fetchColumn() > 0) { $db->rollBack(); return kfT('Kaufen ist schon eingerichtet.'); }
     kfQ('INSERT INTO users (name, pass, is_admin, created_at) VALUES (?, ?, 1, ?)', [$name, password_hash($pass, PASSWORD_DEFAULT), time()]);
     $uid = (int)$db->lastInsertId();
-    kfQ('INSERT INTO lists (name, owner_id, created_at) VALUES (?, ?, ?)', ['Einkauf', $uid, time()]);
+    kfQ('INSERT INTO lists (name, owner_id, created_at) VALUES (?, ?, ?)', [kfT('Einkauf'), $uid, time()]);
     $lid = (int)$db->lastInsertId();
     kfQ('INSERT INTO members (list_id, user_id) VALUES (?, ?)', [$lid, $uid]);
     kfSet('start_list', (string)$lid);
@@ -148,15 +148,15 @@ function kfSetup(string $name, string $pass, string $pass2): string {
 
 function kfLogin(string $name, string $pass): string {
     $name = trim($name);
-    if ($name === '' || $pass === '') return 'Bitte Name und Passwort eingeben.';
+    if ($name === '' || $pass === '') return kfT('Bitte Name und Passwort eingeben.');
     $wait = kfThrottleWait($name);
-    if ($wait > 0) return 'Zu viele Fehlversuche. Bitte in ' . ($wait > 90 ? ceil($wait / 60) . ' Minuten' : $wait . ' Sekunden') . ' noch einmal versuchen.';
+    if ($wait > 0) return kfT('Zu viele Fehlversuche. Bitte in %s noch einmal versuchen.', $wait > 90 ? kfT('%d Minuten', (int)ceil($wait / 60)) : kfT('%d Sekunden', $wait));
     $row = kfQ('SELECT id, pass FROM users WHERE name = ?', [$name])->fetch();
     // Auch ohne Treffer rechnen, damit die Antwortzeit nichts verrät
     $ok = password_verify($pass, $row ? $row['pass'] : '$2y$10$abcdefghijklmnopqrstuuJ7i0kE5cH3f8QZ6y0K3d0a8mQ9oQe1e');
     if (!$row || !$ok) {
         kfThrottleFail($name);
-        return 'Name oder Passwort stimmt nicht.';
+        return kfT('Name oder Passwort stimmt nicht.');
     }
     kfThrottleClear($name);
     if (password_needs_rehash($row['pass'], PASSWORD_DEFAULT)) {

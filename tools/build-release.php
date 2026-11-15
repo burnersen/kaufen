@@ -61,7 +61,7 @@ if (class_exists('ZipArchive')) {
         fwrite(STDERR, "ZIP konnte nicht angelegt werden.\n");
         exit(1);
     }
-    foreach (array_merge($files, ['README.md']) as $path) {
+    foreach (array_merge($files, ['README.md', 'README.en.md']) as $path) {
         if (is_file($root . '/' . $path)) $zip->addFile($root . '/' . $path, 'kaufen/' . $path);
     }
     $zip->close();
