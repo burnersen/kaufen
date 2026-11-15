@@ -31,6 +31,7 @@ Upload `kaufen-install.php`, open it in the browser, create the first account. T
 - **Recently bought:** the latest and most frequent products, collapsible like the categories.
 - **Ten themes and your own colors:** five light and five dark color schemes, plus one custom theme each from the color mixer (sliders or color picker, with preview). With "Same as device" Kaufen switches automatically between your light and your dark favorite. The look belongs to the account and applies on all devices.
 - **Multiple lists:** everyone can create lists and share them with any accounts.
+- **Notifications on your phone:** if you like, you get a notification when someone puts something on a shared list. Each account turns this on or off per device in the settings. Bundled instead of one by one: three products make one notification, sent the moment the other person leaves Kaufen. Checking things off in the store does not notify anyone.
 - **Share a list as text:** the open list goes to your messenger, mail and so on as plain text, or to the clipboard, for people without an account.
 - **Store layout:** the categories can be ordered per list to match the way your own store is laid out.
 - **Templates:** "BBQ" or "Breakfast" puts several products on the list with one tap. The current list can be saved as a template too.
@@ -45,6 +46,7 @@ Upload `kaufen-install.php`, open it in the browser, create the first account. T
 ## Requirements
 
 - PHP 7.4 or newer (8.x recommended) with the `pdo_sqlite` extension
+- For notifications on your phone in addition: the `openssl` extension, plus `curl` or `allow_url_fopen`, and the web host must allow outgoing connections. If any of that is missing, Kaufen works as usual, just without notifications.
 - A web server with PHP (Apache works out of the box)
 - **HTTPS.** Without HTTPS the password travels in plain text, and the app cannot be installed on a phone.
 
@@ -84,7 +86,7 @@ Without SSH: download the folder `data/` via FTP and upload it again to restore.
 
 ```
 index.php      entry point and settings
-app/lib/       language, database, accounts and sign-in, lists and catalog, default catalog
+app/lib/       language, database, accounts and sign-in, lists and catalog, default catalog, notifications
 app/routes/    all JSON actions
 app/views/     sign-in page and main page
 app/assets/    CSS, JavaScript, English translation, icons, service worker
@@ -95,6 +97,8 @@ tools/         builds the release files (php tools/build-release.php)
 The files in `app/` do nothing when called directly, everything goes through `index.php`. Under Apache an `.htaccess` blocks the folder as well. The default catalog lives in `app/lib/catalog.php` and can be adjusted there. The English texts and product names are in `app/assets/i18n.js`, the English server messages in `app/lib/lang.php`. Comments in the source code are in German.
 
 ## Good to know
+
+- **Notifications:** on the iPhone they only work when Kaufen is installed via "Add to Home Screen" (iOS 16.4 or later), on Android and on a computer they also work in the browser. When you turn them on, the server sends a test, so you see right away whether it can reach the notification service. Notifications go straight from your own server to the browser's notification service (Apple, Google, Mozilla, Microsoft), encrypted for the individual device, with no other service in between. If a device does not say goodbye when leaving (no signal), the notification goes out about three minutes after the last change, as soon as any device has Kaufen open again.
 
 - The built-in catalog is stored in German in the database and is only translated for display on English accounts. Products, categories and templates you create yourself stay exactly as typed.
 - Remembered quantities belong to the list and apply to everyone sharing it. Language, "remember quantity", custom units and the look belong to the account.

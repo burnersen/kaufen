@@ -53,7 +53,7 @@ const low = s => String(s).toLocaleLowerCase('de');
 const norm = s => low(s).replace(/ß/g, 'ss').normalize('NFD').replace(/[̀-ͯ]/g, '');
 
 /* ---------- Sprache: Deutsch oder Englisch. Der deutsche Text ist der Schlüssel, die Übersetzungen stehen in i18n.js. ---------- */
-const EN = window.KF_EN || { ui: {}, cats: {}, prods: {}, tpls: {} };
+const EN = self.KF_EN || { ui: {}, cats: {}, prods: {}, tpls: {} };
 let lang = 'de';
 /** Text in der Sprache des Kontos, {0} und {1} sind Platzhalter */
 function tr(s, ...a) {
@@ -172,6 +172,7 @@ async function loadState() {
     const e = lookEpoch;
     applyState(await api('state'), e !== lookEpoch);
     flush();
+    if (!pushSynced) { pushSynced = true; pushRefresh(); }
 }
 
 function setList(data) {
@@ -242,6 +243,7 @@ function op(...ops) {
     for (const o of ops.flat()) {
         applyLocal(o);
         queue.push({ l: cur, o });
+        if (o.t === 'add') pushDirty = true;   // beim Verlassen erfahren es die anderen, siehe pushDone
     }
     saveQueue();
     LS.set('list_' + cur, L);
@@ -307,6 +309,76 @@ async function tick() {
         }
     } catch (e) {}
     rest();
+}
+
+/* ---------- Mitteilungen aufs Handy (Web Push). Ob ein Gerät welche will, entscheidet jedes Konto pro Gerät in den Einstellungen. ---------- */
+let pushDirty = false, pushSynced = false;
+/** Kann der Server verschicken (S.push = sein öffentlicher Schlüssel) und dieses Gerät empfangen? Das iPhone nur als installierte App. */
+const pushCan = () => !!(S && S.push) && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+const b64uBytes = s => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
+const bytesB64u = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+/** Die Anmeldung dieses Geräts beim Mitteilungsdienst, oder null */
+async function pushSub() {
+    try {
+        const reg = await navigator.serviceWorker.getRegistration();
+        return reg ? await reg.pushManager.getSubscription() : null;
+    } catch (e) { return null; }
+}
+async function pushOn() {
+    if (await Notification.requestPermission() !== 'granted') throw new Error(tr('Mitteilungen sind für Kaufen gesperrt. Bitte in den Einstellungen des Geräts erlauben.'));
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription() || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64uBytes(S.push) });
+    const r = await api('push_sub', { ...sub.toJSON(), test: true });   // der Server schickt gleich eine Probe
+    toast(r.sent >= 200 && r.sent < 300 ? tr('Mitteilungen eingeschaltet, eine Probe ist unterwegs')
+        : tr('Eingeschaltet, aber der Server erreicht den Mitteilungsdienst nicht (Antwort {0}). Vermutlich sperrt der Webspace ausgehende Verbindungen.', r.sent || 0));
+}
+async function pushOff() {
+    const sub = await pushSub();
+    if (!sub) return;
+    const endpoint = sub.endpoint;
+    try { await sub.unsubscribe(); } catch (e) {}
+    try { await api('push_unsub', { endpoint }); } catch (e) {}
+}
+/** Beim Start und nach einem Sprachwechsel: der Server erfährt, welches Konto und welche Sprache zu diesem Gerät gehören */
+async function pushRefresh() {
+    if (!pushCan() || !csrf) return;
+    let sub = await pushSub();
+    if (!sub) return;
+    try {
+        // Hat der Server inzwischen einen anderen Schlüssel (neu aufgesetzt), gilt die alte Anmeldung nicht mehr: neu anmelden
+        const key = sub.options && sub.options.applicationServerKey;
+        if (key && bytesB64u(key) !== S.push) {
+            await sub.unsubscribe();
+            sub = await (await navigator.serviceWorker.ready).pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64uBytes(S.push) });
+        }
+        await api('push_sub', sub.toJSON());
+    } catch (e) {}
+}
+/**
+ * Kaufen verschwindet vom Bildschirm: dem Server sagen, dass dieses Gerät fertig ist. Er schickt dann eine einzige Mitteilung
+ * mit allem, was hier auf Listen gesetzt wurde, an die anderen Mitglieder. Kommt das nicht an (kein Netz), holt der Server es
+ * ein paar Minuten später von selbst nach.
+ */
+async function pushDone() {
+    if (!pushDirty || !S || !S.push || !csrf) return;
+    pushDirty = false;
+    for (let i = 0; i < 40 && online && (flushing || queue.length); i++) {   // erst müssen die Änderungen selbst beim Server sein
+        if (!flushing) flush();
+        await new Promise(r => setTimeout(r, 50));
+    }
+    if (queue.length) { pushDirty = true; return; }
+    try {
+        fetch('?action=push_done', { method: 'POST', credentials: 'same-origin', cache: 'no-store', keepalive: true,
+            headers: { 'Content-Type': 'application/json', 'X-CSRF': csrf }, body: '{}' }).catch(() => {});
+    } catch (e) {}
+}
+if ('serviceWorker' in navigator) {
+    // Mitteilung angetippt: der Service Worker holt Kaufen nach vorn und nennt die Liste
+    navigator.serviceWorker.addEventListener('message', e => {
+        const id = e.data && e.data.kfList;
+        if (id && S && id !== cur && S.lists.some(l => l.id === id)) openList(id);
+        else if (id) loadList();
+    });
 }
 
 /* ---------- Meldung unten, mit Knopf (z. B. Rückgängig) ---------- */
@@ -1140,7 +1212,7 @@ function editLook(mode, redraw) {
 function showSettings() {
     const sh = sheet(tr('Einstellungen'));
     // Sprache wechseln: alles neu zeichnen, auch dieses Fenster
-    const langSel = h('select', { onchange: () => { setLook({ lang: langSel.value }); applyLang(); render(); sh.close(); showSettings(); } },
+    const langSel = h('select', { onchange: () => { setLook({ lang: langSel.value }); applyLang(); pushRefresh(); render(); sh.close(); showSettings(); } },
         [['de', 'Deutsch'], ['en', 'English']].map(([v, s]) => h('option', { value: v, selected: lang === v }, s)));
     const keepBox = h('input', { type: 'checkbox', checked: look.keep, onchange: () => { setLook({ keep: keepBox.checked }); render(); } });
     const unitBox = h('div', { class: 'chips' });
@@ -1148,6 +1220,17 @@ function showSettings() {
         look.units.map(u => h('button', { class: 'chip', type: 'button', 'aria-label': tr('{0} entfernen', u), onclick: () => { setLook({ units: look.units.filter(x => x !== u) }); drawUnits(); } }, u + ' ✕')),
         h('button', { class: 'chip add', type: 'button', onclick: () => addUnit(drawUnits) }, tr('+ Einheit')));
     drawUnits();
+    // Mitteilungen: der Haken zeigt, ob dieses Gerät angemeldet ist
+    const pushBox = h('input', { type: 'checkbox', disabled: true, onchange: async () => {
+        pushBox.disabled = true;
+        try {
+            if (pushBox.checked) await pushOn();
+            else { await pushOff(); toast(tr('Mitteilungen ausgeschaltet')); }
+        } catch (e) { toast(e.message); }
+        pushBox.checked = !!(await pushSub());
+        pushBox.disabled = false;
+    } });
+    if (pushCan()) pushSub().then(s => { pushBox.checked = !!s; pushBox.disabled = false; });
     const theme = h('select', { onchange: () => setLook({ mode: theme.value }) },
         [['auto', 'Wie das Gerät'], ['light', 'Hell'], ['dark', 'Dunkel']].map(([v, s]) => h('option', { value: v, selected: look.mode === v }, tr(s))));
     const wakeBox = h('input', { type: 'checkbox', checked: LS.get('wake', true), onchange: () => { LS.set('wake', wakeBox.checked); wake(); } });
@@ -1180,6 +1263,10 @@ function showSettings() {
         h('p', { class: 'info' }, tr('Beim Abhaken merkt sich Kaufen, welche Menge am Produkt stand, und setzt es beim nächsten Mal wieder genauso auf die Liste. Ohne Haken steht immer 1 da.')),
         h('div', { class: 'qlabel' }, tr('Eigene Einheiten')), unitBox,
         h('p', { class: 'info units' }, tr('Erscheinen bei der Mengenauswahl neben Stück, Packung und Liter. Antippen entfernt eine Einheit.')),
+        pushCan() && h('label', { class: 'check' }, pushBox, h('span', null, tr('Mitteilungen auf diesem Gerät'))),
+        h('p', { class: 'info' }, pushCan() ? tr('Du bekommst eine Mitteilung, wenn jemand etwas auf eine Liste setzt, die ihr teilt. Mehrere Produkte kommen gebündelt in einer Mitteilung, sobald der andere Kaufen verlässt.')
+            : S.push ? tr('Mitteilungen gehen auf diesem Gerät oder in diesem Browser nicht. Auf dem iPhone muss Kaufen dafür über „Zum Home-Bildschirm“ installiert sein (ab iOS 16.4).')
+            : tr('Dieser Server kann keine Mitteilungen verschicken.')),
         h('div', { class: 'btns' }, h('button', { class: 'btn', type: 'button', onclick: () => ask(tr('Passwort ändern'), [
             { k: 'old', label: tr('Bisheriges Passwort'), type: 'password', auto: 'current-password' },
             { k: 'pass', label: tr('Neues Passwort (mindestens 8 Zeichen)'), type: 'password' },
@@ -1201,6 +1288,7 @@ function showSettings() {
 
 async function logout() {
     const go = async () => {
+        if (pushCan() && online) await pushOff();   // sonst bekäme dieses Gerät weiter die Mitteilungen des abgemeldeten Kontos
         try { await api('logout', {}); } catch (e) { if (e.net) throw new Error(tr('Abmelden geht nur mit Verbindung zum Server.')); }
         LS.clear();
         location.reload();
@@ -1254,7 +1342,8 @@ function showMenu() {
 $('#menuBtn').addEventListener('click', () => { if (S) showMenu(); });
 $('#viewBtn').addEventListener('click', () => { LS.set('view', LS.get('view', 'tiles') === 'compact' ? 'tiles' : 'compact'); applyView(); });
 $('#listBtn').addEventListener('click', () => { if (S) showLists(); });
-document.addEventListener('visibilitychange', () => { wake(); if (document.hidden) clearTimeout(timer); else tick(); });
+document.addEventListener('visibilitychange', () => { wake(); if (document.hidden) { clearTimeout(timer); pushDone(); } else tick(); });
+window.addEventListener('pagehide', pushDone);
 window.addEventListener('online', tick);
 window.addEventListener('offline', () => setOnline(false));
 

@@ -2,7 +2,7 @@
 /* Kaufen – Datenordner, Datenbank (SQLite), Einstellungen */
 defined('KF_VERSION') || exit;
 
-define('KF_SCHEMA', 3);
+define('KF_SCHEMA', 4);
 
 function kfFatal(string $msg): void {
     http_response_code(500);
@@ -100,6 +100,14 @@ function kfMigrate(PDO $pdo, int $from): void {
     if ($from < 3) {
         // Zuletzt benutzte Menge pro Liste und Produkt, z. B. „5 Flaschen“. Steht beim nächsten Mal wieder da.
         $pdo->exec("ALTER TABLE usage ADD COLUMN note TEXT NOT NULL DEFAULT ''");
+    }
+    if ($from < 4) {
+        // Mitteilungen: Geräte, die welche wollen, und was noch zu melden ist (wer hat was auf welche Liste gesetzt)
+        $pdo->exec("CREATE TABLE IF NOT EXISTS push_subs (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, endpoint TEXT NOT NULL UNIQUE,
+            p256dh TEXT NOT NULL, auth TEXT NOT NULL, lang TEXT NOT NULL DEFAULT 'de', created_at INTEGER NOT NULL)");
+        $pdo->exec("CREATE INDEX IF NOT EXISTS push_subs_user ON push_subs (user_id)");
+        $pdo->exec("CREATE TABLE IF NOT EXISTS push_pending (list_id INTEGER NOT NULL, user_id INTEGER NOT NULL, name TEXT NOT NULL COLLATE NOCASE,
+            at INTEGER NOT NULL, PRIMARY KEY (list_id, user_id, name))");
     }
     $pdo->exec('PRAGMA user_version = ' . KF_SCHEMA);
     $pdo->commit();

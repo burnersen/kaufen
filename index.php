@@ -3,7 +3,7 @@
  * Kaufen – gemeinsame Einkaufslisten zum Selbsthosten
  *
  * Diese Datei ist nur der Einstieg: Einstellungen und Reihenfolge. Der eigentliche Code liegt in app/:
- *   app/lib/     Funktionen (Sprache, Datenbank, Konten, Listen, Katalog)
+ *   app/lib/     Funktionen (Sprache, Datenbank, Konten, Listen, Katalog, Mitteilungen)
  *   app/routes/  alle JSON-Aktionen
  *   app/views/   Anmeldeseite und Hauptseite
  *   app/assets/  CSS, JavaScript, Symbole (werden über diese Datei ausgeliefert)
@@ -19,7 +19,7 @@ error_reporting(E_ALL);
 ini_set('display_errors', '0');
 date_default_timezone_set('Europe/Berlin');
 
-define('KF_VERSION', '1.2.1');
+define('KF_VERSION', '1.3.0');
 define('KF_ROOT', __DIR__);
 define('KF_APP', KF_ROOT . '/app');
 define('KF_DATA_DIR', KF_ROOT . '/data');
@@ -32,6 +32,7 @@ require KF_APP . '/lib/lang.php';
 require KF_APP . '/lib/db.php';
 require KF_APP . '/lib/auth.php';
 require KF_APP . '/lib/store.php';
+require KF_APP . '/lib/push.php';
 
 $action = isset($_GET['action']) && is_string($_GET['action']) ? $_GET['action'] : '';
 
@@ -51,8 +52,9 @@ if ($action === 'asset') {
 }
 if ($action === 'sw') {
     kfHeaders();
-    // Der Service Worker muss Seite und Dateien selbst abrufen dürfen, sonst kann er sie nicht vorhalten
-    header("Content-Security-Policy: default-src 'none'; connect-src 'self'; frame-ancestors 'none'");
+    // Der Service Worker muss Seite und Dateien selbst abrufen dürfen, sonst kann er sie nicht vorhalten.
+    // script-src: er lädt die englischen Texte nach, um Mitteilungen in der Sprache des Geräts zu zeigen.
+    header("Content-Security-Policy: default-src 'none'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'");
     header('Content-Type: text/javascript; charset=utf-8');
     header('Cache-Control: no-cache');
     echo 'const KF_V = ' . json_encode(KF_VERSION) . ";\n";

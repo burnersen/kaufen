@@ -89,6 +89,8 @@ function kfEnglish(): array {
         'Mehr als %d Konten gehen nicht.' => 'More than %d accounts are not possible.',
         'Das eigene Konto kann man nicht löschen.' => 'You cannot delete your own account.',
         'Das bisherige Passwort stimmt nicht.' => 'The current password is wrong.',
+        'Dieser Server kann keine Mitteilungen verschicken.' => 'This server cannot send notifications.',
+        'Mitteilungen lassen sich auf diesem Gerät nicht einrichten.' => 'Notifications cannot be set up on this device.',
         'Unbekannte Aktion.' => 'Unknown action.',
         'Das hat nicht geklappt. Bitte noch einmal versuchen.' => 'That did not work. Please try again.',
     ];

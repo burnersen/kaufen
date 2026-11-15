@@ -7,9 +7,27 @@ function kfJson($data, int $code = 200): void {
     kfHeaders();
     header('Content-Type: application/json; charset=utf-8');
     header('Cache-Control: no-store');
-    echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    $out = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    // Stehen noch Mitteilungen an, soll das Gerät nicht auf deren Versand warten: mit der Länge weiß es, wann die Antwort vollständig ist
+    if (!empty($GLOBALS['kfPushJob']) && !headers_sent() && !filter_var(ini_get('zlib.output_compression'), FILTER_VALIDATE_BOOLEAN)) header('Content-Length: ' . strlen($out));
+    echo $out;
     exit;
 }
+
+/** Mitteilungen erst verschicken, wenn die Antwort draußen ist. $GLOBALS['kfPushJob']: 'due' = was lange genug liegt, Zahl = alles von diesem Konto. */
+register_shutdown_function(function () {
+    $job = $GLOBALS['kfPushJob'] ?? null;
+    if ($job === null) return;
+    try {
+        ignore_user_abort(true);
+        if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
+        else { while (ob_get_level() > 0) @ob_end_flush(); @flush(); }
+        @set_time_limit(40);
+        kfPushFlush($job === 'due' ? null : (int)$job);
+    } catch (Throwable $e) {
+        error_log('Kaufen Push: ' . $e->getMessage());
+    }
+});
 
 function kfFail(string $msg, int $code = 400): void {
     kfJson(['error' => $msg], $code);
@@ -42,6 +60,7 @@ try {
 
     /* ---------- lesen ---------- */
     case 'state':
+        $GLOBALS['kfPushJob'] = 'due';
         $state();
 
     case 'list':
@@ -49,6 +68,7 @@ try {
         kfJson(kfListData((int)$l['id']));
 
     case 'poll':   // die Abfrage alle paar Sekunden: so klein wie möglich
+        $GLOBALS['kfPushJob'] = 'due';   // liegen Mitteilungen lange genug, gehen sie nach dieser Antwort raus
         $l = kfListFor($me['id'], (int)($_GET['id'] ?? 0));
         kfJson(['v' => $l ? (int)$l['version'] : null, 'cv' => (int)kfGet('cv', '1'), 'lv' => (int)kfGet('lv', '1'),
                 'iv' => max(1, min(60, (int)kfGet('interval', '5')))]);
@@ -292,6 +312,8 @@ try {
         }
         kfQ('DELETE FROM members WHERE user_id = ?', [$id]);
         kfQ('DELETE FROM sessions WHERE user_id = ?', [$id]);
+        kfQ('DELETE FROM push_subs WHERE user_id = ?', [$id]);
+        kfQ('DELETE FROM push_pending WHERE user_id = ?', [$id]);
         kfQ('DELETE FROM users WHERE id = ?', [$id]);
         kfBump('lv');
         kfDb()->commit();
@@ -334,6 +356,39 @@ try {
         }
         kfQ('UPDATE users SET look = ? WHERE id = ?', [json_encode($look, JSON_UNESCAPED_UNICODE), $me['id']]);
         kfBump('lv');   // damit die anderen Geräte des Kontos es beim nächsten Abgleich mitbekommen
+        kfJson(['ok' => true]);
+
+    /* ---------- Mitteilungen ---------- */
+    case 'push_sub':   // dieses Gerät will Mitteilungen (auch beim Start der App: frischt Konto und Sprache auf)
+        if (!kfPushOk()) kfFail(kfT('Dieser Server kann keine Mitteilungen verschicken.'));
+        $endpoint = is_string($in['endpoint'] ?? null) ? $in['endpoint'] : '';
+        $p256dh = kfB64uDec($in['keys']['p256dh'] ?? '');
+        $auth = kfB64uDec($in['keys']['auth'] ?? '');
+        if ($endpoint === '' || strlen($endpoint) > 1000 || !kfPushHostOk($endpoint) || strlen($p256dh) !== 65 || $p256dh[0] !== "\x04" || strlen($auth) < 8 || strlen($auth) > 64) {
+            kfFail(kfT('Mitteilungen lassen sich auf diesem Gerät nicht einrichten.'));
+        }
+        if (kfGet('push_contact') === '') {   // Adresse dieser Installation, die der Mitteilungsdienst im Problemfall sieht
+            $host = preg_replace('/[^A-Za-z0-9.\-:\[\]]/', '', (string)($_SERVER['HTTP_HOST'] ?? ''));
+            kfSet('push_contact', 'https://' . ($host !== '' ? $host : 'localhost'));
+        }
+        kfQ('INSERT INTO push_subs (user_id, endpoint, p256dh, auth, lang, created_at) VALUES (?, ?, ?, ?, ?, ?)
+             ON CONFLICT(endpoint) DO UPDATE SET user_id = excluded.user_id, p256dh = excluded.p256dh, auth = excluded.auth, lang = excluded.lang',
+            [$me['id'], $endpoint, kfB64u($p256dh), kfB64u($auth), kfLang(), time()]);
+        // Höchstens 10 Geräte pro Konto, die ältesten fallen heraus
+        kfQ('DELETE FROM push_subs WHERE user_id = ? AND id NOT IN (SELECT id FROM push_subs WHERE user_id = ? ORDER BY id DESC LIMIT 10)', [$me['id'], $me['id']]);
+        $sent = null;
+        if (!empty($in['test'])) {   // gleich ausprobieren, damit man sieht, ob der Server den Mitteilungsdienst erreicht
+            $row = kfQ('SELECT id, endpoint, p256dh, auth, lang FROM push_subs WHERE endpoint = ?', [$endpoint])->fetch();
+            $sent = $row ? kfPushSend($row, ['t' => 'test']) : 0;
+        }
+        kfJson(['ok' => true, 'sent' => $sent]);
+
+    case 'push_unsub':
+        kfQ('DELETE FROM push_subs WHERE user_id = ? AND endpoint = ?', [$me['id'], is_string($in['endpoint'] ?? null) ? $in['endpoint'] : '']);
+        kfJson(['ok' => true]);
+
+    case 'push_done':   // das Gerät hat Kaufen verlassen: was dieses Konto auf Listen gesetzt hat, geht jetzt gebündelt an die anderen
+        $GLOBALS['kfPushJob'] = $me['id'];
         kfJson(['ok' => true]);
 
     case 'settings_save':
