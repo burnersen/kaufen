@@ -45,7 +45,7 @@ const I = {
 const LS = {
     get(k, d) { try { const v = localStorage.getItem('kf_' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
     set(k, v) { try { localStorage.setItem('kf_' + k, JSON.stringify(v)); } catch (e) {} },
-    clear() { try { Object.keys(localStorage).filter(k => k.startsWith('kf_') && k !== 'kf_theme' && k !== 'kf_view').forEach(k => localStorage.removeItem(k)); } catch (e) {} },
+    clear() { try { Object.keys(localStorage).filter(k => k.startsWith('kf_') && !['kf_theme', 'kf_view', 'kf_palL', 'kf_palD'].includes(k)).forEach(k => localStorage.removeItem(k)); } catch (e) {} },
 };
 
 const low = s => String(s).toLocaleLowerCase('de');
@@ -112,6 +112,7 @@ async function api(action, body) {
         throw Object.assign(new Error('Keine Verbindung zum Server.'), { net: true });
     }
     setOnline(true);
+    rest();
     if (r.status === 401) { location.reload(); throw Object.assign(new Error('Abgemeldet.'), { net: true }); }
     let j = null;
     try { j = await r.json(); } catch (e) {}
@@ -211,6 +212,7 @@ function op(...ops) {
     const l = curList();
     if (l) l.count = L.items.length;
     render();
+    rest();
     flush();
 }
 
@@ -244,22 +246,30 @@ async function flush() {
     }
 }
 
+/**
+ * Die Wartezeit bis zum nächsten Abgleich neu starten. Passiert bei jeder eigenen Aktion und nach jeder Antwort des Servers,
+ * nachgefragt wird also nur, wenn so lange nichts los war. Ist Kaufen nicht zu sehen, läuft gar keine Uhr.
+ */
+function rest() {
+    clearTimeout(timer);
+    if (!document.hidden) timer = setTimeout(tick, Math.max(1, iv) * 1000);
+}
+
 /** Der regelmäßige Abgleich. Fragt nur drei Zähler ab und lädt erst nach, wenn sich einer geändert hat. */
 async function tick() {
     clearTimeout(timer);
+    if (document.hidden) return;
     try {
-        if (!document.hidden) {
-            if (!csrf) await loadState();
-            else {
-                if (queue.length) flush();
-                const r = await api('poll&id=' + (cur || 0));
-                if (r.iv) iv = r.iv;
-                if (r.cv !== S.cv || r.lv !== S.lv || (cur && r.v === null)) await loadState();
-                if (cur && r.v !== null && (!L || r.v !== L.v) && !flushing) await loadList();
-            }
+        if (!csrf) await loadState();
+        else {
+            if (queue.length) flush();
+            const r = await api('poll&id=' + (cur || 0));
+            if (r.iv) iv = r.iv;
+            if (r.cv !== S.cv || r.lv !== S.lv || (cur && r.v === null)) await loadState();
+            if (cur && r.v !== null && (!L || r.v !== L.v) && !flushing) await loadList();
         }
     } catch (e) {}
-    timer = setTimeout(tick, Math.max(1, iv) * 1000);
+    rest();
 }
 
 /* ---------- Meldung unten, mit Knopf (z. B. Rückgängig) ---------- */
@@ -312,6 +322,11 @@ function ask(title, fields, okLabel, submit, extra = []) {
             const i = inputs[f.k] = h('input', { type: 'checkbox', checked: !!f.value });
             return h('label', { class: 'check' }, i, h('span', null, f.label));
         }
+        if (f.type === 'qty') {
+            const q = qtyField(f.value);
+            inputs[f.k] = q;
+            return q.node;
+        }
         let i;
         if (f.type === 'select') i = h('select', null, f.options.map(([v, t]) => h('option', { value: String(v), selected: String(v) === String(f.value) }, t)));
         else if (f.type === 'textarea') i = h('textarea', { placeholder: f.placeholder, value: f.value || '' });
@@ -343,6 +358,68 @@ function ask(title, fields, okLabel, submit, extra = []) {
     if (first && !('ontouchstart' in window)) first.focus();
     return sh;
 }
+/* ---------- Menge: Zähler, Einheit zum Antippen, freier Hinweis. Gespeichert wird schlichter Text wie „2 Liter, die grünen“. ---------- */
+const UNITS = [['Stück', 'Stück', 1], ['Packung', 'Packungen', 1], ['Flasche', 'Flaschen', 1], ['Dose', 'Dosen', 1], ['Glas', 'Gläser', 1], ['Bund', 'Bund', 1],
+    ['Liter', 'Liter', .5], ['ml', 'ml', 50], ['kg', 'kg', .5], ['g', 'g', 50]];
+const fmtNum = n => String(Math.round(n * 100) / 100).replace('.', ',');
+/** Zerlegt einen Hinweis in Zahl, Einheit und Rest. Passt er nicht ins Muster, bleibt er als Ganzes der freie Hinweis. */
+function parseQty(note) {
+    const m = /^(\d{1,4}(?:[.,]\d{1,2})?)\s*([^\d\s,]*)\s*(?:,\s*(.*))?$/.exec(String(note || '').trim());
+    if (m) {
+        const u = m[2] ? UNITS.findIndex(x => low(x[0]) === low(m[2]) || low(x[1]) === low(m[2])) : -1;
+        const n = parseFloat(m[1].replace(',', '.'));
+        if (n > 0 && (!m[2] || u >= 0)) return { n, u, hint: m[3] || '' };
+    }
+    return { n: 0, u: -1, hint: String(note || '').trim() };
+}
+function qtyField(value) {
+    const st = parseQty(value);
+    const step = () => st.u >= 0 ? UNITS[st.u][2] : 1;
+    const num = h('input', { type: 'text', inputmode: 'decimal', maxlength: 7, placeholder: '–', 'aria-label': 'Menge', autocomplete: 'off', enterkeyhint: 'done',
+        oninput: () => { const n = parseFloat(num.value.replace(',', '.')); st.n = n > 0 ? Math.min(n, 9999) : 0; show(false); },
+        onfocus: () => num.select() });
+    const hint = h('input', { type: 'text', value: st.hint, placeholder: 'z. B. die grünen, vom Bäcker', maxlength: 60, autocomplete: 'off', enterkeyhint: 'done' });
+    const chips = UNITS.map((u, i) => h('button', { class: 'chip', type: 'button', onclick: () => {
+        st.u = st.u === i ? -1 : i;
+        if (!st.n && st.u >= 0) st.n = Math.max(1, UNITS[i][2]);
+        show(true);
+    } }, u[0]));
+    const minus = h('button', { class: 'qbtn', type: 'button', 'aria-label': 'Weniger' }, '−');
+    const plus = h('button', { class: 'qbtn', type: 'button', 'aria-label': 'Mehr' }, '+');
+    function show(writeNum) {
+        if (writeNum) num.value = st.n ? fmtNum(st.n) : '';
+        minus.disabled = !st.n;
+        chips.forEach((c, i) => { c.classList.toggle('sel', i === st.u); c.setAttribute('aria-pressed', String(i === st.u)); c.textContent = UNITS[i][st.u === i && st.n > 1 ? 1 : 0]; });
+    }
+    const bump = d => {
+        const s = step();
+        st.n = Math.max(0, Math.min(9999, Math.round((d > 0 ? Math.floor(st.n / s + 1e-9) + 1 : Math.ceil(st.n / s - 1e-9) - 1) * s * 100) / 100));
+        show(true);
+    };
+    // Tippen zählt einen Schritt, gedrückt halten zählt weiter
+    for (const [b, d] of [[minus, -1], [plus, 1]]) {
+        let t1 = 0, t2 = 0, held = false;
+        const stop = () => { clearTimeout(t1); clearInterval(t2); };
+        b.addEventListener('pointerdown', e => { if (e.button > 0) return; stop(); held = false; t1 = setTimeout(() => { held = true; t2 = setInterval(() => { if (b.disabled) stop(); else bump(d); }, 90); }, 400); });
+        for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) b.addEventListener(ev, stop);
+        b.addEventListener('contextmenu', e => e.preventDefault());
+        b.addEventListener('click', () => { if (held) held = false; else bump(d); });
+    }
+    show(true);
+    return {
+        type: 'qty',
+        node: h('div', { class: 'qty' },
+            h('div', { class: 'qlabel' }, 'Menge'),
+            h('div', { class: 'qrow' }, minus, num, plus),
+            h('div', { class: 'chips' }, chips),
+            h('label', { class: 'field' }, 'Hinweis', hint)),
+        get value() {
+            const amount = st.n ? fmtNum(st.n) + (st.u >= 0 ? ' ' + UNITS[st.u][st.n > 1 ? 1 : 0] : '') : '';
+            return [amount, hint.value.trim()].filter(Boolean).join(', ').slice(0, 80);
+        },
+    };
+}
+
 const confirmDlg = (title, text, okLabel, fn) => ask(title, [{ type: 'info', text }], null, null, [{ label: okLabel, danger: true, fn }]);
 /** Aktion mit neuem Stand als Antwort */
 const act = async (action, body) => applyState(await api(action, body));
@@ -393,14 +470,15 @@ function viewHome(l) {
         if (recent.length >= 12) break;
         if (!recent.includes(u)) recent.push(u);
     }
+    const open = LS.get('open', {});
     if (recent.length) {
-        out.push(h('h2', null, 'Zuletzt gekauft'));
-        out.push(h('div', { class: 'grid' }, recent.map(u => prodTile(u.n, hasCat(u.c) ? u.c : 0, 'recent'))));
+        const isOpen = !!open.recent;
+        out.push(h('button', { class: 'cat solo' + (isOpen ? ' open' : ''), type: 'button', data: { k: 'cat', id: 'recent' }, 'aria-expanded': String(isOpen) }, 'Zuletzt gekauft', h('small', null, String(recent.length)), icon(I.down)));
+        if (isOpen) out.push(h('div', { class: 'grid' }, recent.map(u => prodTile(u.n, hasCat(u.c) ? u.c : 0, 'recent'))));
     }
 
     out.push(h('h2', null, 'Katalog'));
     if (!S.catalog.cats.length) out.push(h('p', { class: 'hint' }, 'Der Katalog ist leer. Über die Suche oben kannst du trotzdem alles auf die Liste setzen. Unter Menü → Katalog verwalten lassen sich Warengruppen anlegen oder der Standard zurückholen.'));
-    const open = LS.get('open', {});
     const byCat = new Map();
     for (const p of S.catalog.products) (byCat.get(p.c) || byCat.set(p.c, []).get(p.c)).push(p);
     for (const id of order) {
@@ -448,7 +526,7 @@ const catOptions = () => [...S.catalog.cats.map(c => [c.id, c.n]), [0, 'Sonstige
 function itemDialog(it) {
     const who = userName(it.by);
     ask(it.n, [
-        { k: 'note', label: 'Menge oder Hinweis', value: it.note, placeholder: 'z. B. 2 Liter, die grünen', max: 80 },
+        { k: 'note', type: 'qty', value: it.note },
         { k: 'c', label: 'Warengruppe', type: 'select', value: hasCat(it.c) ? it.c : 0, options: catOptions() },
         { type: 'info', text: 'Auf die Liste gesetzt' + (who ? ' von ' + who : '') + ', ' + fmtTime(it.at) + '.' },
     ], 'Speichern', v => op({ t: 'edit', uid: it.uid, note: v.note.trim(), c: +v.c }),
@@ -457,7 +535,7 @@ function itemDialog(it) {
 function prodDialog(n, c, src) {
     const it = itemByName(n);
     if (it) return itemDialog(it);
-    ask(n, [{ k: 'note', label: 'Menge oder Hinweis', placeholder: 'z. B. 2 Liter, die grünen', max: 80 }],
+    ask(n, [{ k: 'note', type: 'qty' }],
         'Auf die Liste', v => op({ t: 'add', uid: newUid(), n, c, note: v.note.trim() }),
         [src === 'recent' && { label: 'Aus „Zuletzt gekauft“ entfernen', fn: () => op({ t: 'forget', n }) }]);
 }
@@ -466,7 +544,7 @@ function newProduct(name, catId) {
     const cats = S.catalog.cats;
     ask('Neues Produkt', [
         { k: 'n', label: 'Name', value: name, max: 60 },
-        { k: 'note', label: 'Menge oder Hinweis', placeholder: 'kann leer bleiben', max: 80 },
+        { k: 'note', type: 'qty' },
         { k: 'c', label: 'Warengruppe', type: 'select', value: catId || 0, options: catOptions() },
         cats.length && { k: 'keep', type: 'checkbox', label: 'Auch im Katalog speichern', value: true },
     ], 'Auf die Liste', async v => {
@@ -751,11 +829,23 @@ function showUsers() {
 }
 
 /* ---------- Einstellungen ---------- */
+const PALS = {
+    light: [['tuerkis', 'Türkis'], ['ozean', 'Ozean'], ['sand', 'Sand'], ['beere', 'Beere'], ['graphit', 'Graphit']],
+    dark: [['lagune', 'Lagune'], ['mitternacht', 'Nacht'], ['glut', 'Glut'], ['aubergine', 'Pflaume'], ['schwarz', 'Schwarz']],
+};
+const darkMq = window.matchMedia('(prefers-color-scheme: dark)');
+const palOf = mode => { const k = mode === 'dark' ? 'palD' : 'palL', v = LS.get(k, ''); return PALS[mode].some(p => p[0] === v) ? v : PALS[mode][0][0]; };
+/** Hell oder dunkel (fest oder wie das Gerät) und dazu das jeweils ausgesuchte Design. Die Farben selbst stehen in app.css. */
 function applyTheme() {
     const t = LS.get('theme', 'auto');
-    if (t === 'auto') delete document.documentElement.dataset.theme;
-    else document.documentElement.dataset.theme = t;
+    const mode = t === 'light' || t === 'dark' ? t : (darkMq.matches ? 'dark' : 'light');
+    const root = document.documentElement;
+    root.dataset.theme = mode;
+    root.dataset.pal = palOf(mode);
+    const meta = $('meta[name=theme-color]');
+    if (meta) meta.content = getComputedStyle(root).getPropertyValue(mode === 'dark' ? '--bg' : '--acc').trim() || meta.content;
 }
+darkMq.addEventListener('change', applyTheme);
 let wakeLock = null;
 async function wake() {
     const want = LS.get('wake', true) && !document.hidden && 'wakeLock' in navigator;
@@ -787,9 +877,18 @@ function showSettings() {
     const ivInput = h('input', { type: 'number', min: '1', max: '60', inputmode: 'numeric', value: String(S.interval) });
     const view = h('select', { onchange: () => { LS.set('view', view.value); applyView(); } },
         [['tiles', 'Kleine Kacheln'], ['compact', 'Kompakt']].map(([v, t]) => h('option', { value: v, selected: LS.get('view', 'tiles') === v }, t)));
+    const swatches = mode => {
+        const row = h('div', { class: 'pals', role: 'radiogroup', 'aria-label': mode === 'dark' ? 'Dunkles Design' : 'Helles Design' });
+        const draw = () => fill(row, PALS[mode].map(([id, name]) => h('button', { class: 'pal', type: 'button', role: 'radio', 'aria-checked': String(palOf(mode) === id), data: { pal: id },
+            onclick: () => { LS.set(mode === 'dark' ? 'palD' : 'palL', id); applyTheme(); draw(); } }, h('span', { class: 'dot' }, h('i')), h('span', null, name))));
+        draw();
+        return row;
+    };
     put(sh.body,
         h('label', { class: 'field' }, 'Ansicht (nur dieses Gerät)', view),
-        h('label', { class: 'field' }, 'Design (nur dieses Gerät)', theme),
+        h('label', { class: 'field' }, 'Hell oder dunkel (nur dieses Gerät)', theme),
+        h('div', { class: 'qlabel' }, 'Design für hell'), swatches('light'),
+        h('div', { class: 'qlabel' }, 'Design für dunkel'), swatches('dark'),
         h('label', { class: 'check' }, wakeBox, h('span', null, 'Bildschirm anlassen, solange Kaufen offen ist')),
         h('div', { class: 'btns' }, h('button', { class: 'btn', type: 'button', onclick: () => ask('Passwort ändern', [
             { k: 'old', label: 'Bisheriges Passwort', type: 'password', auto: 'current-password' },
@@ -837,7 +936,7 @@ function showMenu() {
 $('#menuBtn').addEventListener('click', () => { if (S) showMenu(); });
 $('#viewBtn').addEventListener('click', () => { LS.set('view', LS.get('view', 'tiles') === 'compact' ? 'tiles' : 'compact'); applyView(); });
 $('#listBtn').addEventListener('click', () => { if (S) showLists(); });
-document.addEventListener('visibilitychange', () => { wake(); if (!document.hidden) tick(); });
+document.addEventListener('visibilitychange', () => { wake(); if (document.hidden) clearTimeout(timer); else tick(); });
 window.addEventListener('online', tick);
 window.addEventListener('offline', () => setOnline(false));
 
