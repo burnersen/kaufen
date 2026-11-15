@@ -15,24 +15,24 @@ function kfFail(string $msg, int $code = 400): void {
     kfJson(['error' => $msg], $code);
 }
 
-if (!$me) kfFail('Nicht angemeldet.', 401);
+if (!$me) kfFail(kfT('Nicht angemeldet.'), 401);
 
 $isPost = $_SERVER['REQUEST_METHOD'] === 'POST';
 $in = [];
 if ($isPost) {
     $token = (string)($_SERVER['HTTP_X_CSRF'] ?? '');
-    if ($token === '' || !hash_equals($me['csrf'], $token)) kfFail('Sitzung abgelaufen, bitte die Seite neu laden.', 403);
+    if ($token === '' || !hash_equals($me['csrf'], $token)) kfFail(kfT('Sitzung abgelaufen, bitte die Seite neu laden.'), 403);
     $in = json_decode((string)file_get_contents('php://input'), true);
     if (!is_array($in)) $in = [];
 }
 $getOnly = ['state', 'list', 'poll', 'catalog_backups'];
-if (in_array($action, $getOnly, true) === $isPost) kfFail('Falsche Aufrufart.', 405);
+if (in_array($action, $getOnly, true) === $isPost) kfFail(kfT('Falsche Aufrufart.'), 405);
 
-$admin = function () use ($me) { if (!$me['is_admin']) kfFail('Das darf nur der Administrator.', 403); };
+$admin = function () use ($me) { if (!$me['is_admin']) kfFail(kfT('Das darf nur der Administrator.'), 403); };
 $int = function (string $k) use ($in) { return (int)($in[$k] ?? 0); };
 $needList = function (int $lid) use ($me) {
     $l = kfListFor($me['id'], $lid);
-    if (!$l) kfFail('Diese Liste gibt es nicht (mehr) oder du bist kein Mitglied.', 404);
+    if (!$l) kfFail(kfT('Diese Liste gibt es nicht (mehr) oder du bist kein Mitglied.'), 404);
     return $l;
 };
 $state = function (array $extra = []) use ($me) { kfJson($extra + kfState($me)); };
@@ -62,8 +62,8 @@ try {
     /* ---------- Listen ---------- */
     case 'list_create':
         $name = kfClean($in['name'] ?? '', 40);
-        if ($name === '') kfFail('Bitte einen Namen eingeben.');
-        if ((int)kfQ('SELECT COUNT(*) FROM lists WHERE owner_id = ?', [$me['id']])->fetchColumn() >= 30) kfFail('Mehr als 30 eigene Listen gehen nicht.');
+        if ($name === '') kfFail(kfT('Bitte einen Namen eingeben.'));
+        if ((int)kfQ('SELECT COUNT(*) FROM lists WHERE owner_id = ?', [$me['id']])->fetchColumn() >= 30) kfFail(kfT('Mehr als 30 eigene Listen gehen nicht.'));
         kfQ('INSERT INTO lists (name, owner_id, created_at) VALUES (?, ?, ?)', [$name, $me['id'], time()]);
         $lid = (int)kfDb()->lastInsertId();
         kfQ('INSERT INTO members (list_id, user_id) VALUES (?, ?)', [$lid, $me['id']]);
@@ -72,16 +72,16 @@ try {
 
     case 'list_rename':
         $l = $needList($int('id'));
-        if ((int)$l['owner_id'] !== $me['id']) kfFail('Umbenennen kann nur, wer die Liste angelegt hat.', 403);
+        if ((int)$l['owner_id'] !== $me['id']) kfFail(kfT('Umbenennen kann nur, wer die Liste angelegt hat.'), 403);
         $name = kfClean($in['name'] ?? '', 40);
-        if ($name === '') kfFail('Bitte einen Namen eingeben.');
+        if ($name === '') kfFail(kfT('Bitte einen Namen eingeben.'));
         kfQ('UPDATE lists SET name = ? WHERE id = ?', [$name, $l['id']]);
         kfBump('lv');
         $state();
 
     case 'list_share':
         $l = $needList($int('id'));
-        if ((int)$l['owner_id'] !== $me['id']) kfFail('Teilen kann nur, wer die Liste angelegt hat.', 403);
+        if ((int)$l['owner_id'] !== $me['id']) kfFail(kfT('Teilen kann nur, wer die Liste angelegt hat.'), 403);
         $want = [$me['id'] => true];
         foreach ((array)($in['users'] ?? []) as $u) {
             if (kfQ('SELECT 1 FROM users WHERE id = ?', [(int)$u])->fetchColumn()) $want[(int)$u] = true;
@@ -95,14 +95,14 @@ try {
 
     case 'list_leave':
         $l = $needList($int('id'));
-        if ((int)$l['owner_id'] === $me['id']) kfFail('Die eigene Liste kann man nicht verlassen, nur löschen.');
+        if ((int)$l['owner_id'] === $me['id']) kfFail(kfT('Die eigene Liste kann man nicht verlassen, nur löschen.'));
         kfQ('DELETE FROM members WHERE list_id = ? AND user_id = ?', [$l['id'], $me['id']]);
         kfBump('lv');
         $state();
 
     case 'list_delete':
         $l = $needList($int('id'));
-        if ((int)$l['owner_id'] !== $me['id']) kfFail('Löschen kann nur, wer die Liste angelegt hat.', 403);
+        if ((int)$l['owner_id'] !== $me['id']) kfFail(kfT('Löschen kann nur, wer die Liste angelegt hat.'), 403);
         kfDb()->beginTransaction();
         kfDeleteList((int)$l['id']);
         kfBump('lv');
@@ -128,16 +128,16 @@ try {
     /* ---------- Katalog ---------- */
     case 'cat_add':
         $name = kfClean($in['name'] ?? '', 60);
-        if ($name === '') kfFail('Bitte einen Namen eingeben.');
-        if (kfQ('SELECT 1 FROM cats WHERE name = ?', [$name])->fetchColumn()) kfFail('Diese Warengruppe gibt es schon.');
+        if ($name === '') kfFail(kfT('Bitte einen Namen eingeben.'));
+        if (kfQ('SELECT 1 FROM cats WHERE name = ?', [$name])->fetchColumn()) kfFail(kfT('Diese Warengruppe gibt es schon.'));
         kfQ('INSERT INTO cats (name, pos) VALUES (?, (SELECT COALESCE(MAX(pos), 0) + 1 FROM cats))', [$name]);
         kfBump('cv');
         $state();
 
     case 'cat_rename':
         $name = kfClean($in['name'] ?? '', 60);
-        if ($name === '') kfFail('Bitte einen Namen eingeben.');
-        if (kfQ('SELECT 1 FROM cats WHERE name = ? AND id <> ?', [$name, $int('id')])->fetchColumn()) kfFail('Diese Warengruppe gibt es schon.');
+        if ($name === '') kfFail(kfT('Bitte einen Namen eingeben.'));
+        if (kfQ('SELECT 1 FROM cats WHERE name = ? AND id <> ?', [$name, $int('id')])->fetchColumn()) kfFail(kfT('Diese Warengruppe gibt es schon.'));
         kfQ('UPDATE cats SET name = ? WHERE id = ?', [$name, $int('id')]);
         kfBump('cv');
         $state();
@@ -160,11 +160,11 @@ try {
     case 'prod_add':
         $name = kfClean($in['name'] ?? '', 60);
         $cat = $int('cat');
-        if ($name === '') kfFail('Bitte einen Namen eingeben.');
-        if (!kfQ('SELECT 1 FROM cats WHERE id = ?', [$cat])->fetchColumn()) kfFail('Bitte eine Warengruppe wählen.');
+        if ($name === '') kfFail(kfT('Bitte einen Namen eingeben.'));
+        if (!kfQ('SELECT 1 FROM cats WHERE id = ?', [$cat])->fetchColumn()) kfFail(kfT('Bitte eine Warengruppe wählen.'));
         if (kfQ('SELECT 1 FROM products WHERE name = ?', [$name])->fetchColumn()) {
             if (!empty($in['quiet'])) $state();
-            kfFail('„' . $name . '“ gibt es schon im Katalog.');
+            kfFail(kfT('„%s“ gibt es schon im Katalog.', $name));
         }
         kfQ('INSERT INTO products (cat_id, name) VALUES (?, ?)', [$cat, $name]);
         kfBump('cv');
@@ -173,9 +173,9 @@ try {
     case 'prod_edit':
         $name = kfClean($in['name'] ?? '', 60);
         $cat = $int('cat');
-        if ($name === '') kfFail('Bitte einen Namen eingeben.');
-        if (!kfQ('SELECT 1 FROM cats WHERE id = ?', [$cat])->fetchColumn()) kfFail('Bitte eine Warengruppe wählen.');
-        if (kfQ('SELECT 1 FROM products WHERE name = ? AND id <> ?', [$name, $int('id')])->fetchColumn()) kfFail('„' . $name . '“ gibt es schon im Katalog.');
+        if ($name === '') kfFail(kfT('Bitte einen Namen eingeben.'));
+        if (!kfQ('SELECT 1 FROM cats WHERE id = ?', [$cat])->fetchColumn()) kfFail(kfT('Bitte eine Warengruppe wählen.'));
+        if (kfQ('SELECT 1 FROM products WHERE name = ? AND id <> ?', [$name, $int('id')])->fetchColumn()) kfFail(kfT('„%s“ gibt es schon im Katalog.', $name));
         kfQ('UPDATE products SET name = ?, cat_id = ? WHERE id = ?', [$name, $cat, $int('id')]);
         kfBump('cv');
         $state();
@@ -214,7 +214,7 @@ try {
         $admin();
         $data = kfQ('SELECT data FROM catalog_backups WHERE id = ?', [$int('id')])->fetchColumn();
         $data = $data === false ? null : json_decode((string)$data, true);
-        if (!is_array($data)) kfFail('Diese Sicherung gibt es nicht mehr.');
+        if (!is_array($data)) kfFail(kfT('Diese Sicherung gibt es nicht mehr.'));
         kfDb()->beginTransaction();
         kfCatalogBackup('Vor dem Zurückholen einer Sicherung');
         kfCatalogReplace($data);
@@ -224,13 +224,13 @@ try {
     /* ---------- Vorlagen ---------- */
     case 'tpl_save':
         $name = kfClean($in['name'] ?? '', 40);
-        if ($name === '') kfFail('Bitte einen Namen eingeben.');
+        if ($name === '') kfFail(kfT('Bitte einen Namen eingeben.'));
         $items = [];
         foreach (array_slice((array)($in['items'] ?? []), 0, 200) as $it) {
             $n = kfClean($it['n'] ?? '', 60);
             if ($n !== '') $items[kfLower($n)] = [$n, max(0, (int)($it['c'] ?? 0)), kfClean($it['note'] ?? '', 80)];
         }
-        if (!$items) kfFail('Die Vorlage braucht mindestens ein Produkt.');
+        if (!$items) kfFail(kfT('Die Vorlage braucht mindestens ein Produkt.'));
         kfDb()->beginTransaction();
         $id = $int('id');
         if ($id && kfQ('SELECT 1 FROM templates WHERE id = ?', [$id])->fetchColumn()) {
@@ -258,8 +258,8 @@ try {
         $name = kfClean($in['name'] ?? '', 30);
         $pass = (string)($in['pass'] ?? '');
         if (($e = kfCheckName($name)) !== '' || ($e = kfCheckPass($pass)) !== '') kfFail($e);
-        if (kfQ('SELECT 1 FROM users WHERE name = ?', [$name])->fetchColumn()) kfFail('Diesen Namen gibt es schon.');
-        if ((int)kfQ('SELECT COUNT(*) FROM users')->fetchColumn() >= KF_MAX_USERS) kfFail('Mehr als ' . KF_MAX_USERS . ' Konten gehen nicht.');
+        if (kfQ('SELECT 1 FROM users WHERE name = ?', [$name])->fetchColumn()) kfFail(kfT('Diesen Namen gibt es schon.'));
+        if ((int)kfQ('SELECT COUNT(*) FROM users')->fetchColumn() >= KF_MAX_USERS) kfFail(kfT('Mehr als %d Konten gehen nicht.', KF_MAX_USERS));
         kfDb()->beginTransaction();
         kfQ('INSERT INTO users (name, pass, is_admin, created_at) VALUES (?, ?, 0, ?)', [$name, password_hash($pass, PASSWORD_DEFAULT), time()]);
         $uid = (int)kfDb()->lastInsertId();
@@ -283,7 +283,7 @@ try {
     case 'user_delete':
         $admin();
         $id = $int('id');
-        if ($id === $me['id']) kfFail('Das eigene Konto kann man nicht löschen.');
+        if ($id === $me['id']) kfFail(kfT('Das eigene Konto kann man nicht löschen.'));
         kfDb()->beginTransaction();
         // Listen des gelöschten Kontos gehen an den Administrator, damit nichts verloren geht
         foreach (kfQ('SELECT id FROM lists WHERE owner_id = ?', [$id])->fetchAll() as $r) {
@@ -299,15 +299,17 @@ try {
 
     case 'me_pass':
         $row = kfQ('SELECT pass FROM users WHERE id = ?', [$me['id']])->fetch();
-        if (!$row || !password_verify((string)($in['old'] ?? ''), $row['pass'])) kfFail('Das bisherige Passwort stimmt nicht.');
+        if (!$row || !password_verify((string)($in['old'] ?? ''), $row['pass'])) kfFail(kfT('Das bisherige Passwort stimmt nicht.'));
         $pass = (string)($in['pass'] ?? '');
         if (($e = kfCheckPass($pass)) !== '') kfFail($e);
         kfQ('UPDATE users SET pass = ? WHERE id = ?', [password_hash($pass, PASSWORD_DEFAULT), $me['id']]);
         kfQ('DELETE FROM sessions WHERE user_id = ? AND hash <> ?', [$me['id'], $me['hash']]);   // andere Geräte abmelden
         kfJson(['ok' => true]);
 
-    case 'me_look':   // Aussehen des eigenen Kontos, gilt auf allen Geräten
+    case 'me_look':   // Aussehen, Sprache und Mengen-Einstellungen des eigenen Kontos, gelten auf allen Geräten
         $l = is_array($in['look'] ?? null) ? $in['look'] : [];
+        $old = json_decode((string)kfQ('SELECT look FROM users WHERE id = ?', [$me['id']])->fetchColumn(), true);
+        if (!is_array($old)) $old = [];
         $pal = function ($v) { return is_string($v) && preg_match('/^[a-z]{1,20}$/', $v) ? $v : ''; };
         $cols = function ($v) {
             if (!is_array($v)) return null;
@@ -321,7 +323,16 @@ try {
         };
         $look = ['mode' => in_array($l['mode'] ?? '', ['light', 'dark'], true) ? $l['mode'] : 'auto',
                  'l' => $pal($l['l'] ?? ''), 'd' => $pal($l['d'] ?? ''), 'cl' => $cols($l['cl'] ?? null), 'cd' => $cols($l['cd'] ?? null)];
-        kfQ('UPDATE users SET look = ? WHERE id = ?', [json_encode($look), $me['id']]);
+        // Sprache, Menge merken, eigene Einheiten. Schickt ein Gerät sie nicht mit (ältere Fassung im Zwischenspeicher), bleibt der gespeicherte Wert.
+        $src = function (string $k) use ($l, $old) { return array_key_exists($k, $l) ? $l[$k] : ($old[$k] ?? null); };
+        $look['lang'] = in_array($src('lang'), ['de', 'en'], true) ? $src('lang') : '';
+        $look['keep'] = $src('keep') !== false;
+        $look['units'] = [];
+        foreach ((array)$src('units') as $u) {
+            $u = kfClean($u, 12);
+            if ($u !== '' && preg_match('/^[^\d\s,;]+$/u', $u) && !in_array($u, $look['units'], true) && count($look['units']) < 12) $look['units'][] = $u;
+        }
+        kfQ('UPDATE users SET look = ? WHERE id = ?', [json_encode($look, JSON_UNESCAPED_UNICODE), $me['id']]);
         kfBump('lv');   // damit die anderen Geräte des Kontos es beim nächsten Abgleich mitbekommen
         kfJson(['ok' => true]);
 
@@ -336,10 +347,10 @@ try {
         kfJson(['ok' => true]);
 
     default:
-        kfFail('Unbekannte Aktion.', 404);
+        kfFail(kfT('Unbekannte Aktion.'), 404);
     }
 } catch (Throwable $e) {
     if (kfDb()->inTransaction()) kfDb()->rollBack();
     error_log('Kaufen: ' . $e->getMessage());
-    kfFail('Das hat nicht geklappt. Bitte noch einmal versuchen.', 500);
+    kfFail(kfT('Das hat nicht geklappt. Bitte noch einmal versuchen.'), 500);
 }

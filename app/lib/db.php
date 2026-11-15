@@ -2,7 +2,7 @@
 /* Kaufen – Datenordner, Datenbank (SQLite), Einstellungen */
 defined('KF_VERSION') || exit;
 
-define('KF_SCHEMA', 2);
+define('KF_SCHEMA', 3);
 
 function kfFatal(string $msg): void {
     http_response_code(500);
@@ -24,7 +24,7 @@ function kfConfig(): array {
         if (is_array($cfg) && !empty($cfg['db'])) return $cfg;
     }
     if (!is_dir(KF_DATA_DIR) && !@mkdir(KF_DATA_DIR, 0700, true) && !is_dir(KF_DATA_DIR)) {
-        kfFatal('Der Ordner data/ konnte nicht angelegt werden. PHP braucht Schreibrechte im Verzeichnis von Kaufen.');
+        kfFatal(kfT('Der Ordner data/ konnte nicht angelegt werden. PHP braucht Schreibrechte im Verzeichnis von Kaufen.'));
     }
     if (!is_file(KF_DATA_DIR . '/.htaccess')) {
         @file_put_contents(KF_DATA_DIR . '/.htaccess', "# Kaufen: hier liegt alles Geheime, nichts davon darf von außen abrufbar sein.\n"
@@ -34,7 +34,7 @@ function kfConfig(): array {
     $cfg = ['db' => 'kf_' . bin2hex(random_bytes(12)) . '.sqlite'];
     $php = "<?php\n// Kaufen: automatisch angelegt. Nicht löschen, nicht weitergeben.\nreturn " . var_export($cfg, true) . ";\n";
     if (@file_put_contents($file, $php, LOCK_EX) === false) {
-        kfFatal('In den Ordner data/ kann nicht geschrieben werden. Bitte die Schreibrechte prüfen.');
+        kfFatal(kfT('In den Ordner data/ kann nicht geschrieben werden. Bitte die Schreibrechte prüfen.'));
     }
     @chmod($file, 0600);
     if (function_exists('opcache_invalidate')) @opcache_invalidate($file, true);   // sonst liest PHP unter Umständen noch eine alte Fassung
@@ -44,7 +44,7 @@ function kfConfig(): array {
 function kfDb(): PDO {
     static $pdo = null;
     if ($pdo !== null) return $pdo;
-    if (!extension_loaded('pdo_sqlite')) kfFatal('Die PHP-Erweiterung pdo_sqlite fehlt. Ohne sie kann Kaufen nichts speichern.');
+    if (!extension_loaded('pdo_sqlite')) kfFatal(kfT('Die PHP-Erweiterung pdo_sqlite fehlt. Ohne sie kann Kaufen nichts speichern.'));
     $cfg = kfConfig();
     try {
         $pdo = new PDO('sqlite:' . KF_DATA_DIR . '/' . $cfg['db']);
@@ -58,7 +58,7 @@ function kfDb(): PDO {
             kfMigrate($pdo, $ver);
         }
     } catch (Throwable $e) {
-        kfFatal('Die Datenbank konnte nicht geöffnet werden: ' . $e->getMessage());
+        kfFatal(kfT('Die Datenbank konnte nicht geöffnet werden: ') . $e->getMessage());
     }
     return $pdo;
 }
@@ -96,6 +96,10 @@ function kfMigrate(PDO $pdo, int $from): void {
     if ($from < 2) {
         // Aussehen pro Konto: hell/dunkel, gewählte Designs und selbst eingestellte Farben, als JSON
         $pdo->exec("ALTER TABLE users ADD COLUMN look TEXT NOT NULL DEFAULT ''");
+    }
+    if ($from < 3) {
+        // Zuletzt benutzte Menge pro Liste und Produkt, z. B. „5 Flaschen“. Steht beim nächsten Mal wieder da.
+        $pdo->exec("ALTER TABLE usage ADD COLUMN note TEXT NOT NULL DEFAULT ''");
     }
     $pdo->exec('PRAGMA user_version = ' . KF_SCHEMA);
     $pdo->commit();

@@ -1,5 +1,7 @@
 # Kaufen
 
+**Deutsch** · [English](README.en.md)
+
 Gemeinsame Einkaufslisten zum Selbsthosten in **reinem PHP**, installiert mit einer einzigen Datei. Keine Abhängigkeiten, kein Build-Schritt, kein MySQL, keine Abrufe bei fremden Servern. Läuft auf einfachem Webspace.
 
 Produkte tippt man aus einem fertigen Katalog an, sortiert nach Warengruppen. Im Laden tippt man sie wieder an, dann sind sie weg, und zwar bei allen, die die Liste teilen.
@@ -8,18 +10,28 @@ Produkte tippt man aus einem fertigen Katalog an, sortiert nach Warengruppen. Im
 
 ![Kaufen mit Beispieleinträgen](docs/screenshot.png)
 
-*Beispieldaten, erfunden für den Screenshot.*
+<p>
+  <img src="docs/menge.png" alt="Menge wählen: Zähler, Einheiten, eigene Einheit, Hinweis" width="250">
+  <img src="docs/einstellungen.png" alt="Einstellungen: Sprache, Ansicht, zehn Designs" width="250">
+  <img src="docs/farbmischer.png" alt="Farbmischer für das eigene Design" width="250">
+</p>
+
+*Menge wählen, Einstellungen mit Sprache und Designs, Farbmischer fürs eigene Design. Beispieldaten, erfunden für die Screenshots.*
 
 ## Funktionen
 
+- **Deutsch und Englisch:** jedes Konto wählt seine Sprache in den Einstellungen, ein deutsches Gerät startet deutsch, alle anderen englisch. Übersetzt ist alles, auch der Katalog. In einer geteilten Liste sieht die eine „Milch“ und der andere „Milk“, es bleibt derselbe Eintrag.
 - **Katalog** mit rund 520 Produkten in 16 Warengruppen, in der Reihenfolge eines typischen Supermarkts. Nur Text, keine Bilder.
 - **Antippen** setzt ein Produkt auf die Liste, Antippen in der Liste hakt es ab. Danach gibt es ein paar Sekunden lang „Rückgängig“.
 - **Abgleich zwischen allen Geräten:** eigene Änderungen gehen sofort an den Server. Nur solange Kaufen offen und zu sehen ist und gerade nichts passiert, fragt das Gerät alle paar Sekunden nach, ob sich etwas geändert hat. Der Abstand ist für den Administrator einstellbar (1 bis 60 Sekunden, voreingestellt 5).
-- **Suche** über den ganzen Katalog. Gibt es ein Produkt nicht, legt man es direkt aus der Suche an und ordnet es einer Warengruppe zu.
-- **Menge oder Hinweis:** lange drücken (am Rechner: Rechtsklick), dann die Menge mit Plus und Minus einstellen, eine Einheit antippen (Stück, Packung, Liter, kg …) und bei Bedarf einen Hinweis dazuschreiben.
+- **Suche** über den ganzen Katalog, in beiden Sprachen: „milk“ findet auch Milch. Gibt es ein Produkt nicht, legt man es direkt aus der Suche an und ordnet es einer Warengruppe zu.
+- **Menge oder Hinweis:** lange drücken (am Rechner: Rechtsklick). Im Zähler steht erst einmal 1, ohne Einheit. Mit Plus und Minus einstellen, bei Bedarf eine Einheit antippen (Stück, Packung, Liter, kg …) und einen Hinweis dazuschreiben. Eine schlichte 1 wird an der Kachel nicht eigens angezeigt.
+- **Eigene Einheiten:** „Kasten“, „Beutel“ oder „Rolle“ legt jedes Konto selbst an, direkt in der Mengenauswahl oder in den Einstellungen.
+- **Menge merken:** beim Abhaken merkt sich Kaufen, was am Produkt stand. Fünfmal Cola gekauft, dann steht beim nächsten Mal wieder „5“ da, schon an der Kachel zu sehen, und ein Tipp setzt es genauso auf die Liste. Jedes Konto kann das in den Einstellungen abschalten, dann steht immer 1 da. „Menge zurücksetzen“ vergisst die gemerkte Menge eines Produkts.
 - **Zuletzt gekauft:** die jüngsten und häufigsten Produkte, zum Aufklappen wie die Warengruppen.
 - **Zehn Designs und eigene Farben:** fünf helle und fünf dunkle Farbwelten, dazu je ein eigenes Design aus dem Farbmischer (Regler oder Farbwähler, mit Vorschau). Bei „Wie das Gerät“ wechselt Kaufen automatisch zwischen dem hellen und dem dunklen Favoriten. Das Aussehen gehört zum Konto und gilt auf allen Geräten.
 - **Mehrere Listen:** jeder kann eigene Listen anlegen und mit beliebigen Konten teilen.
+- **Liste als Text teilen:** die offene Liste geht als schlichter Text an WhatsApp, Mail und Co. oder in die Zwischenablage, für Leute ohne Konto.
 - **Reihenfolge im Laden:** die Warengruppen lassen sich pro Liste so sortieren, wie der eigene Laden aufgebaut ist.
 - **Vorlagen:** „Grillen“ oder „Frühstück“ setzt mit einem Tipp mehrere Produkte auf die Liste. Auch die aktuelle Liste lässt sich als Vorlage speichern.
 - **Ohne Netz weiter einkaufen:** die App startet auch ohne Empfang, Änderungen werden gesammelt und nachgereicht.
@@ -72,18 +84,20 @@ Ohne SSH: den Ordner `data/` per FTP herunterladen und zum Zurückholen wieder h
 
 ```
 index.php      Einstieg und Einstellungen
-app/lib/       Datenbank, Konten und Anmeldung, Listen und Katalog, Standardkatalog
+app/lib/       Sprache, Datenbank, Konten und Anmeldung, Listen und Katalog, Standardkatalog
 app/routes/    alle JSON-Aktionen
 app/views/     Anmeldeseite und Hauptseite
-app/assets/    CSS, JavaScript, Symbole, Service Worker
+app/assets/    CSS, JavaScript, englische Übersetzung, Symbole, Service Worker
 data/          entsteht beim ersten Start, hier liegen Datenbank und Konten
 tools/         baut die Release-Dateien (php tools/build-release.php)
 ```
 
-Die Dateien in `app/` tun nichts, wenn man sie direkt aufruft, alles läuft über `index.php`. Unter Apache sperrt eine `.htaccess` den Ordner zusätzlich. Der Standardkatalog steht in `app/lib/catalog.php` und lässt sich dort anpassen.
+Die Dateien in `app/` tun nichts, wenn man sie direkt aufruft, alles läuft über `index.php`. Unter Apache sperrt eine `.htaccess` den Ordner zusätzlich. Der Standardkatalog steht in `app/lib/catalog.php` und lässt sich dort anpassen. Die englischen Texte und Produktnamen stehen in `app/assets/i18n.js`, die englischen Meldungen des Servers in `app/lib/lang.php`.
 
 ## Gut zu wissen
 
+- Der mitgelieferte Katalog liegt deutsch in der Datenbank und wird für englische Konten nur bei der Anzeige übersetzt. Selbst angelegte Produkte, Warengruppen und Vorlagen bleiben so, wie sie getippt wurden.
+- Die gemerkten Mengen gehören zur Liste und gelten für alle, die sie teilen. Sprache, „Menge merken“, eigene Einheiten und das Aussehen gehören zum Konto.
 - Der Katalog und die Vorlagen gelten für alle Konten und alle Listen. Einzelne Produkte und Warengruppen darf jedes Konto ändern, „Alles löschen“, „Standard wiederherstellen“ und die Sicherungen sind dem Administrator vorbehalten.
 - Listen sehen nur ihre Mitglieder. Teilen, umbenennen und löschen kann nur, wer die Liste angelegt hat.
 - Passwörter liegen nur als Prüfsumme (`password_hash`) in der Datenbank. Die Einkaufslisten selbst sind nicht verschlüsselt, wer Zugriff auf den Webspace hat, kann sie lesen.

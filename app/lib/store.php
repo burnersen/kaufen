@@ -143,7 +143,10 @@ function kfListData(int $lid): array {
     }
     $order = [];
     foreach (kfQ('SELECT cat_id FROM list_order WHERE list_id = ? ORDER BY pos', [$lid]) as $r) $order[] = (int)$r['cat_id'];
-    return ['id' => $lid, 'v' => (int)kfQ('SELECT version FROM lists WHERE id = ?', [$lid])->fetchColumn(), 'items' => $items, 'usage' => $usage, 'order' => $order];
+    // Gemerkte Mengen: was beim letzten Abhaken am Produkt stand
+    $mem = [];
+    foreach (kfQ("SELECT name, note FROM usage WHERE list_id = ? AND note <> '' ORDER BY last_at DESC LIMIT 2000", [$lid]) as $r) $mem[] = [$r['name'], $r['note']];
+    return ['id' => $lid, 'v' => (int)kfQ('SELECT version FROM lists WHERE id = ?', [$lid])->fetchColumn(), 'items' => $items, 'usage' => $usage, 'order' => $order, 'mem' => $mem];
 }
 
 /** Alles, was die Oberfläche außer dem Inhalt einer Liste braucht */
@@ -208,13 +211,13 @@ function kfApplyOps(array $me, int $lid, array $ops): void {
                 kfQ('DELETE FROM usage WHERE list_id = ? AND name = ? AND cnt <= 0', [$lid, $name]);
             }
         } elseif (($t === 'done' || $t === 'remove') && $uidOk) {
-            $row = kfQ('SELECT name, cat_id FROM items WHERE uid = ? AND list_id = ?', [$uid, $lid])->fetch();
+            $row = kfQ('SELECT name, cat_id, note FROM items WHERE uid = ? AND list_id = ?', [$uid, $lid])->fetch();
             if (!$row) continue;
             kfQ('DELETE FROM items WHERE uid = ?', [$uid]);
             if ($t === 'done') {
-                kfQ('INSERT INTO usage (list_id, name, cat_id, cnt, last_at) VALUES (?, ?, ?, 1, ?)
-                     ON CONFLICT(list_id, name) DO UPDATE SET cnt = cnt + 1, last_at = excluded.last_at, cat_id = excluded.cat_id',
-                    [$lid, $row['name'], (int)$row['cat_id'], $now]);
+                kfQ('INSERT INTO usage (list_id, name, cat_id, cnt, last_at, note) VALUES (?, ?, ?, 1, ?, ?)
+                     ON CONFLICT(list_id, name) DO UPDATE SET cnt = cnt + 1, last_at = excluded.last_at, cat_id = excluded.cat_id, note = excluded.note',
+                    [$lid, $row['name'], (int)$row['cat_id'], $now, (string)$row['note']]);
             }
             $changed = true;
         } elseif ($t === 'edit' && $uidOk) {
@@ -222,6 +225,9 @@ function kfApplyOps(array $me, int $lid, array $ops): void {
             $changed = $changed || $st->rowCount() > 0;
         } elseif ($t === 'forget' && $name !== '') {
             $st = kfQ('DELETE FROM usage WHERE list_id = ? AND name = ?', [$lid, $name]);
+            $changed = $changed || $st->rowCount() > 0;
+        } elseif ($t === 'unmem' && $name !== '') {   // gemerkte Menge vergessen, „Zuletzt gekauft“ bleibt
+            $st = kfQ("UPDATE usage SET note = '' WHERE list_id = ? AND name = ? AND note <> ''", [$lid, $name]);
             $changed = $changed || $st->rowCount() > 0;
         }
     }

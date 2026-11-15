@@ -165,6 +165,7 @@ button.row { font-weight: 600; }
 .qrow input:focus { border-color: var(--acc); box-shadow: 0 0 0 3px var(--acc-soft); }
 .qty .chips { margin-bottom: .9rem; }
 .qty .chip { min-height: 2.4rem; padding: .4rem .85rem; touch-action: manipulation; }
+.info.units { margin-top: .5rem; }
 
 /* Designs aussuchen: jedes Muster zeigt sich in seinen eigenen Farben */
 .pals { display: grid; grid-template-columns: repeat(6, 1fr); gap: .3rem; margin-bottom: .9rem; }
@@ -219,6 +220,8 @@ button.row { font-weight: 600; }
 .login label { display: block; margin-bottom: .8rem; text-align: left; font-size: .88rem; font-weight: 600; color: var(--mut); }
 .login input { margin-top: .3rem; background: var(--bg); color: var(--text); font-weight: 400; }
 .login .btn { width: 100%; margin-top: .4rem; }
+.login .langsw { margin: 1rem 0 0; font-size: .88rem; }
+.login .langsw a { color: var(--mut); }
 .row.danger { color: var(--danger); }
 
 /* Kompakte Ansicht: Produkte als schmale Schildchen nebeneinander, so breit wie ihr Name */
