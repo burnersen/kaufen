@@ -24,6 +24,7 @@ $kfV = function (string $f): string { return h('?action=asset&f=' . $f . '&v=' .
     <div class="bar">
         <button id="listBtn" class="listbtn" type="button" aria-label="Liste wechseln"><span id="listName">Kaufen</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 7.5l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         <span id="net" class="net" hidden></span>
+        <button id="viewBtn" class="iconbtn" type="button" aria-label="Ansicht wechseln"></button>
         <button id="menuBtn" class="iconbtn" type="button" aria-label="Menü"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
     </div>
     <div class="search">

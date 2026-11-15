@@ -26,6 +26,7 @@ Produkte tippt man aus einem fertigen Katalog an, sortiert nach Warengruppen. Im
 - **Bildschirm bleibt an**, solange die App offen ist (abschaltbar).
 - **Katalog verwalten:** Produkte und Warengruppen anlegen, umbenennen, verschieben, löschen. Der Administrator kann alles löschen und den Standard wiederherstellen. Vor jeder großen Änderung wird automatisch gesichert, die letzten 10 Stände lassen sich zurückholen.
 - **Konten:** das erste Konto ist der Administrator, er legt die anderen an. Eine offene Registrierung gibt es nicht.
+- **Zwei Ansichten:** kleine Kacheln oder kompakt, umschaltbar mit dem Knopf oben rechts, gemerkt pro Gerät.
 - Als App installierbar (PWA), heller und dunkler Modus, Bremse gegen das Durchprobieren von Passwörtern.
 
 ## Voraussetzungen

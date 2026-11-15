@@ -39,12 +39,13 @@ function icon(path) {
 const I = {
     x: 'M6 6l12 12M18 6L6 18', down: 'M6 9l6 6 6-6', up: 'M6 15l6-6 6 6', more: 'M5 12h.01M12 12h.01M19 12h.01',
     edit: 'M4 20h4L19 9l-4-4L4 16v4zM14 6l4 4', grip: 'M5 9h14M5 15h14',
+    tiles: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z', compact: 'M3 6h8M14 6h7M3 12h5M11 12h10M3 18h9M15 18h6',
 };
 
 const LS = {
     get(k, d) { try { const v = localStorage.getItem('kf_' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
     set(k, v) { try { localStorage.setItem('kf_' + k, JSON.stringify(v)); } catch (e) {} },
-    clear() { try { Object.keys(localStorage).filter(k => k.startsWith('kf_') && k !== 'kf_theme').forEach(k => localStorage.removeItem(k)); } catch (e) {} },
+    clear() { try { Object.keys(localStorage).filter(k => k.startsWith('kf_') && k !== 'kf_theme' && k !== 'kf_view').forEach(k => localStorage.removeItem(k)); } catch (e) {} },
 };
 
 const low = s => String(s).toLocaleLowerCase('de');
@@ -769,13 +770,25 @@ async function wake() {
     } catch (e) {}
 }
 
+/** Zwei Ansichten: kleine Kacheln oder kompakte Schildchen. Gemerkt pro Gerät. */
+function applyView() {
+    const compact = LS.get('view', 'tiles') === 'compact';
+    main.classList.toggle('compact', compact);
+    const btn = $('#viewBtn');
+    fill(btn, icon(compact ? I.tiles : I.compact));   // der Knopf zeigt, wohin er umschaltet
+    btn.title = compact ? 'Zur Kachel-Ansicht' : 'Zur kompakten Ansicht';
+}
+
 function showSettings() {
     const sh = sheet('Einstellungen');
     const theme = h('select', { onchange: () => { LS.set('theme', theme.value); applyTheme(); } },
         [['auto', 'Wie das Gerät'], ['light', 'Hell'], ['dark', 'Dunkel']].map(([v, t]) => h('option', { value: v, selected: LS.get('theme', 'auto') === v }, t)));
     const wakeBox = h('input', { type: 'checkbox', checked: LS.get('wake', true), onchange: () => { LS.set('wake', wakeBox.checked); wake(); } });
     const ivInput = h('input', { type: 'number', min: '1', max: '60', inputmode: 'numeric', value: String(S.interval) });
-    put(sh.body, 
+    const view = h('select', { onchange: () => { LS.set('view', view.value); applyView(); } },
+        [['tiles', 'Kleine Kacheln'], ['compact', 'Kompakt']].map(([v, t]) => h('option', { value: v, selected: LS.get('view', 'tiles') === v }, t)));
+    put(sh.body,
+        h('label', { class: 'field' }, 'Ansicht (nur dieses Gerät)', view),
         h('label', { class: 'field' }, 'Design (nur dieses Gerät)', theme),
         h('label', { class: 'check' }, wakeBox, h('span', null, 'Bildschirm anlassen, solange Kaufen offen ist')),
         h('div', { class: 'btns' }, h('button', { class: 'btn', type: 'button', onclick: () => ask('Passwort ändern', [
@@ -822,12 +835,14 @@ function showMenu() {
 
 /* ---------- Start ---------- */
 $('#menuBtn').addEventListener('click', () => { if (S) showMenu(); });
+$('#viewBtn').addEventListener('click', () => { LS.set('view', LS.get('view', 'tiles') === 'compact' ? 'tiles' : 'compact'); applyView(); });
 $('#listBtn').addEventListener('click', () => { if (S) showLists(); });
 document.addEventListener('visibilitychange', () => { wake(); if (!document.hidden) tick(); });
 window.addEventListener('online', tick);
 window.addEventListener('offline', () => setOnline(false));
 
 applyTheme();
+applyView();
 render();
 tick();
 wake();

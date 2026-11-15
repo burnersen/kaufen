@@ -35,7 +35,7 @@ svg { width: 1.25rem; height: 1.25rem; flex: none; }
 .iconbtn svg { width: 1.5rem; height: 1.5rem; }
 .listbtn:hover, .iconbtn:hover { background: var(--acc-soft); }
 .net { margin-left: auto; font-size: .78rem; font-weight: 600; padding: .2rem .55rem; border-radius: 1rem; background: #f5c542; color: #3b2c00; white-space: nowrap; }
-.net:not([hidden]) + .iconbtn { margin-left: 0; }
+.net:not([hidden]) + .iconbtn, .iconbtn + .iconbtn { margin-left: 0; }
 #q, .field input, .field select, .field textarea, .login input {
     width: 100%; padding: .7rem .85rem; border: 1px solid var(--line); border-radius: .8rem; background: var(--card); outline: none; }
 #q:focus, .field input:focus, .field select:focus, .field textarea:focus, .login input:focus { border-color: var(--acc); box-shadow: 0 0 0 3px var(--acc-soft); }
@@ -47,13 +47,13 @@ h2:first-child { margin-top: .25rem; }
 h2 small { font-weight: 500; color: var(--mut); font-size: .85rem; }
 .grp { margin: .6rem 0 .3rem; font-size: .78rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--mut); }
 .hint { color: var(--mut); margin: .5rem 0 1rem; }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(6.4rem, 1fr)); gap: .45rem; }
-.tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .1rem; min-height: 4rem; padding: .45rem .4rem;
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(5.1rem, 1fr)); gap: .4rem; }
+.tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .1rem; min-height: 3.5rem; padding: .4rem .3rem;
         border: 1px solid var(--line); border-radius: .9rem; background: var(--card); box-shadow: var(--shadow); text-align: center;
-        font-size: .92rem; line-height: 1.2; overflow-wrap: anywhere; hyphens: auto; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+        font-size: .84rem; line-height: 1.2; overflow-wrap: anywhere; hyphens: auto; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
         touch-action: manipulation; transition: transform .08s; }
 .tile:active { transform: scale(.96); }
-.tile .tt { font-size: .76rem; opacity: .85; }
+.tile .tt { font-size: .72rem; opacity: .85; }
 .tile .tb { font-size: .68rem; opacity: .7; }
 .tile.on { background: var(--acc); border-color: var(--acc); color: var(--acc-text); font-weight: 600; }
 .tile.has { border-color: var(--acc); background: var(--acc-soft); }
@@ -132,3 +132,12 @@ button.row { font-weight: 600; }
 .login input { margin-top: .3rem; background: var(--bg); color: var(--text); font-weight: 400; }
 .login .btn { width: 100%; margin-top: .4rem; }
 .row.danger { color: var(--danger); }
+
+/* Kompakte Ansicht: Produkte als schmale Schildchen nebeneinander, so breit wie ihr Name */
+.compact .grid { display: flex; flex-wrap: wrap; gap: .3rem; }
+.compact .tile { flex-direction: row; flex-wrap: wrap; align-items: center; align-content: center; column-gap: .35rem; min-height: 2.25rem; padding: .3rem .7rem; border-radius: 1.2rem;
+                 font-size: .9rem; hyphens: manual; text-align: left; max-width: 100%; }
+.compact .grp { margin: .45rem 0 .25rem; }
+.compact .cat { padding: .55rem .85rem; margin-top: .3rem; }
+.compact .cat + .grid { margin: .35rem 0 .6rem; }
+.compact h2 { margin-top: .8rem; }
