@@ -30,6 +30,7 @@ ui: {
     'Menü': 'Menu',
     'Produkt suchen oder neu anlegen': 'Search or add a product',
     'Produkt suchen': 'Search products',
+    'Suche leeren': 'Clear search',
     'Zur Kachel-Ansicht': 'Switch to tile view',
     'Zur kompakten Ansicht': 'Switch to compact view',
 
