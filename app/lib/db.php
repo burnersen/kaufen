@@ -2,7 +2,7 @@
 /* Kaufen – Datenordner, Datenbank (SQLite), Einstellungen */
 defined('KF_VERSION') || exit;
 
-define('KF_SCHEMA', 1);
+define('KF_SCHEMA', 2);
 
 function kfFatal(string $msg): void {
     http_response_code(500);
@@ -92,6 +92,10 @@ function kfMigrate(PDO $pdo, int $from): void {
             cats INTEGER NOT NULL, products INTEGER NOT NULL, data TEXT NOT NULL)");
         $ins = $pdo->prepare("INSERT OR IGNORE INTO settings (k, v) VALUES (?, ?)");
         foreach (['interval' => '5', 'cv' => '1', 'lv' => '1'] as $k => $v) $ins->execute([$k, $v]);
+    }
+    if ($from < 2) {
+        // Aussehen pro Konto: hell/dunkel, gewählte Designs und selbst eingestellte Farben, als JSON
+        $pdo->exec("ALTER TABLE users ADD COLUMN look TEXT NOT NULL DEFAULT ''");
     }
     $pdo->exec('PRAGMA user_version = ' . KF_SCHEMA);
     $pdo->commit();

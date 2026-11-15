@@ -18,7 +18,7 @@ Produkte tippt man aus einem fertigen Katalog an, sortiert nach Warengruppen. Im
 - **Suche** über den ganzen Katalog. Gibt es ein Produkt nicht, legt man es direkt aus der Suche an und ordnet es einer Warengruppe zu.
 - **Menge oder Hinweis:** lange drücken (am Rechner: Rechtsklick), dann die Menge mit Plus und Minus einstellen, eine Einheit antippen (Stück, Packung, Liter, kg …) und bei Bedarf einen Hinweis dazuschreiben.
 - **Zuletzt gekauft:** die jüngsten und häufigsten Produkte, zum Aufklappen wie die Warengruppen.
-- **Zehn Designs:** fünf helle und fünf dunkle Farbwelten, pro Gerät wählbar. Bei „Wie das Gerät“ wechselt Kaufen automatisch zwischen dem hellen und dem dunklen Favoriten.
+- **Zehn Designs und eigene Farben:** fünf helle und fünf dunkle Farbwelten, dazu je ein eigenes Design aus dem Farbmischer (Regler oder Farbwähler, mit Vorschau). Bei „Wie das Gerät“ wechselt Kaufen automatisch zwischen dem hellen und dem dunklen Favoriten. Das Aussehen gehört zum Konto und gilt auf allen Geräten.
 - **Mehrere Listen:** jeder kann eigene Listen anlegen und mit beliebigen Konten teilen.
 - **Reihenfolge im Laden:** die Warengruppen lassen sich pro Liste so sortieren, wie der eigene Laden aufgebaut ist.
 - **Vorlagen:** „Grillen“ oder „Frühstück“ setzt mit einem Tipp mehrere Produkte auf die Liste. Auch die aktuelle Liste lässt sich als Vorlage speichern.

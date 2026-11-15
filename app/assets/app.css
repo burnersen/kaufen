@@ -167,13 +167,47 @@ button.row { font-weight: 600; }
 .qty .chip { min-height: 2.4rem; padding: .4rem .85rem; touch-action: manipulation; }
 
 /* Designs aussuchen: jedes Muster zeigt sich in seinen eigenen Farben */
-.pals { display: grid; grid-template-columns: repeat(5, 1fr); gap: .4rem; margin-bottom: .9rem; }
+.pals { display: grid; grid-template-columns: repeat(6, 1fr); gap: .3rem; margin-bottom: .9rem; }
 .pal { display: flex; flex-direction: column; align-items: center; gap: .3rem; min-width: 0; padding: .55rem .15rem .45rem; border: 2px solid var(--line); border-radius: .9rem;
-       background: var(--bg); color: var(--text); font-size: .72rem; font-weight: 600; overflow: hidden; }
+       background: var(--bg); color: var(--text); font-size: .68rem; font-weight: 600; overflow: hidden; }
 .pal span:last-child { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pal .dot { display: grid; place-items: center; width: 2.1rem; height: 2.1rem; border-radius: 50%; background: var(--card); border: 1px solid var(--line); }
 .pal .dot i { width: 1.15rem; height: 1.15rem; border-radius: 50%; background: var(--acc); }
 .pal[aria-checked="true"] { border-color: var(--acc); box-shadow: 0 0 0 2px var(--acc-soft); }
+
+.pal.empty { border-style: dashed; }
+.pal .dot svg { width: 1.1rem; height: 1.1rem; color: var(--acc); }
+
+/* Farbmischer fürs eigene Design */
+.prev { position: sticky; top: 0; z-index: 1; margin-bottom: .8rem; padding: .7rem .75rem .75rem; border: 1px solid var(--line); border-radius: 1rem; background: var(--bg); color: var(--text);
+        box-shadow: 0 6px 18px rgba(0, 0, 0, .22); }
+.prev h2 { margin: 0 0 .4rem; }
+.prev .grid { grid-template-columns: repeat(4, 1fr); }
+.prev .tile { min-height: 3rem; }
+.prev .cat { margin-top: .5rem; padding: .6rem .85rem; }
+.prev .btns { margin-top: .5rem; }
+.prev .btn { min-height: 2.3rem; padding: .3rem .8rem; font-size: .9rem; }
+.segs { display: grid; grid-template-columns: repeat(4, 1fr); gap: .35rem; margin-bottom: .8rem; }
+.seg { display: flex; flex-direction: column; align-items: center; gap: .25rem; min-width: 0; padding: .5rem .1rem .4rem; border: 2px solid var(--line); border-radius: .9rem; background: var(--card);
+       font-size: .75rem; font-weight: 600; }
+.seg i { width: 1.7rem; height: 1.7rem; border-radius: 50%; background: var(--c); border: 1px solid var(--line); }
+.seg[aria-pressed="true"] { border-color: var(--acc); background: var(--acc-soft); }
+.sl { display: block; margin-bottom: .7rem; font-size: .82rem; font-weight: 600; color: var(--mut); }
+.sl input { -webkit-appearance: none; appearance: none; display: block; width: 100%; height: 1.9rem; margin: .3rem 0 0; padding: 0; border: 1px solid var(--line); border-radius: 1rem;
+            background: var(--track); outline: none; cursor: pointer; touch-action: pan-y; }
+.sl input::-webkit-slider-runnable-track { height: 100%; background: none; }
+.sl input::-moz-range-track { height: 100%; background: none; }
+.sl input::-webkit-slider-thumb { -webkit-appearance: none; width: 1.8rem; height: 1.8rem; border-radius: 50%; border: 3px solid #fff; background: transparent;
+                                  box-shadow: 0 0 0 1px rgba(0, 0, 0, .55), inset 0 0 0 1px rgba(0, 0, 0, .55); }
+.sl input::-moz-range-thumb { box-sizing: border-box; width: 1.8rem; height: 1.8rem; border-radius: 50%; border: 3px solid #fff; background: transparent;
+                              box-shadow: 0 0 0 1px rgba(0, 0, 0, .55), inset 0 0 0 1px rgba(0, 0, 0, .55); }
+.sl input:focus-visible { box-shadow: 0 0 0 3px var(--acc-soft); border-color: var(--acc); }
+.sl.hue { --track: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00); }
+.sl.sat { --track: linear-gradient(to right, hsl(var(--h) 0% var(--l)), hsl(var(--h) 100% var(--l))); }
+.sl.lig { --track: linear-gradient(to right, #000, hsl(var(--h) var(--s) 50%), #fff); }
+.pick { display: flex; align-items: center; gap: .75rem; margin: .2rem 0 .8rem; }
+.pick input { width: 2rem; height: 2rem; padding: 0; border: 1px solid var(--line); border-radius: .5rem; background: none; cursor: pointer; }
+.pick code { color: var(--mut); font-size: .9rem; }
 
 /* Anmeldung */
 .loginpage { min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; padding: 1.25rem; }

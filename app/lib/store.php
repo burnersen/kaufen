@@ -164,8 +164,9 @@ function kfState(array $me): array {
     foreach (kfQ('SELECT id, name, is_admin FROM users ORDER BY name COLLATE NOCASE') as $r) {
         $users[] = ['id' => (int)$r['id'], 'n' => $r['name'], 'admin' => (int)$r['is_admin'] === 1];
     }
+    $look = json_decode((string)kfQ('SELECT look FROM users WHERE id = ?', [$me['id']])->fetchColumn(), true);
     return [
-        'me' => ['id' => $me['id'], 'n' => $me['name'], 'admin' => $me['is_admin']],
+        'me' => ['id' => $me['id'], 'n' => $me['name'], 'admin' => $me['is_admin'], 'look' => is_array($look) ? $look : null],
         'csrf' => $me['csrf'], 'version' => KF_VERSION,
         'interval' => max(1, min(60, (int)kfGet('interval', '5'))),
         'cv' => (int)kfGet('cv', '1'), 'lv' => (int)kfGet('lv', '1'),

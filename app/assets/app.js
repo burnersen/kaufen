@@ -45,7 +45,7 @@ const I = {
 const LS = {
     get(k, d) { try { const v = localStorage.getItem('kf_' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
     set(k, v) { try { localStorage.setItem('kf_' + k, JSON.stringify(v)); } catch (e) {} },
-    clear() { try { Object.keys(localStorage).filter(k => k.startsWith('kf_') && !['kf_theme', 'kf_view', 'kf_palL', 'kf_palD'].includes(k)).forEach(k => localStorage.removeItem(k)); } catch (e) {} },
+    clear() { try { Object.keys(localStorage).filter(k => k.startsWith('kf_') && !['kf_theme', 'kf_view', 'kf_palL', 'kf_palD', 'kf_look'].includes(k)).forEach(k => localStorage.removeItem(k)); } catch (e) {} },
 };
 
 const low = s => String(s).toLocaleLowerCase('de');
@@ -126,6 +126,7 @@ function applyState(s) {
     S = s;
     csrf = s.csrf;
     iv = s.interval;
+    if (s.me.look && !LS.get('lookDirty', false)) { look = normLook(s.me.look); LS.set('look', look); applyTheme(); }   // das Aussehen gehört zum Konto
     LS.set('state', S);
     if (!S.lists.some(l => l.id === cur)) {
         cur = S.lists.length ? S.lists[0].id : null;
@@ -263,6 +264,7 @@ async function tick() {
         if (!csrf) await loadState();
         else {
             if (queue.length) flush();
+            if (LS.get('lookDirty', false)) saveLook();
             const r = await api('poll&id=' + (cur || 0));
             if (r.iv) iv = r.iv;
             if (r.cv !== S.cv || r.lv !== S.lv || (cur && r.v === null)) await loadState();
@@ -834,14 +836,82 @@ const PALS = {
     dark: [['lagune', 'Lagune'], ['mitternacht', 'Nacht'], ['glut', 'Glut'], ['aubergine', 'Pflaume'], ['schwarz', 'Schwarz']],
 };
 const darkMq = window.matchMedia('(prefers-color-scheme: dark)');
-const palOf = mode => { const k = mode === 'dark' ? 'palD' : 'palL', v = LS.get(k, ''); return PALS[mode].some(p => p[0] === v) ? v : PALS[mode][0][0]; };
-/** Hell oder dunkel (fest oder wie das Gerät) und dazu das jeweils ausgesuchte Design. Die Farben selbst stehen in app.css. */
+/** Die vier Farben, die man selbst einstellen kann. Alles Weitere (Linien, Nebentext, zarter Akzent …) wird daraus abgeleitet. */
+const PARTS = [['bg', 'Hintergrund'], ['card', 'Kacheln'], ['text', 'Schrift'], ['acc', 'Akzent']];
+const okCols = c => c && PARTS.every(([k]) => /^#[0-9a-f]{6}$/.test(c[k])) ? Object.fromEntries(PARTS.map(([k]) => [k, c[k]])) : null;
+const normLook = o => ({ mode: o && ['light', 'dark'].includes(o.mode) ? o.mode : 'auto', l: String(o && o.l || ''), d: String(o && o.d || ''), cl: okCols(o && o.cl), cd: okCols(o && o.cd) });
+/** Aussehen des Kontos: mode = auto|light|dark, l/d = gewähltes Design für hell/dunkel, cl/cd = eigene Farben. Liegt auf dem Server, hier nur die Kopie. */
+let look = normLook(LS.get('look', null) || { mode: LS.get('theme', 'auto'), l: LS.get('palL', ''), d: LS.get('palD', '') });
+const palOf = mode => {
+    const v = look[mode === 'dark' ? 'd' : 'l'];
+    if (v === 'eigen' && look[mode === 'dark' ? 'cd' : 'cl']) return v;
+    return PALS[mode].some(p => p[0] === v) ? v : PALS[mode][0][0];
+};
+function setLook(patch, later) {
+    Object.assign(look, patch);
+    LS.set('look', look);
+    LS.set('lookDirty', true);
+    applyTheme();
+    if (!later) saveLook();
+}
+/** Ans Konto schicken. Klappt es gerade nicht (kein Netz), versucht es der nächste Abgleich wieder. */
+async function saveLook() {
+    if (!LS.get('lookDirty', false) || !csrf) return;
+    const sent = JSON.stringify(look);
+    try {
+        await api('me_look', { look });
+        if (JSON.stringify(look) === sent) LS.set('lookDirty', false);
+    } catch (e) {}
+}
+
+/* Farben rechnen */
+const hex2rgb = x => [1, 3, 5].map(i => parseInt(x.slice(i, i + 2), 16));
+const rgb2hex = a => '#' + a.map(v => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, '0')).join('');
+const mix = (a, b, t) => { const x = hex2rgb(a), y = hex2rgb(b); return rgb2hex(x.map((v, i) => v + (y[i] - v) * t)); };
+const lum = x => { const [r, g, b] = hex2rgb(x).map(v => { v /= 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; }); return .2126 * r + .7152 * g + .0722 * b; };
+const contrast = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05); };
+function hsl2hex([hh, s, l]) {
+    s /= 100; l /= 100;
+    const a = s * Math.min(l, 1 - l);
+    const f = n => { const k = (n + hh / 30) % 12; return 255 * (l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1))); };
+    return rgb2hex([f(0), f(8), f(4)]);
+}
+function hex2hsl(x) {
+    const [r, g, b] = hex2rgb(x).map(v => v / 255);
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn, l = (mx + mn) / 2;
+    let hh = 0;
+    if (d) hh = ((mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4) * 60 + 360) % 360;
+    return [Math.round(hh), Math.round((d ? d / (1 - Math.abs(2 * l - 1)) : 0) * 100), Math.round(l * 100)];
+}
+/** Aus den vier gewählten Farben alle Farben der Oberfläche. Die Schrift auf dem Akzent wird so gewählt, dass sie lesbar bleibt. */
+function derive(c) {
+    const dark = lum(c.bg) < .2;
+    return {
+        '--bg': c.bg, '--card': c.card, '--text': c.text, '--acc': c.acc, '--mut': mix(c.text, c.bg, .4), '--line': mix(c.text, c.bg, .85),
+        '--acc-text': contrast(c.acc, '#ffffff') >= contrast(c.acc, '#101418') ? '#ffffff' : '#101418', '--acc-soft': mix(c.acc, c.card, .82),
+        '--danger': dark ? '#ff8a7a' : '#b42318', '--shadow': dark ? 'none' : '0 1px 2px rgba(0, 0, 0, .08)', 'color-scheme': dark ? 'dark' : 'light',
+    };
+}
+const VARS = Object.keys(derive({ bg: '#ffffff', card: '#ffffff', text: '#000000', acc: '#000000' }));
+const setVars = (el, c) => { const v = c ? derive(c) : null; for (const k of VARS) { if (v) el.style.setProperty(k, v[k]); else el.style.removeProperty(k); } };
+/** Die vier Grundfarben eines fertigen Designs, aus app.css gelesen (Startpunkt fürs eigene Design) */
+function palColors(id) {
+    const e = h('i', { class: 'pal', hidden: true, data: { pal: id } });
+    document.body.append(e);
+    const cs = getComputedStyle(e);
+    const c = okCols(Object.fromEntries(PARTS.map(([k]) => [k, cs.getPropertyValue('--' + k).trim().toLowerCase()])));
+    e.remove();
+    return c || { bg: '#f3f6f5', card: '#ffffff', text: '#13201d', acc: '#0f766e' };
+}
+
+/** Hell oder dunkel (fest oder wie das Gerät) und dazu das jeweils ausgesuchte Design. Die fertigen Designs stehen in app.css. */
 function applyTheme() {
-    const t = LS.get('theme', 'auto');
-    const mode = t === 'light' || t === 'dark' ? t : (darkMq.matches ? 'dark' : 'light');
+    const mode = look.mode === 'auto' ? (darkMq.matches ? 'dark' : 'light') : look.mode;
     const root = document.documentElement;
+    const pal = palOf(mode);
     root.dataset.theme = mode;
-    root.dataset.pal = palOf(mode);
+    root.dataset.pal = pal;
+    setVars(root, pal === 'eigen' ? look[mode === 'dark' ? 'cd' : 'cl'] : null);
     const meta = $('meta[name=theme-color]');
     if (meta) meta.content = getComputedStyle(root).getPropertyValue(mode === 'dark' ? '--bg' : '--acc').trim() || meta.content;
 }
@@ -869,26 +939,77 @@ function applyView() {
     btn.title = compact ? 'Zur Kachel-Ansicht' : 'Zur kompakten Ansicht';
 }
 
+/** Farbmischer fürs eigene Design: vier Farben, je drei Regler oder der Farbwähler des Geräts, oben eine Vorschau, die sofort mitgeht. */
+function editLook(mode, redraw) {
+    const ck = mode === 'dark' ? 'cd' : 'cl';
+    const start = { ...look[ck] };
+    const col = { ...start }, hsl = {};
+    for (const [k] of PARTS) hsl[k] = hex2hsl(col[k]);
+    let part = 'acc';
+    const sh = sheet('Eigenes Design für ' + (mode === 'dark' ? 'dunkel' : 'hell'), { onclose: () => { saveLook(); redraw(); } });
+    const demo = (cls, name, note) => h('span', { class: 'tile ' + cls }, h('span', { class: 'tn' }, name), note && h('span', { class: 'tt' }, note));
+    const prev = h('div', { class: 'prev', 'aria-hidden': 'true' },
+        h('h2', null, 'Noch zu kaufen', h('small', null, '1')),
+        h('div', { class: 'grid' }, demo('on', 'Milch', '2 Liter'), demo('has', 'Brot'), demo('', 'Butter'), demo('new', '+ Neu')),
+        h('div', { class: 'cat' }, 'Getränke', h('small', null, '12'), icon(I.down)),
+        h('div', { class: 'btns' }, h('span', { class: 'btn' }, 'Knopf'), h('span', { class: 'btn primary' }, 'Speichern')));
+    const tabs = PARTS.map(([k, name]) => h('button', { class: 'seg', type: 'button', onclick: () => { part = k; show(); } }, h('i'), name));
+    const range = (cls, label, max, i) => {
+        const r = h('input', { type: 'range', min: '0', max: String(max), step: '1', 'aria-label': label, oninput: () => { hsl[part][i] = +r.value; col[part] = hsl2hex(hsl[part]); show(); } });
+        return [h('label', { class: 'sl ' + cls }, label, r), r];
+    };
+    const [hueL, hue] = range('hue', 'Farbton', 360, 0), [satL, sat] = range('sat', 'Sättigung', 100, 1), [ligL, lig] = range('lig', 'Helligkeit', 100, 2);
+    const sliders = h('div', { class: 'sliders' }, hueL, satL, ligL);
+    const picker = h('input', { type: 'color', 'aria-label': 'Farbwähler', oninput: () => { col[part] = picker.value.toLowerCase(); hsl[part] = hex2hsl(col[part]); show(); } });
+    const code = h('code');
+    const warn = h('p', { class: 'err', hidden: true }, 'Die Schrift ist auf diesem Untergrund schwer zu lesen.');
+    function show() {
+        setVars(prev, col);
+        setLook({ [ck]: { ...col } }, true);   // die App dahinter färbt sich gleich mit, zum Konto geht es beim Schließen
+        tabs.forEach((t, i) => { const k = PARTS[i][0]; t.firstChild.style.setProperty('--c', col[k]); t.setAttribute('aria-pressed', String(k === part)); });
+        const [a, b, c] = hsl[part];
+        hue.value = a; sat.value = b; lig.value = c;
+        sliders.style.setProperty('--h', a); sliders.style.setProperty('--s', b + '%'); sliders.style.setProperty('--l', c + '%');
+        picker.value = col[part];
+        code.textContent = col[part];
+        warn.hidden = Math.min(contrast(col.text, col.bg), contrast(col.text, col.card)) >= 3;
+    }
+    put(sh.body, prev, h('div', { class: 'segs' }, tabs), sliders,
+        h('div', { class: 'pick' }, h('label', { class: 'btn' }, picker, 'Farbwähler öffnen'), code), warn,
+        h('div', { class: 'btns' },
+            h('button', { class: 'btn', type: 'button', onclick: () => { Object.assign(col, start); for (const [k] of PARTS) hsl[k] = hex2hsl(col[k]); show(); } }, 'Zurücksetzen'),
+            h('button', { class: 'btn primary', type: 'button', onclick: () => sh.close() }, 'Fertig')));
+    show();
+}
+
 function showSettings() {
     const sh = sheet('Einstellungen');
-    const theme = h('select', { onchange: () => { LS.set('theme', theme.value); applyTheme(); } },
-        [['auto', 'Wie das Gerät'], ['light', 'Hell'], ['dark', 'Dunkel']].map(([v, t]) => h('option', { value: v, selected: LS.get('theme', 'auto') === v }, t)));
+    const theme = h('select', { onchange: () => setLook({ mode: theme.value }) },
+        [['auto', 'Wie das Gerät'], ['light', 'Hell'], ['dark', 'Dunkel']].map(([v, t]) => h('option', { value: v, selected: look.mode === v }, t)));
     const wakeBox = h('input', { type: 'checkbox', checked: LS.get('wake', true), onchange: () => { LS.set('wake', wakeBox.checked); wake(); } });
     const ivInput = h('input', { type: 'number', min: '1', max: '60', inputmode: 'numeric', value: String(S.interval) });
     const view = h('select', { onchange: () => { LS.set('view', view.value); applyView(); } },
         [['tiles', 'Kleine Kacheln'], ['compact', 'Kompakt']].map(([v, t]) => h('option', { value: v, selected: LS.get('view', 'tiles') === v }, t)));
     const swatches = mode => {
         const row = h('div', { class: 'pals', role: 'radiogroup', 'aria-label': mode === 'dark' ? 'Dunkles Design' : 'Helles Design' });
-        const draw = () => fill(row, PALS[mode].map(([id, name]) => h('button', { class: 'pal', type: 'button', role: 'radio', 'aria-checked': String(palOf(mode) === id), data: { pal: id },
-            onclick: () => { LS.set(mode === 'dark' ? 'palD' : 'palL', id); applyTheme(); draw(); } }, h('span', { class: 'dot' }, h('i')), h('span', null, name))));
+        const pk = mode === 'dark' ? 'd' : 'l', ck = mode === 'dark' ? 'cd' : 'cl';
+        const draw = () => {
+            const own = h('button', { class: 'pal' + (look[ck] ? '' : ' empty'), type: 'button', role: 'radio', 'aria-checked': String(palOf(mode) === 'eigen'), data: { pal: 'eigen' },
+                onclick: () => { setLook({ [ck]: look[ck] || palColors(palOf(mode)), [pk]: 'eigen' }); draw(); editLook(mode, draw); } },
+                h('span', { class: 'dot' }, look[ck] ? h('i') : icon(I.edit)), h('span', null, 'Eigenes'));
+            if (look[ck]) setVars(own, look[ck]);
+            fill(row, PALS[mode].map(([id, name]) => h('button', { class: 'pal', type: 'button', role: 'radio', 'aria-checked': String(palOf(mode) === id), data: { pal: id },
+                onclick: () => { setLook({ [pk]: id }); draw(); } }, h('span', { class: 'dot' }, h('i')), h('span', null, name))), own);
+        };
         draw();
         return row;
     };
     put(sh.body,
         h('label', { class: 'field' }, 'Ansicht (nur dieses Gerät)', view),
-        h('label', { class: 'field' }, 'Hell oder dunkel (nur dieses Gerät)', theme),
+        h('label', { class: 'field' }, 'Hell oder dunkel', theme),
         h('div', { class: 'qlabel' }, 'Design für hell'), swatches('light'),
         h('div', { class: 'qlabel' }, 'Design für dunkel'), swatches('dark'),
+        h('p', { class: 'info' }, 'Design und Farben gehören zu deinem Konto und gelten überall, wo du angemeldet bist. „Eigenes“ öffnet den Farbmischer.'),
         h('label', { class: 'check' }, wakeBox, h('span', null, 'Bildschirm anlassen, solange Kaufen offen ist')),
         h('div', { class: 'btns' }, h('button', { class: 'btn', type: 'button', onclick: () => ask('Passwort ändern', [
             { k: 'old', label: 'Bisheriges Passwort', type: 'password', auto: 'current-password' },

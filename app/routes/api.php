@@ -306,6 +306,25 @@ try {
         kfQ('DELETE FROM sessions WHERE user_id = ? AND hash <> ?', [$me['id'], $me['hash']]);   // andere Geräte abmelden
         kfJson(['ok' => true]);
 
+    case 'me_look':   // Aussehen des eigenen Kontos, gilt auf allen Geräten
+        $l = is_array($in['look'] ?? null) ? $in['look'] : [];
+        $pal = function ($v) { return is_string($v) && preg_match('/^[a-z]{1,20}$/', $v) ? $v : ''; };
+        $cols = function ($v) {
+            if (!is_array($v)) return null;
+            $out = [];
+            foreach (['bg', 'card', 'text', 'acc'] as $k) {
+                $c = $v[$k] ?? '';
+                if (!is_string($c) || !preg_match('/^#[0-9a-f]{6}$/', $c)) return null;
+                $out[$k] = $c;
+            }
+            return $out;
+        };
+        $look = ['mode' => in_array($l['mode'] ?? '', ['light', 'dark'], true) ? $l['mode'] : 'auto',
+                 'l' => $pal($l['l'] ?? ''), 'd' => $pal($l['d'] ?? ''), 'cl' => $cols($l['cl'] ?? null), 'cd' => $cols($l['cd'] ?? null)];
+        kfQ('UPDATE users SET look = ? WHERE id = ?', [json_encode($look), $me['id']]);
+        kfBump('lv');   // damit die anderen Geräte des Kontos es beim nächsten Abgleich mitbekommen
+        kfJson(['ok' => true]);
+
     case 'settings_save':
         $admin();
         kfSet('interval', (string)max(1, min(60, $int('interval'))));
