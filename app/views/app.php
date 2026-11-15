@@ -31,6 +31,7 @@ $kfV = function (string $f): string { return h('?action=asset&f=' . $f . '&v=' .
     </div>
     <div class="search">
         <input id="q" type="search" placeholder="<?= h(kfT('Produkt suchen oder neu anlegen')) ?>" autocomplete="off" autocapitalize="sentences" enterkeyhint="done" aria-label="<?= h(kfT('Produkt suchen')) ?>">
+        <button id="qClear" class="iconbtn" type="button" aria-label="<?= h(kfT('Suche leeren')) ?>"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
     </div>
 </header>
 <main id="main"><p class="hint"><?= h(kfT('Lade …')) ?></p></main>

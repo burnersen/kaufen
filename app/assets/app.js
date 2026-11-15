@@ -777,6 +777,7 @@ main.addEventListener('click', e => {
     }
 });
 qInput.addEventListener('input', render);
+$('#qClear').addEventListener('click', () => { qInput.value = ''; render(); });
 qInput.addEventListener('keydown', e => {
     if (e.key !== 'Enter') return;
     const first = $('.tile', main);   // Enter nimmt den ersten Treffer
@@ -1150,6 +1151,7 @@ function applyLang() {
     $('#menuBtn').setAttribute('aria-label', tr('Menü'));
     qInput.placeholder = tr('Produkt suchen oder neu anlegen');
     qInput.setAttribute('aria-label', tr('Produkt suchen'));
+    $('#qClear').setAttribute('aria-label', tr('Suche leeren'));
     applyView();
 }
 

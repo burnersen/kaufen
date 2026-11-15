@@ -66,6 +66,7 @@ function kfEnglish(): array {
         'Menü' => 'Menu',
         'Produkt suchen oder neu anlegen' => 'Search or add a product',
         'Produkt suchen' => 'Search products',
+        'Suche leeren' => 'Clear search',
         'Lade …' => 'Loading …',
         'Kaufen braucht JavaScript.' => 'Kaufen needs JavaScript.',
         // JSON-Aktionen

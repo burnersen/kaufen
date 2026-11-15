@@ -68,6 +68,11 @@ svg { width: 1.25rem; height: 1.25rem; flex: none; }
 .net:not([hidden]) + .iconbtn, .iconbtn + .iconbtn { margin-left: 0; }
 #q, .field input, .field select, .field textarea, .login input {
     width: 100%; padding: .7rem .85rem; border: 1px solid var(--line); border-radius: .8rem; background: var(--card); outline: none; }
+.search { position: relative; }
+#q { padding-right: 3rem; }
+#q::-webkit-search-cancel-button { display: none; }
+#qClear { position: absolute; right: .15rem; top: 50%; transform: translateY(-50%); width: 2.5rem; height: 2.5rem; margin: 0; }
+#q:placeholder-shown + #qClear { display: none; }
 #q:focus, .field input:focus, .field select:focus, .field textarea:focus, .login input:focus { border-color: var(--acc); box-shadow: 0 0 0 3px var(--acc-soft); }
 
 /* Inhalt */
