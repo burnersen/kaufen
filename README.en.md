@@ -2,6 +2,12 @@
 
 [Deutsch](README.md) · **English**
 
+[![PHP 7.4+](https://img.shields.io/badge/PHP-7.4%2B-777BB4?logo=php&logoColor=white)](#requirements)
+[![License: AGPLv3](https://img.shields.io/badge/License-AGPLv3-blue)](#license)
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-Support%20me-FF5E5B?logo=kofi&logoColor=white)](https://ko-fi.com/burnersen)
+
+**[⬇️ Download the latest release](../../releases/latest)** · **[☕ Buy me a coffee](https://ko-fi.com/burnersen)**
+
 Shared shopping lists you host yourself, written in **plain PHP** and installed with a single file. No dependencies, no build step, no MySQL, no requests to third-party servers. Runs on basic web hosting.
 
 *Kaufen* is German for "to buy". You tap products from a ready-made catalog, sorted by category. In the store you tap them again and they are gone, for everyone who shares the list.
@@ -17,6 +23,8 @@ Upload `kaufen-install.php`, open it in the browser, create the first account. T
 </p>
 
 *Quantity picker, settings with language and themes, color mixer for your own theme. The screenshots show the German interface with made-up sample data. Everything you see there is available in English too.*
+
+> 💜 **Using Kaufen and happy with it?** A ⭐ on GitHub is the easiest way to let me know, and it does more than you'd think: stars are the visible proof that a project does good work, and they are how small projects like this one get found by other people in the first place. Or [tell me what you use it for](https://github.com/burnersen/kaufen/issues/new), I read every message. Thanks for being here!
 
 ## Features
 
@@ -106,6 +114,10 @@ The files in `app/` do nothing when called directly, everything goes through `in
 - Lists are only visible to their members. Only the person who created a list can share, rename and delete it.
 - Passwords are stored only as a hash (`password_hash`). The shopping lists themselves are not encrypted, anyone with access to the web space can read them.
 - A device stays signed in for 180 days as long as it is used. Changing your password signs out all other devices.
+
+## ☕ Support
+
+Kaufen is free and made in my spare time, on my own hardware and electricity bill. If it saved you time and you'd like to say thanks, you can [drop a little something in the tip jar on Ko-fi](https://ko-fi.com/burnersen), it keeps motivation and coffee flowing. ☕ Completely optional, and either way: thank you for using it!
 
 ## License
 
