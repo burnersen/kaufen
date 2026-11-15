@@ -74,6 +74,7 @@ function kfEnglish(): array {
         'Sitzung abgelaufen, bitte die Seite neu laden.' => 'Session expired, please reload the page.',
         'Falsche Aufrufart.' => 'Wrong request method.',
         'Das darf nur der Administrator.' => 'Only the administrator may do that.',
+        'Die Datei enthält keinen brauchbaren Katalog.' => 'The file does not contain a usable catalog.',
         'Diese Liste gibt es nicht (mehr) oder du bist kein Mitglied.' => 'This list does not exist (anymore) or you are not a member.',
         'Bitte einen Namen eingeben.' => 'Please enter a name.',
         'Mehr als 30 eigene Listen gehen nicht.' => 'You cannot have more than 30 lists of your own.',

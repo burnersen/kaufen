@@ -17,22 +17,23 @@ function kfClean($s, int $max): string {
 
 function kfCatalog(): array {
     $cats = [];
-    foreach (kfQ('SELECT id, name FROM cats ORDER BY pos, id') as $r) $cats[] = ['id' => (int)$r['id'], 'n' => $r['name']];
+    foreach (kfQ('SELECT id, name, en FROM cats ORDER BY pos, id') as $r) $cats[] = ['id' => (int)$r['id'], 'n' => $r['name']] + ($r['en'] !== '' ? ['e' => $r['en']] : []);
     $prods = [];
-    foreach (kfQ('SELECT id, cat_id, name FROM products ORDER BY name COLLATE NOCASE') as $r) $prods[] = ['id' => (int)$r['id'], 'c' => (int)$r['cat_id'], 'n' => $r['name']];
+    foreach (kfQ('SELECT id, cat_id, name, en FROM products ORDER BY name COLLATE NOCASE') as $r) $prods[] = ['id' => (int)$r['id'], 'c' => (int)$r['cat_id'], 'n' => $r['name']] + ($r['en'] !== '' ? ['e' => $r['en']] : []);
     return ['cats' => $cats, 'products' => $prods];
 }
 
-/** Der Katalog als einfache Liste (Gruppe + Produktnamen), so wird er gesichert und wieder eingespielt */
+/** Der Katalog als einfache Liste (Gruppe + Produktnamen), so wird er gesichert und wieder eingespielt.
+ *  Ein Produkt ist ein Name oder, mit eigenem englischen Namen, ['de' => …, 'en' => …]. Die Gruppe trägt ihren unter 'en'. */
 function kfCatalogExport(): array {
     $out = [];
     $idx = [];
-    foreach (kfQ('SELECT id, name FROM cats ORDER BY pos, id') as $r) {
+    foreach (kfQ('SELECT id, name, en FROM cats ORDER BY pos, id') as $r) {
         $idx[(int)$r['id']] = count($out);
-        $out[] = ['name' => $r['name'], 'products' => []];
+        $out[] = ['name' => $r['name']] + ($r['en'] !== '' ? ['en' => $r['en']] : []) + ['products' => []];
     }
-    foreach (kfQ('SELECT cat_id, name FROM products ORDER BY id') as $r) {
-        if (isset($idx[(int)$r['cat_id']])) $out[$idx[(int)$r['cat_id']]]['products'][] = $r['name'];
+    foreach (kfQ('SELECT cat_id, name, en FROM products ORDER BY id') as $r) {
+        if (isset($idx[(int)$r['cat_id']])) $out[$idx[(int)$r['cat_id']]]['products'][] = $r['en'] !== '' ? ['de' => $r['name'], 'en' => $r['en']] : $r['name'];
     }
     return $out;
 }
@@ -59,21 +60,22 @@ function kfCatalogReplace(array $data, ?PDO $pdo = null): void {
     foreach ($pdo->query('SELECT id, name FROM cats') as $r) $old[(int)$r['id']] = kfLower($r['name']);
     $pdo->exec('DELETE FROM cats');
     $pdo->exec('DELETE FROM products');
-    $insC = $pdo->prepare('INSERT OR IGNORE INTO cats (name, pos) VALUES (?, ?)');
+    $insC = $pdo->prepare('INSERT OR IGNORE INTO cats (name, pos, en) VALUES (?, ?, ?)');
     $getC = $pdo->prepare('SELECT id FROM cats WHERE name = ?');
-    $insP = $pdo->prepare('INSERT OR IGNORE INTO products (cat_id, name) VALUES (?, ?)');
+    $insP = $pdo->prepare('INSERT OR IGNORE INTO products (cat_id, name, en) VALUES (?, ?, ?)');
     $new = [];
     $pos = 0;
     foreach ($data as $c) {
         $name = kfClean($c['name'] ?? '', 60);
         if ($name === '') continue;
-        $insC->execute([$name, ++$pos]);
+        $insC->execute([$name, ++$pos, kfClean(is_string($c['en'] ?? null) ? $c['en'] : '', 60)]);
         $getC->execute([$name]);
         $cid = (int)$getC->fetchColumn();
         $new[kfLower($name)] = $cid;
         foreach ((array)($c['products'] ?? []) as $p) {
-            $p = kfClean($p, 60);
-            if ($p !== '') $insP->execute([$cid, $p]);
+            $en = is_array($p) ? kfClean(is_string($p['en'] ?? null) ? $p['en'] : '', 60) : '';
+            $p = kfClean(is_array($p) ? (is_string($p['de'] ?? null) ? $p['de'] : '') : $p, 60);
+            if ($p !== '') $insP->execute([$cid, $p, $en]);
         }
     }
     // Neue Nummern sind immer größer als alle alten (AUTOINCREMENT), es kann also nichts doppelt umgehängt werden

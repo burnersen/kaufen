@@ -36,6 +36,13 @@ ui: {
     'Kein Produkt gefunden.': 'No product found.',
     '„{0}“ neu anlegen': 'Add “{0}”',
     'Leg zuerst eine Warengruppe an.': 'Create a category first.',
+    'Exportieren': 'Export', 'Importieren': 'Import',
+    'Katalog exportieren': 'Export catalog', 'Katalog importieren': 'Import catalog',
+    'Die Datei enthält alle Warengruppen und Produkte auf Deutsch und Englisch. CSV lässt sich in Excel bearbeiten, JSON in jedem Texteditor. Beide Formate kannst du wieder importieren.': 'The file contains all categories and products in German and English. CSV can be edited in Excel, JSON in any text editor. Both formats can be imported again.',
+    'Die JSON-Datei ist fehlerhaft und lässt sich nicht lesen.': 'The JSON file is broken and cannot be read.',
+    'Die Datei enthält keinen brauchbaren Katalog.': 'The file does not contain a usable catalog.',
+    'Die Datei ist zu groß.': 'The file is too large.',
+    'Gefunden: {0} Produkte in {1} Warengruppen. Der ganze Katalog wird dadurch ersetzt. Vorher wird eine Sicherung angelegt, Einkaufslisten bleiben wie sie sind.': 'Found: {0} products in {1} categories. This replaces the whole catalog. A backup is made first, shopping lists stay as they are.',
     'Zum Laden-Modus': 'Switch to shopping mode',
 
     // Menge
@@ -156,6 +163,7 @@ ui: {
     'Vor „Alles löschen“': 'Before “Delete everything”',
     'Vor „Standard wiederherstellen“': 'Before “Restore default”',
     'Vor dem Zurückholen einer Sicherung': 'Before restoring a backup',
+    'Vor dem Import': 'Before the import',
 
     // Konten
     'Konten': 'Accounts',
