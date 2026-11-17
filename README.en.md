@@ -10,7 +10,7 @@
 
 <sub>🇩🇪 Auf Deutsch: [tech.burnersen.de/tools/kaufen](https://tech.burnersen.de/tools/kaufen/)</sub>
 
-Shared shopping lists you host yourself, written in **plain PHP** and installed with a single file. No dependencies, no build step, no MySQL, no requests to third-party servers. Runs on basic web hosting.
+Shared shopping lists you host yourself, written in **plain PHP** and installed with a single file. No dependencies, no build step, no MySQL, no requests to third-party servers (unless you let Kaufen check for updates). Runs on basic web hosting.
 
 *Kaufen* is German for "to buy". You tap products from a ready-made catalog, sorted by category. In the store you tap them again and they are gone, for everyone who shares the list.
 
@@ -34,11 +34,13 @@ Upload `kaufen-install.php`, open it in the browser, create the first account. T
 - **Catalog** with about 810 products in 16 categories, in the order of a typical supermarket. Text only, no images.
 - **Tap** to put a product on the list, tap it in the list to check it off. For a few seconds afterwards you can undo.
 - **Sync across all devices:** your own changes go to the server right away. Only while Kaufen is open and visible and nothing is going on does the device ask every few seconds whether something has changed. The administrator can set the interval (1 to 60 seconds, default 5).
-- **Search** across the whole catalog, in both languages: "milch" finds Milk as well. If a product does not exist, you create it right from the search and assign it to a category.
+- **Search** across the whole catalog, in both languages: "milch" finds Milk as well. If a product does not exist, you create it right from the search and assign it to a category. Kaufen suggests the category from the end of the word: German compounds like “Bergkäse” land in dairy, “Hundefutter” in pet supplies.
+- **Several at once, also by voice:** type or dictate “milk, 2 kg apples and half a bread” into the search field, press Enter, and everything is on the list. Items are split at commas, “and” or line breaks; without commas (“milk bread apples cream”) the catalog splits the words. Quantities may come before or after, in digits or words. A preview shows what was recognized first.
 - **Quantity or note:** long-press (on a computer: right-click). The counter starts at 1 with no unit. Adjust it with plus and minus, tap a unit if you want one (piece, pack, liter, kg …) and add a note. A plain 1 is not shown on the tile, a number without a unit is shown large as “3×”. Halves work too: type “2.5” or “2 1/2” or tap the ½ button, it shows as 2½.
 - **Custom units:** each account can add its own, such as "crate", "bag" or "roll", right in the quantity picker or in the settings.
 - **Remembers quantities:** when you check a product off, Kaufen remembers what was on it. Bought five colas, and next time it says "5" again, visible on the tile, and one tap puts it on the list the same way. Each account can turn this off in the settings, then it always starts at 1. "Reset quantity" forgets the remembered quantity of a product.
-- **Recently bought:** the latest and most frequent products, collapsible like the categories.
+- **Recently bought:** the latest and most frequent products, collapsible like the categories. What was bought in the last two weeks says so on the tile (“3 days ago”), a long-press shows the date and how often.
+- **Due again soon:** when you tick things off, Kaufen learns how often you buy them (milk about every 5 days). When it is time again, it waits below the list, ready to tap. All on your own server, can be switched off per account or per product.
 - **Ten themes and your own colors:** five light and five dark color schemes, plus one custom theme each from the color mixer (sliders or color picker, with preview). There you can also pick the text colors for headings, secondary text, list text and quantity. One button matches them to the accent color automatically: easy-to-read list text and a quantity color from the color wheel that stands out from it. With "Same as device" Kaufen switches automatically between your light and your dark favorite. The look belongs to the account and applies on all devices.
 - **Multiple lists:** everyone can create lists and share them with any accounts.
 - **Notifications on your phone:** if you like, you get a notification when someone puts something on a shared list. Each account turns this on or off per device in the settings. Bundled instead of one by one: three products make one notification, sent the moment the other person leaves Kaufen. Checking things off in the store does not notify anyone.
@@ -50,6 +52,7 @@ Upload `kaufen-install.php`, open it in the browser, create the first account. T
 - **Screen stays on** while the app is open (can be turned off).
 - **Manage the catalog:** create, rename, move and delete products and categories. The administrator can delete everything and restore the default. A backup is made automatically before every major change, the last 10 versions can be restored.
 - **Accounts:** the first account is the administrator, who creates the others. There is no open sign-up.
+- **Backup and update** (administrator, in the menu): download the whole database as one file and restore it, the previous state can be brought back. One-tap updates: Kaufen looks up the latest release on GitHub, verifies the file by checksum, saves the running version and installs the new one. Going back to the previous version takes one tap. If you like, Kaufen checks once a day by itself.
 - **Three views:** small tiles, compact or shopping mode (large rows for ticking off in the store), switched with the button at the top right, remembered per device.
 - **Text sizes:** set per device in the settings, for everything at once or separately for headings, product names, quantity, count and note, plus how bold the count is. With a preview in the chosen view.
 - Installable as an app (PWA), light and dark mode, throttling against password guessing.
@@ -79,9 +82,11 @@ Open the address in the browser, sign in, then choose "Add to Home screen" in th
 
 ## Updating
 
-Upload the new `kaufen-install.php` and open it. Only the program files are replaced, the folder `data/` is left untouched.
+**From version 1.10.0 the easiest way:** in the menu, *Backup and update*, tap “Check for updates now” and then “Update now”. PHP must be allowed to overwrite the program files and to open outgoing connections (curl or `allow_url_fopen`). To switch it off, set `'update_url' => ''` in `data/config.php`.
 
-Make a backup first. This is how to back up and how to go back (in the Kaufen directory, via SSH):
+By hand: upload the new `kaufen-install.php` and open it. Only the program files are replaced, the folder `data/` is left untouched.
+
+A backup is in the menu under *Backup and update*. Or by hand (in the Kaufen directory, via SSH):
 
 ```sh
 # Create a backup
@@ -97,7 +102,7 @@ Without SSH: download the folder `data/` via FTP and upload it again to restore.
 
 ```
 index.php      entry point and settings
-app/lib/       language, database, accounts and sign-in, lists and catalog, default catalog, notifications
+app/lib/       language, database, accounts and sign-in, lists and catalog, default catalog, notifications, backup and update
 app/routes/    all JSON actions
 app/views/     sign-in page and main page
 app/assets/    CSS, JavaScript, English translation, icons, service worker

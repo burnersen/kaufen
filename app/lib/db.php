@@ -2,7 +2,7 @@
 /* Kaufen – Datenordner, Datenbank (SQLite), Einstellungen */
 defined('KF_VERSION') || exit;
 
-define('KF_SCHEMA', 5);
+define('KF_SCHEMA', 6);
 
 function kfFatal(string $msg): void {
     http_response_code(500);
@@ -113,6 +113,13 @@ function kfMigrate(PDO $pdo, int $from): void {
         // Eigener englischer Name für Warengruppen und Produkte (aus dem Katalog-Import). Leer = eingebaute Übersetzung der App.
         $pdo->exec("ALTER TABLE cats ADD COLUMN en TEXT NOT NULL DEFAULT ''");
         $pdo->exec("ALTER TABLE products ADD COLUMN en TEXT NOT NULL DEFAULT ''");
+    }
+    if ($from < 6) {
+        // Kaufrhythmus für „Bald wieder fällig“: mittlerer Abstand zwischen zwei Käufen (Sekunden), wie viele Abstände eingeflossen sind
+        // (-1 = nicht mehr vorschlagen) und der Stand vor dem letzten Abhaken („last_at,gap,gn“), damit Rückgängig ihn zurückholen kann
+        $pdo->exec("ALTER TABLE usage ADD COLUMN gap INTEGER NOT NULL DEFAULT 0");
+        $pdo->exec("ALTER TABLE usage ADD COLUMN gn INTEGER NOT NULL DEFAULT 0");
+        $pdo->exec("ALTER TABLE usage ADD COLUMN prev TEXT NOT NULL DEFAULT ''");
     }
     $pdo->exec('PRAGMA user_version = ' . KF_SCHEMA);
     $pdo->commit();

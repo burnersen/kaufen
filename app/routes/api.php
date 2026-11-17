@@ -43,7 +43,7 @@ if ($isPost) {
     $in = json_decode((string)file_get_contents('php://input'), true);
     if (!is_array($in)) $in = [];
 }
-$getOnly = ['state', 'list', 'poll', 'catalog_backups'];
+$getOnly = ['state', 'list', 'poll', 'catalog_backups', 'maint', 'backup_get'];
 if (in_array($action, $getOnly, true) === $isPost) kfFail(kfT('Falsche Aufrufart.'), 405);
 
 $admin = function () use ($me) { if (!$me['is_admin']) kfFail(kfT('Das darf nur der Administrator.'), 403); };
@@ -368,6 +368,7 @@ try {
         $look['lang'] = in_array($src('lang'), ['de', 'en'], true) ? $src('lang') : '';
         $look['keep'] = $src('keep') !== false;
         $look['who'] = $src('who') !== false;
+        $look['due'] = $src('due') !== false;
         $look['units'] = [];
         foreach ((array)$src('units') as $u) {
             $u = kfClean($u, 12);
@@ -418,6 +419,46 @@ try {
 
     case 'logout':
         kfLogout($me);
+        kfJson(['ok' => true]);
+
+    /* ---------- Sicherung und Update (nur Administrator, siehe maint.php) ---------- */
+    case 'maint':   // Stand für das Fenster „Sicherung und Update“
+    case 'upd_check':
+    case 'upd_auto':
+        $admin();
+        $err = '';
+        if ($action === 'upd_auto') kfSet('upd_auto', !empty($in['on']) ? '1' : '0');
+        if ($action === 'upd_check') { try { kfUpdCheck(); } catch (RuntimeException $e) { $err = $e->getMessage(); } }
+        $info = kfUpdInfo();
+        kfJson(['have' => KF_VERSION, 'info' => $info, 'newer' => kfUpdNewer($info), 'at' => (int)kfGet('upd_at', '0'), 'auto' => kfGet('upd_auto') === '1',
+                'off' => kfUpdUrl() === '', 'prev' => kfUpdPrev(), 'locked' => kfUpdWritable(), 'restoreAt' => kfBackupPrevAt(), 'error' => $err,
+                'maxUp' => (string)ini_get('post_max_size')]);
+
+    case 'upd_install':
+    case 'upd_rollback':
+        $admin();
+        try { $v = $action === 'upd_install' ? kfUpdInstall() : kfUpdRollback(); } catch (RuntimeException $e) { kfFail($e->getMessage()); }
+        kfJson(['ok' => true, 'v' => $v]);
+
+    case 'backup_get':   // die ganze Datenbank als Datei
+        $admin();
+        $f = kfBackupFile();
+        kfHeaders();
+        header('Content-Type: application/octet-stream');
+        header('Content-Disposition: attachment; filename="kaufen-sicherung-' . date('Y-m-d-His') . '.sqlite"');
+        header('Content-Length: ' . filesize($f));
+        header('Cache-Control: no-store');
+        readfile($f);
+        @unlink($f);
+        exit;
+
+    case 'backup_put':   // Sicherung einspielen: die Datei kommt roh im Body
+    case 'backup_undo':
+        $admin();
+        if ($action === 'backup_put' && (int)($_SERVER['CONTENT_LENGTH'] ?? 0) > 0 && (string)file_get_contents('php://input', false, null, 0, 16) === '') {
+            kfFail(kfT('Die Datei ist zu groß. Dieser Server nimmt höchstens %s an.', (string)ini_get('post_max_size')));
+        }
+        try { $action === 'backup_put' ? kfBackupRestore((string)file_get_contents('php://input')) : kfBackupUndo(); } catch (RuntimeException $e) { kfFail($e->getMessage()); }
         kfJson(['ok' => true]);
 
     default:

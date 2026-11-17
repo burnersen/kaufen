@@ -3,7 +3,7 @@
  * Kaufen – gemeinsame Einkaufslisten zum Selbsthosten
  *
  * Diese Datei ist nur der Einstieg: Einstellungen und Reihenfolge. Der eigentliche Code liegt in app/:
- *   app/lib/     Funktionen (Sprache, Datenbank, Konten, Listen, Katalog, Mitteilungen)
+ *   app/lib/     Funktionen (Sprache, Datenbank, Konten, Listen, Katalog, Mitteilungen, Sicherung und Update)
  *   app/routes/  alle JSON-Aktionen
  *   app/views/   Anmeldeseite und Hauptseite
  *   app/assets/  CSS, JavaScript, Symbole (werden über diese Datei ausgeliefert)
@@ -19,7 +19,7 @@ error_reporting(E_ALL);
 ini_set('display_errors', '0');
 date_default_timezone_set('Europe/Berlin');
 
-define('KF_VERSION', '1.9.0');
+define('KF_VERSION', '1.10.0');
 define('KF_ROOT', __DIR__);
 define('KF_APP', KF_ROOT . '/app');
 define('KF_DATA_DIR', KF_ROOT . '/data');
@@ -33,6 +33,7 @@ require KF_APP . '/lib/db.php';
 require KF_APP . '/lib/auth.php';
 require KF_APP . '/lib/store.php';
 require KF_APP . '/lib/push.php';
+require KF_APP . '/lib/maint.php';
 
 $action = isset($_GET['action']) && is_string($_GET['action']) ? $_GET['action'] : '';
 

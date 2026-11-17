@@ -184,6 +184,7 @@ async function loadState() {
     const e = lookEpoch;
     applyState(await api('state'), e !== lookEpoch);
     flush();
+    updAuto();
     if (!pushSynced) { pushSynced = true; pushRefresh(); }
 }
 
@@ -225,9 +226,10 @@ function applyLocal(o) {
         const same = itemByName(o.n);
         if (same) { if (o.note) same.note = o.note; }
         else L.items.push({ uid: o.uid, n: o.n, c: o.c || 0, note: o.note || '', by: o.by || S.me.id, at: now });
-        if (o.t === 'restore') {
+        if (o.t === 'restore') {   // Abhaken rückgängig: der Stand von vorher, sonst nur einen weniger
             const u = L.usage.find(u => low(u.n) === low(o.n));
-            if (u && --u.cnt <= 0) L.usage = L.usage.filter(x => x !== u);
+            if (u && u.prev) L.usage = L.usage.map(x => x === u ? u.prev : x);
+            else if (u && --u.cnt <= 0) L.usage = L.usage.filter(x => x !== u);
         }
     } else if (o.t === 'done' || o.t === 'remove') {
         const it = L.items.find(i => i.uid === o.uid);
@@ -236,7 +238,7 @@ function applyLocal(o) {
         if (o.t === 'done') {
             const u = L.usage.find(u => low(u.n) === low(it.n));
             L.usage = L.usage.filter(x => x !== u);
-            L.usage.unshift({ n: it.n, c: it.c, cnt: (u ? u.cnt : 0) + 1, last: now });
+            L.usage.unshift({ n: it.n, c: it.c, cnt: (u ? u.cnt : 0) + 1, last: now, g: u ? u.g : 0, gn: u ? u.gn : 0, prev: u ? { ...u, prev: null } : null });
             setMem(it.n, it.note);
         }
     } else if (o.t === 'edit') {
@@ -247,6 +249,9 @@ function applyLocal(o) {
         setMem(o.n, '');
     } else if (o.t === 'unmem') {
         setMem(o.n, '');
+    } else if (o.t === 'nodue' || o.t === 'redue') {
+        const u = L.usage.find(u => low(u.n) === low(o.n));
+        if (u) u.gn = o.t === 'nodue' ? -1 : u.g > 0 ? 2 : 0;
     }
 }
 
@@ -624,16 +629,39 @@ const confirmDlg = (title, text, okLabel, fn) => ask(title, [{ type: 'info', tex
 const act = async (action, body) => { const e = lookEpoch; applyState(await api(action, body), e !== lookEpoch); };
 
 /* ---------- Hauptansicht ---------- */
-/** Eine Kachel. note ist die gespeicherte Menge: Menge (tt) und Hinweis (th) bekommen je eine eigene Zeile. */
-function tile(cls, data, name, note, by) {
+/** Eine Kachel. note ist die gespeicherte Menge: Menge (tt) und Hinweis (th) bekommen je eine eigene Zeile. ago: „vor 3 Tagen“ (ta). */
+function tile(cls, data, name, note, by, ago) {
     const p = noteParts(note);
     return h('button', { class: 'tile ' + cls, type: 'button', data }, h('span', { class: 'tn' }, name),
-        p.q && h('span', { class: p.cnt ? 'tt cnt' : 'tt' }, p.q), p.hint && h('span', { class: 'th' }, p.hint), by && h('span', { class: 'tb' }, by));
+        p.q && h('span', { class: p.cnt ? 'tt cnt' : 'tt' }, p.q), p.hint && h('span', { class: 'th' }, p.hint), by && h('span', { class: 'tb' }, by),
+        ago && h('span', { class: 'ta' }, ago));
 }
-const prodTile = (n, c, src) => {
-    const it = itemByName(n);
-    return tile(it ? 'has' : '', { k: 'prod', n, c, src: src || '' }, dn(n), it ? it.note : memOf(n));
+/** Produkt aus Katalog, Suche oder „Zuletzt gekauft“. Was in den letzten zwei Wochen gekauft wurde, sagt es dazu (always: egal wie lange her). */
+const prodTile = (n, c, src, always) => {
+    const it = itemByName(n), u = !it && usageOf(n), d = u ? daysAgo(u.last) : 99;
+    return tile(it ? 'has' : '', { k: 'prod', n, c, src: src || '' }, dn(n), it ? it.note : memOf(n), '', u && (always || d < 14) ? agoText(d, true) : '');
 };
+
+/* ---------- Gekauft: wann zuletzt, und was bald wieder fällig ist ---------- */
+const DAY = 86400;
+let usageFor = null, usageMap = new Map();
+const usageOf = n => {
+    if (!L) return null;
+    if (L.usage !== usageFor) { usageFor = L.usage; usageMap = new Map(L.usage.map(u => [low(u.n), u])); }
+    return usageMap.get(low(n)) || null;
+};
+/** Wie viele Kalendertage her: heute 0, gestern 1 */
+const daysAgo = ts => { const a = new Date(ts * 1000), b = new Date(); a.setHours(0, 0, 0, 0); b.setHours(0, 0, 0, 0); return Math.max(0, Math.round((b - a) / 864e5)); };
+/** „heute gekauft“ (Kachel, short) bzw. „heute“, dann „gestern“, „vor 3 Tagen“ */
+const agoText = (d, short) => d === 0 ? tr(short ? 'heute gekauft' : 'heute') : d === 1 ? tr(short ? 'gestern gekauft' : 'gestern') : tr('vor {0} Tagen', d);
+/** Bald wieder fällig: mindestens zwei gelernte Abstände, seit dem letzten Kauf sind 90 % des üblichen Abstands vorbei,
+    aber noch nicht das Dreifache (dann kauft ihr es wohl nicht mehr). Am meisten überfällig zuerst, höchstens 8. */
+function dueList() {
+    if (!look.due || !L) return [];
+    const now = Date.now() / 1000;
+    return L.usage.filter(u => u.gn >= 2 && u.g >= DAY / 2 && !itemByName(u.n) && now - u.last >= u.g * .9 && now - u.last <= u.g * 3)
+        .sort((a, b) => (now - b.last) / b.g - (now - a.last) / a.g).slice(0, 8);
+}
 
 function render() {
     const l = curList();
@@ -665,6 +693,15 @@ function viewHome(l) {
         out.push(h('div', { class: 'grid todo' }, items.map(it => tile('on', { k: 'item', uid: it.uid }, dn(it.n), it.note, shared && look.who && it.by !== S.me.id && userName(it.by)))));
     }
 
+    const open = LS.get('open', {});
+    // Bald wieder fällig: von Anfang an aufgeklappt, zuklappen wird gemerkt
+    const due = dueList();
+    if (due.length) {
+        const isOpen = open.due !== 0;
+        out.push(h('button', { class: 'cat solo due' + (isOpen ? ' open' : ''), type: 'button', data: { k: 'cat', id: 'due' }, 'aria-expanded': String(isOpen) }, tr('Bald wieder fällig'), h('small', null, String(due.length)), icon(I.down)));
+        if (isOpen) out.push(h('div', { class: 'grid' }, due.map(u => prodTile(u.n, hasCat(u.c) ? u.c : 0, 'due', true))));
+    }
+
     // Zuletzt gekauft: erst die jüngsten, dann aufgefüllt mit den häufigsten
     const free = L.usage.filter(u => !itemByName(u.n));
     const recent = free.slice(0, 8);
@@ -672,7 +709,6 @@ function viewHome(l) {
         if (recent.length >= 12) break;
         if (!recent.includes(u)) recent.push(u);
     }
-    const open = LS.get('open', {});
     if (recent.length) {
         const isOpen = !!open.recent;
         out.push(h('button', { class: 'cat solo' + (isOpen ? ' open' : ''), type: 'button', data: { k: 'cat', id: 'recent' }, 'aria-expanded': String(isOpen) }, tr('Zuletzt gekauft'), h('small', null, String(recent.length)), icon(I.down)));
@@ -700,7 +736,18 @@ function prodsByCat() {
     return byCat;
 }
 
+/** Vorschau für mehrere Produkte auf einmal: so kommen sie auf die Liste, Enter oder der Knopf setzt sie drauf */
+function viewMulti(m) {
+    const extra = x => itemByName(x.n) ? tr('steht schon drauf') : x.known ? '' : tr('neu: {0}', catName(x.c));
+    return [h('h2', null, tr('Auf die Liste'), h('small', null, String(m.length))),
+        h('div', { class: 'grid todo' }, m.map(x => tile('on', { k: 'mx' }, dn(x.n), x.note, '', extra(x)))),
+        h('button', { class: 'btn primary multigo', type: 'button', onclick: () => addMulti(m) }, m.length === 1 ? tr('Auf die Liste') : tr('Alle {0} auf die Liste', m.length)),
+        h('p', { class: 'info' }, tr('Enter tut dasselbe. Getrennt wird an Komma, „und“ oder Zeilenende, Mengen dürfen davor oder dahinter stehen: „2 Liter Milch, Äpfel 1 kg und ein halbes Brot“.'))];
+}
+
 function viewSearch(q) {
+    const m = multiOf(qInput.value.trim());
+    if (m) return viewMulti(m);
     const seen = new Map();
     const add = (n, c) => { if (!seen.has(low(n))) seen.set(low(n), { n, c }); };
     // Gesucht wird im angezeigten Namen. Dazu kommt der Name in der anderen Sprache (Milk findet Milch und umgekehrt),
@@ -724,6 +771,160 @@ function viewSearch(q) {
     if (!exact) tiles.unshift(tile('new', { k: 'new', n: raw }, tr('„{0}“ hinzufügen', raw)));
     out.push(h('div', { class: 'grid' }, tiles));
     return out;
+}
+
+/* ---------- Mehrere Produkte auf einmal: „Milch, 2 kg Äpfel und ein halbes Brot“, auch diktiert ohne Kommas („Milch Brot Äpfel Sahne“).
+   Getrennt wird an Komma, Semikolon, Zeilenende, „und“, „sowie“, „&“, „+“. Steht nichts dazwischen, zerlegt der Katalog die Wörter.
+   Mengen vorne oder hinten, in Ziffern oder Worten: „zwei Liter Milch“, „Äpfel 2 kg“, „3x Joghurt“, „ein halbes Brot“. ---------- */
+const NUMW = { ein: 1, eine: 1, einen: 1, eins: 1, zwei: 2, drei: 3, vier: 4, 'fünf': 5, sechs: 6, sieben: 7, acht: 8, neun: 9, zehn: 10, elf: 11, 'zwölf': 12,
+    zwanzig: 20, halb: .5, halbe: .5, halben: .5, halbes: .5, anderthalb: 1.5, eineinhalb: 1.5, zweieinhalb: 2.5, dreieinhalb: 3.5,
+    a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, twelve: 12, half: .5 };
+// Andere Schreibweisen für die mitgelieferten Einheiten
+const UNITA = { kilo: 'kg', kilos: 'kg', kilogramm: 'kg', gramm: 'g', gr: 'g', l: 'Liter', ltr: 'Liter', litre: 'Liter', litres: 'Liter', 'päckchen': 'Packung',
+    pkg: 'Packung', pck: 'Packung', stk: 'Stück', 'stücke': 'Stück', milliliter: 'ml' };
+// Gebinde ohne eigene Einheit: bleiben als Text stehen („2 Kästen“)
+const FREEU = /^(?:kasten|kästen|kisten?|becher|netze?|beutel|tüten?|rollen?|tafeln?|schalen?|säcke?|sack|pakete?|töpfe?|topf|eimer|riegel|scheiben|portionen?|crates?|bags?|boxes|box|rolls?|tubs?)$/i;
+/** Menge ab Wort i: Zahl (Ziffern, Bruch, Zahlwort) und vielleicht eine Einheit oder „x“. Liefert { n, u, cu, len } oder null. */
+function readQty(t, i) {
+    let n = NaN, len = 0;
+    if (t[i + 1] && /^\d+$/.test(t[i]) && /^(?:[½¼¾]|1\/[24]|3\/4)$/.test(t[i + 1])) { n = parseNum(t[i] + ' ' + t[i + 1]); len = 2; }   // „2 1/2“
+    else if (t[i] && !isNaN(parseNum(t[i]))) { n = parseNum(t[i]); len = 1; }
+    else if (t[i] && low(t[i]) in NUMW) {
+        n = NUMW[low(t[i])]; len = 1;
+        if (n === 1 && t[i + 1] && /^halb/i.test(t[i + 1])) { n = .5; len = 2; }   // „ein halbes“
+    }
+    if (!(n > 0 && n <= 9999)) return null;
+    if (n === .5 && /^(?:a|an)$/i.test(t[i + len] || '')) len++;   // „half a bread“
+    const w = t[i + len];
+    let r = { n, u: -1, cu: '', len };
+    if (w) {
+        const al = UNITA[low(w)], u = unitIndex(al || w), cu = look.units.find(s => low(s) === low(w));
+        if (u >= 0) r = { n, u, cu: '', len: len + 1 };
+        else if (cu || FREEU.test(w)) r = { n, u: -1, cu: cu || w, len: len + 1 };
+        else if (/^(?:x|×|mal)$/i.test(w)) r = { n, u: -1, cu: '', len: len + 1 };
+    }
+    if (r.len > len && /^of$/i.test(t[i + r.len] || '')) r.len++;   // „2 kg of apples“
+    return r;
+}
+/** Alle bekannten Namen (Katalog in beiden Sprachen, Liste, Gekauftes) zum schnellen Nachschlagen, neu gebaut, wenn sich etwas ändert */
+let knownFor = [], knownMap = new Map();
+function findProd(name) {
+    if (knownFor[0] !== S.catalog || knownFor[1] !== L.usage || knownFor[2] !== L.items) {
+        knownFor = [S.catalog, L.usage, L.items];
+        knownMap = new Map();
+        const put = (n, c) => { for (const k of [n, dn(n), enName(n)]) if (k && !knownMap.has(norm(k))) knownMap.set(norm(k), { n, c }); };
+        for (const p of S.catalog.products) put(p.n, p.c);
+        for (const x of [...L.items, ...L.usage]) put(x.n, hasCat(x.c) ? x.c : 0);
+    }
+    const q = norm(name).replace(/\s+/g, ' ').trim();
+    if (q.length < 2) return null;
+    // auch Einzahl und Mehrzahl: Tomate findet Tomaten, Eier findet Eier
+    for (const v of [q, q + 'n', q + 'e', q + 's', q + 'en', q.replace(/(?:en|n|e|s)$/, '')]) { const p = knownMap.get(v); if (p) return p; }
+    return null;
+}
+/** Ein Stück Text ohne Trennzeichen: Menge vorne oder hinten abziehen, Rest ist der Name. Kennt der Katalog den Namen nicht und sind es
+    mehrere Wörter, wird probiert, ob sie sich in bekannte Produkte zerlegen lassen („Milch Brot Äpfel“). */
+function parsePiece(seg) {
+    const t = seg.split(' ').filter(Boolean);
+    if (!t.length) return [];
+    let q = readQty(t, 0), a = q ? q.len : 0, b = t.length;
+    if (!q) for (let j = t.length - 1; j > 0; j--) {   // Menge hinten: „Äpfel 2 kg“, „Joghurt x3“
+        if (/^(?:größe|gr|size|nr|no|typ|stufe|grösse)\.?$/i.test(t[j - 1])) break;   // „Windeln Größe 4“: die Zahl gehört zum Namen
+        const x = /^(?:x|×)$/i.test(t[j]) ? readQty(t, j + 1) : readQty(t, j), off = /^(?:x|×)$/i.test(t[j]) ? 1 : 0;
+        if (x && j + off + x.len === t.length) { q = x; b = j; break; }
+    }
+    const name = t.slice(a, b).join(' ');
+    if (!name) return [];
+    if (findProd(name) || b - a < 2) return [{ name, q }];
+    // Zerlegen: jedes Stück ein bekanntes Produkt (bis 4 Wörter, Menge davor erlaubt) oder ein einzelnes unbekanntes Wort
+    const memo = new Map();
+    const go = i => {
+        if (i === t.length) return { s: 0, k: 0, u: 0, parts: [] };
+        if (memo.has(i)) return memo.get(i);
+        let best = null;
+        const qq = readQty(t, i), j0 = i + (qq ? qq.len : 0);
+        for (let j = Math.min(t.length, j0 + 4); j > j0; j--) {
+            const nm = t.slice(j0, j).join(' '), known = !!findProd(nm);
+            if (!known && j > j0 + 1) continue;
+            const rest = go(j);
+            if (!rest) continue;
+            const s = rest.s + (known ? 3 : -1);
+            if (!best || s > best.s) best = { s, k: rest.k + known, u: rest.u + !known, parts: [{ name: nm, q: qq }, ...rest.parts] };
+        }
+        memo.set(i, best);
+        return best;
+    };
+    const best = go(0);
+    return best && best.k >= 2 && best.u <= best.k ? best.parts : [{ name, q }];
+}
+/** Text aus dem Suchfeld in Einträge zerlegen: [{ n, c, note, known }]. Gleiche Produkte nur einmal, das letzte gewinnt. */
+function parseMulti(raw) {
+    const s = String(raw).replace(/(\d),(\d)/g, '$1\u0001$2').replace(/(\d)([a-zäöüß×])/gi, '$1 $2').replace(/\bx(\d)/gi, 'x $1');
+    const out = new Map();
+    for (let piece of s.split(/[,;\n]+/)) {
+        piece = piece.replace(/\u0001/g, ',').replace(/[.!?:]+$/g, '').replace(/\s+/g, ' ').trim();
+        if (!piece) continue;
+        // an „und“ nur trennen, wenn das Ganze kein bekanntes Produkt ist („Erbsen und Möhren“)
+        const segs = findProd(piece) ? [piece] : piece.split(/\s+(?:und|sowie|and|plus)\s+|\s*[&+]\s*/i);
+        for (const seg of segs) for (const { name, q } of parsePiece(seg.trim())) {
+            const p = findProd(name);
+            const nm = p ? p.n : canon(name.charAt(0).toLocaleUpperCase(lang) + name.slice(1)).slice(0, 60);
+            const note = q && !(q.n === 1 && q.u < 0 && !q.cu) ? fmtQty(q, 'de', '') : '';
+            out.delete(low(nm));
+            out.set(low(nm), { n: nm, c: p ? p.c : guessCat(nm), note, known: !!p });
+        }
+    }
+    return [...out.values()];
+}
+/** Lohnt sich die Vorschau? Ab zwei Produkten, oder bei einem mit Menge („2 Liter Milch“). */
+const multiOf = raw => { const m = parseMulti(raw); return m.length >= 2 || (m.length === 1 && m[0].note) ? m : null; };
+/** Alles auf einmal auf die Liste. Was schon draufsteht, bekommt nur die neue Menge. Rückgängig nimmt die neuen wieder runter. */
+function addMulti(m) {
+    const fresh = [];
+    const ops = m.map(x => {
+        const o = { t: 'add', uid: newUid(), n: x.n, c: x.c, note: x.note || memOf(x.n) };
+        if (!itemByName(x.n)) fresh.push(o.uid);
+        return o;
+    });
+    op(ops);
+    qInput.value = '';
+    qInput.blur();
+    render();
+    toast(tr('{0} Produkte auf der Liste', m.length), fresh.length ? tr('Rückgängig') : null, () => op(fresh.map(uid => ({ t: 'remove', uid }))));
+}
+
+/** Warengruppe für ein neues Produkt raten. Deutsche Wörter tragen ihre Bedeutung hinten: Bergkäse wie Käse, Dinkelbrötchen wie Brötchen,
+    Hundefutter wie Katzenfutter. Verglichen wird mit allen Produkten im Katalog (deutsch und englisch), Wort für Wort von hinten:
+    erst das letzte Wort, passt das nirgends hin, das davor („Windeln Größe 4“). Ein ganzes Katalogwort am Ende zählt doppelt,
+    ein bloß gleiches Wortende (ab 5 Buchstaben) nur, wenn mindestens zwei Produkte derselben Gruppe so enden. Namen aus mehreren
+    Wörtern („Gehackte Tomaten“) zählen halb. Gewinnt keine Gruppe klar (mindestens die Hälfte der Stimmen), bleibt es bei 0. */
+function guessCat(name) {
+    const words = s => norm(s).split(/[\s-]+/).filter(x => /^[a-z]{3,}$/.test(x));
+    const cands = [];
+    for (const p of S.catalog.products) for (const pn of [p.n, enName(p.n)]) {
+        const pw = pn && words(pn).pop();
+        if (pw) cands.push([pw, p.c, /\s/.test(pn.trim()) ? .5 : 1]);
+    }
+    for (const w of words(name).reverse()) {
+        const votes = new Map();
+        let total = 0;
+        for (const [pw, c, f] of cands) {
+            if (pw === w) return c;   // gleiches Wort: „Bio Milch“ ist Milch
+            let k = 0;
+            while (k < w.length && k < pw.length && w[w.length - 1 - k] === pw[pw.length - 1 - k]) k++;
+            const whole = k === pw.length;
+            if (!(whole && k >= 3) && k < 5) continue;
+            const v = votes.get(c) || { s: 0, whole: 0, part: 0 };
+            v.s += k * k * (whole ? 2 : 1) * f;
+            if (whole) v.whole++; else v.part++;
+            votes.set(c, v);
+            total += k * k * (whole ? 2 : 1) * f;
+        }
+        let best = 0, bv = null;
+        for (const [c, v] of votes) if (!bv || v.s > bv.s) { best = c; bv = v; }
+        if (bv && bv.s >= total * .5 && (bv.whole || bv.part >= 2)) return best;
+    }
+    return 0;
 }
 
 /* ---------- Tippen und lange drücken ---------- */
@@ -754,9 +955,15 @@ function itemDialog(it) {
 function prodDialog(n, c, src) {
     const it = itemByName(n);
     if (it) return itemDialog(it);
-    ask(dn(n), [{ k: 'note', type: 'qty', value: memOf(n) }],
+    const u = usageOf(n);
+    // Zuletzt gekauft, wie oft, und wenn schon gelernt: etwa wie oft
+    const info = u && [tr('Zuletzt gekauft: {0} ({1})', agoText(daysAgo(u.last)), new Date(u.last * 1000).toLocaleDateString(lang === 'en' ? 'en-US' : 'de-DE', { weekday: 'short', day: 'numeric', month: 'numeric' })),
+        u.cnt > 1 && tr('Insgesamt {0}-mal gekauft', u.cnt), u.g >= DAY / 2 && u.gn !== 0 && tr('Etwa alle {0} Tage', Math.max(1, Math.round(u.g / DAY)))].filter(Boolean).join(' · ');
+    ask(dn(n), [{ k: 'note', type: 'qty', value: memOf(n) }, info && { type: 'info', text: info }],
         tr('Auf die Liste'), v => op({ t: 'add', uid: newUid(), n, c, note: v.note.trim() }),
         [src === 'recent' && { label: tr('Aus „Zuletzt gekauft“ entfernen'), fn: () => op({ t: 'forget', n }) },
+         u && u.gn >= 2 && look.due && { label: tr('Nicht mehr als fällig vorschlagen'), fn: () => op({ t: 'nodue', n }) },
+         u && u.gn < 0 && look.due && { label: tr('Wieder als fällig vorschlagen'), fn: () => op({ t: 'redue', n }) },
          memOf(n) && { label: tr('Gemerkte Menge vergessen'), fn: () => op({ t: 'unmem', n }) }]);
 }
 /** Neues Produkt aus der Suche oder aus einer Warengruppe heraus */
@@ -765,7 +972,7 @@ function newProduct(name, catId) {
     ask(tr('Neues Produkt'), [
         { k: 'n', label: tr('Name'), value: name, max: 60 },
         { k: 'note', type: 'qty' },
-        { k: 'c', label: tr('Warengruppe'), type: 'select', value: catId || 0, options: catOptions() },
+        { k: 'c', label: tr('Warengruppe'), type: 'select', value: catId || (name ? guessCat(canon(name)) : 0), options: catOptions() },   // geraten am Wortende
         cats.length && { k: 'keep', type: 'checkbox', label: tr('Auch im Katalog speichern'), value: true },
     ], tr('Auf die Liste'), async v => {
         const n = canon(v.n.trim().replace(/\s+/g, ' '));
@@ -814,7 +1021,8 @@ main.addEventListener('click', e => {
     else if (d.k === 'newin') newProduct('', +d.id);
     else if (d.k === 'cat') {
         const open = LS.get('open', {});
-        if (open[d.id]) delete open[d.id]; else open[d.id] = 1;
+        if (d.id === 'due') open.due = open.due === 0 ? 1 : 0;   // „Bald wieder fällig“ ist von Anfang an offen
+        else if (open[d.id]) delete open[d.id]; else open[d.id] = 1;
         LS.set('open', open);
         render();
     }
@@ -822,7 +1030,9 @@ main.addEventListener('click', e => {
 qInput.addEventListener('input', render);
 $('#qClear').addEventListener('click', () => { qInput.value = ''; render(); });
 qInput.addEventListener('keydown', e => {
-    if (e.key !== 'Enter') return;
+    if (e.key !== 'Enter' || !L) return;
+    const m = multiOf(qInput.value.trim());   // mehrere auf einmal (oder eins mit Menge): alle drauf
+    if (m) { e.preventDefault(); addMulti(m); return; }
     const first = $('.tile', main);   // Enter nimmt den ersten Treffer
     if (qInput.value.trim() && first) first.click();
 });
@@ -1210,9 +1420,9 @@ const isHex = v => /^#[0-9a-f]{6}$/.test(v);
 const okCols = c => c && PARTS.every(([k]) => isHex(c[k])) ? Object.fromEntries([...PARTS, ...TPARTS].filter(([k]) => isHex(c[k])).map(([k]) => [k, c[k]])) : null;
 const okUnit = u => typeof u === 'string' && /^[^\d\s,;]{1,12}$/.test(u);
 const normLook = o => ({ mode: o && ['light', 'dark'].includes(o.mode) ? o.mode : 'auto', l: String(o && o.l || ''), d: String(o && o.d || ''), cl: okCols(o && o.cl), cd: okCols(o && o.cd),
-    lang: o && ['de', 'en'].includes(o.lang) ? o.lang : '', keep: !(o && o.keep === false), who: !(o && o.who === false), units: Array.isArray(o && o.units) ? o.units.filter(okUnit).slice(0, 12) : [] });
+    lang: o && ['de', 'en'].includes(o.lang) ? o.lang : '', keep: !(o && o.keep === false), who: !(o && o.who === false), due: !(o && o.due === false), units: Array.isArray(o && o.units) ? o.units.filter(okUnit).slice(0, 12) : [] });
 /** Einstellungen des Kontos: mode = auto|light|dark, l/d = gewähltes Design für hell/dunkel, cl/cd = eigene Farben,
-    lang = Sprache ('' = noch nicht gewählt), keep = zuletzt benutzte Menge merken, who = anzeigen, wer einen Artikel hinzugefügt hat, units = eigene Einheiten. Liegt auf dem Server, hier nur die Kopie. */
+    lang = Sprache ('' = noch nicht gewählt), keep = zuletzt benutzte Menge merken, who = anzeigen, wer einen Artikel hinzugefügt hat, due = „Bald wieder fällig“ zeigen, units = eigene Einheiten. Liegt auf dem Server, hier nur die Kopie. */
 let look = normLook(LS.get('look', null) || { mode: LS.get('theme', 'auto'), l: LS.get('palL', ''), d: LS.get('palD', '') });
 const palOf = mode => {
     const v = look[mode === 'dark' ? 'd' : 'l'];
@@ -1522,6 +1732,7 @@ function showSettings() {
         [['auto', 'Wie das Gerät'], ['light', 'Hell'], ['dark', 'Dunkel']].map(([v, s]) => h('option', { value: v, selected: look.mode === v }, tr(s))));
     const wakeBox = h('input', { type: 'checkbox', checked: LS.get('wake', true), onchange: () => { LS.set('wake', wakeBox.checked); wake(); } });
     const whoBox = h('input', { type: 'checkbox', checked: look.who, onchange: () => { setLook({ who: whoBox.checked }); render(); } });
+    const dueBox = h('input', { type: 'checkbox', checked: look.due, onchange: () => { setLook({ due: dueBox.checked }); render(); } });
     const ivInput = h('input', { type: 'number', min: '1', max: '60', inputmode: 'numeric', value: String(S.interval) });
     const view = h('select', { onchange: () => { LS.set('view', view.value); applyView(); } },
         [['tiles', 'Kleine Kacheln'], ['compact', 'Kompakt'], ['shop', 'Laden-Modus']].map(([v, s]) => h('option', { value: v, selected: curView() === v }, tr(s))));
@@ -1552,6 +1763,8 @@ function showSettings() {
         h('label', { class: 'check' }, wakeBox, h('span', null, tr('Bildschirm anlassen, solange Kaufen offen ist'))),
         h('label', { class: 'check' }, keepBox, h('span', null, tr('Zuletzt benutzte Menge merken'))),
         h('p', { class: 'info' }, tr('Beim Abhaken merkt sich Kaufen, welche Menge am Produkt stand, und setzt es beim nächsten Mal wieder genauso auf die Liste. Ohne Haken steht immer 1 da.')),
+        h('label', { class: 'check' }, dueBox, h('span', null, tr('Vorschlagen, was bald wieder fällig ist'))),
+        h('p', { class: 'info' }, tr('Kaufen lernt beim Abhaken, wie oft ihr etwas kauft, zum Beispiel Milch alle 5 Tage. Ist es wieder so weit, steht es unter der Liste bei „Bald wieder fällig“. Ein Produkt braucht dafür ein paar Einkäufe.')),
         h('div', { class: 'qlabel' }, tr('Eigene Einheiten')), unitBox,
         h('p', { class: 'info units' }, tr('Erscheinen bei der Mengenauswahl neben Stück, Packung und Liter. Antippen entfernt eine Einheit.')),
         pushCan() && h('label', { class: 'check' }, pushBox, h('span', null, tr('Mitteilungen auf diesem Gerät'))),
@@ -1625,8 +1838,87 @@ function showMenu() {
         L && btn(tr('Liste als Text teilen'), shareText),
         btn(tr('Katalog verwalten'), showCatalog),
         S.me.admin && btn(tr('Konten'), showUsers),
+        S.me.admin && btn([tr('Sicherung und Update'), S.upd && S.upd.v && h('span', { class: 'badge' }, tr('Neu: {0}', S.upd.v))], showMaint),
         btn(tr('Einstellungen'), showSettings),
         btn(tr('Abmelden'), logout));
+}
+
+/* ---------- Sicherung und Update (nur Administrator) ---------- */
+function showMaint() {
+    const sh = sheet(tr('Sicherung und Update'));
+    put(sh.body, h('p', { class: 'hint' }, tr('Lade …')));
+    let st = null, busy = false;
+    const load = async (action, body) => {
+        if (busy) return;
+        busy = true;
+        try { st = await api(action || 'maint', body); } catch (e) { toast(e.message); }
+        busy = false;
+        if (st) draw();
+    };
+    // Nach Update, Rückkehr oder Einspielen: neu laden, damit Seite, Dateien und Daten zusammenpassen
+    const reload = text => { toast(text); setTimeout(() => location.reload(), 1500); };
+    const install = () => confirmDlg(tr('Auf Kaufen {0} aktualisieren?', st.info.v),
+        tr('Die laufende Version wird vorher gesichert, zurück geht es jederzeit hier. Deine Daten bleiben, wie sie sind.'), tr('Jetzt aktualisieren'),
+        async () => { const r = await api('upd_install', {}); sh.close(); reload(tr('Kaufen {0} ist installiert.', r.v)); });
+    const rollback = () => confirmDlg(tr('Zurück zu Kaufen {0}?', st.prev), tr('Die Programmdateien von vor dem letzten Update kommen zurück. Deine Daten bleiben, wie sie sind.'),
+        tr('Zurück'), async () => { const r = await api('upd_rollback', {}); sh.close(); reload(tr('Kaufen {0} ist wieder da.', r.v)); });
+    const pick = () => {
+        const inp = h('input', { type: 'file', accept: '.sqlite,.db,application/octet-stream,application/x-sqlite3', hidden: true, onchange: () => {
+            const f = inp.files[0];
+            inp.remove();
+            if (!f) return;
+            confirmDlg(tr('Sicherung einspielen'), tr('Alles wird durch den Stand aus „{0}“ ersetzt: Konten, Listen, Katalog, Vorlagen. Der jetzige Stand bleibt aufgehoben und lässt sich hier zurückholen. Danach musst du dich vielleicht neu anmelden.', f.name),
+                tr('Einspielen'), async () => {
+                    const r = await fetch('?action=backup_put', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/octet-stream', 'X-CSRF': csrf }, body: f });
+                    const j = await r.json().catch(() => ({}));
+                    if (!r.ok) throw new Error(j.error || tr('Der Server antwortet nicht richtig ({0}).', r.status));
+                    sh.close();
+                    reload(tr('Die Sicherung ist eingespielt.'));
+                });
+        } });
+        document.body.append(inp);
+        inp.click();
+    };
+    const undo = () => confirmDlg(tr('Vorigen Stand zurückholen'), tr('Der Stand von vor dem letzten Einspielen kommt zurück, der jetzige wird dafür beiseitegelegt.'), tr('Zurückholen'),
+        async () => { await api('backup_undo', {}); sh.close(); reload(tr('Der vorige Stand ist zurück.')); });
+    // Release-Hinweise von GitHub (Markdown) als schlichter Text: ohne Rauten, Sternchen, Links und „by @… in https://…“
+    const plain = t => String(t).replace(/^\*\*Full Changelog\*\*.*$/gm, '').replace(/ by @[\w-]+ in https?:\/\/\S+/g, '').replace(/^#+\s*/gm, '')
+        .replace(/^\s*[*-]\s+/gm, '• ').replace(/\*\*(.+?)\*\*/g, '$1').replace(/\[([^\]]+)\]\([^)]+\)/g, '$1').replace(/\n{3,}/g, '\n\n').trim();
+    function draw() {
+        const autoBox = h('input', { type: 'checkbox', checked: st.auto, disabled: st.off, onchange: () => load('upd_auto', { on: autoBox.checked }) });
+        fill(sh.body,
+            h('div', { class: 'qlabel' }, tr('Update')),
+            h('p', null, tr('Installiert ist Kaufen {0}.', st.have)),
+            st.error && h('p', { class: 'err' }, st.error),
+            st.newer && [h('p', { class: 'upnew' }, tr('Neu: Kaufen {0}', st.info.v)),
+                plain(st.info.notes || '') && h('div', { class: 'notes' }, plain(st.info.notes)),
+                st.info.page && h('p', { class: 'info' }, h('a', { href: st.info.page, target: '_blank', rel: 'noopener' }, tr('Alles dazu auf GitHub'))),
+                st.locked ? h('p', { class: 'err' }, tr('PHP darf die Datei {0} nicht überschreiben. Bitte von Hand aktualisieren oder die Schreibrechte ändern.', st.locked))
+                          : h('button', { class: 'btn primary wide', type: 'button', onclick: install }, tr('Jetzt aktualisieren'))],
+            !st.newer && st.at > 0 && !st.error && h('p', { class: 'info' }, tr('Das ist die neueste Version (nachgesehen {0}).', fmtTime(st.at))),
+            !st.off && h('button', { class: 'btn wide', type: 'button', onclick: () => load('upd_check', {}) }, tr('Jetzt nach Updates suchen')),
+            !st.off && h('label', { class: 'check' }, autoBox, h('span', null, tr('Einmal am Tag automatisch nachsehen'))),
+            h('p', { class: 'info' }, st.off ? tr('Updates sind auf diesem Server abgeschaltet (data/config.php).')
+                : tr('Dafür fragt dein Server bei GitHub nach, wo Kaufen veröffentlicht wird. Persönliches geht dabei nicht raus, und eingespielt wird nur, wenn du auf „Jetzt aktualisieren“ tippst.')),
+            st.prev && h('button', { class: 'btn wide', type: 'button', onclick: rollback }, tr('Zurück zu Kaufen {0}', st.prev)),
+            h('div', { class: 'qlabel gap' }, tr('Datensicherung')),
+            h('p', { class: 'info' }, tr('Alles in einer Datei: Konten, Listen, Katalog, Vorlagen und Einstellungen. Gut aufheben, sie enthält auch die verschlüsselten Passwörter.')),
+            h('a', { class: 'btn wide', href: '?action=backup_get', download: '' }, tr('Sicherung herunterladen')),
+            h('button', { class: 'btn wide', type: 'button', onclick: pick }, tr('Sicherung einspielen …')),
+            st.restoreAt > 0 && h('button', { class: 'btn wide', type: 'button', onclick: undo }, tr('Stand vor dem Einspielen zurückholen ({0})', fmtTime(st.restoreAt))));
+    }
+    load();
+}
+/** Tägliches Nachsehen (eingeschaltet in „Sicherung und Update“): einmal pro Start, wenn der Server sagt, dass es dran ist */
+let updAsked = false;
+async function updAuto() {
+    if (updAsked || !S || !S.upd || !S.upd.check) return;
+    updAsked = true;
+    try {
+        const r = await api('upd_check', {});
+        if (r.newer) S.upd.v = r.info.v;
+    } catch (e) { return; }
+    if (S.upd.v && LS.get('updSeen', '') !== S.upd.v) { LS.set('updSeen', S.upd.v); toast(tr('Kaufen {0} ist da: Menü → Sicherung und Update', S.upd.v)); }
 }
 
 /* ---------- Start ---------- */
