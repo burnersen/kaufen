@@ -378,11 +378,26 @@ try {
         $look['keep'] = $src('keep') !== false;
         $look['who'] = $src('who') !== false;
         $look['due'] = $src('due') !== false;
+        // Eigene Einheiten als „Kiste/Kisten“ (Einzahl/Mehrzahl) oder nur „Eimer“. Schickt ein älteres Gerät nur die Einzahl, bleibt die gespeicherte Mehrzahl.
+        $oldUnits = (array)($old['units'] ?? []);
         $look['units'] = [];
         foreach ((array)$src('units') as $u) {
-            $u = kfClean($u, 12);
-            if ($u !== '' && preg_match('/^[^\d\s,;]+$/u', $u) && !in_array($u, $look['units'], true) && count($look['units']) < 12) $look['units'][] = $u;
+            $u = kfClean($u, 25);
+            if ($u === '' || !preg_match('~^[^\d\s,;/]{1,12}(?:/[^\d\s,;/]{1,12})?$~u', $u)) continue;
+            if (strpos($u, '/') === false && !array_key_exists('uv', $l)) {   // nur ältere Geräte schicken kein uv mit
+                foreach ($oldUnits as $o) if (is_string($o) && strpos($o, $u . '/') === 0) { $u = $o; break; }
+            }
+            if (!in_array($u, $look['units'], true) && count($look['units']) < 12) $look['units'][] = $u;
         }
+        // Mitgelieferte Einheiten, die bei der Mengenauswahl immer dastehen. null = Standard.
+        $uv = $src('uv');
+        if (is_array($uv)) {
+            $look['uv'] = [];
+            foreach ($uv as $k) {
+                $k = kfClean($k, 12);
+                if ($k !== '' && !in_array($k, $look['uv'], true) && count($look['uv']) < 60) $look['uv'][] = $k;
+            }
+        } else $look['uv'] = null;
         kfQ('UPDATE users SET look = ? WHERE id = ?', [json_encode($look, JSON_UNESCAPED_UNICODE), $me['id']]);
         kfBump('lv');   // damit die anderen Geräte des Kontos es beim nächsten Abgleich mitbekommen
         kfJson(['ok' => true]);
