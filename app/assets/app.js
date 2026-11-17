@@ -45,7 +45,7 @@ const I = {
 const LS = {
     get(k, d) { try { const v = localStorage.getItem('kf_' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
     set(k, v) { try { localStorage.setItem('kf_' + k, JSON.stringify(v)); } catch (e) {} },
-    clear() { try { Object.keys(localStorage).filter(k => k.startsWith('kf_') && !['kf_theme', 'kf_view', 'kf_palL', 'kf_palD', 'kf_look', 'kf_paint'].includes(k)).forEach(k => localStorage.removeItem(k)); } catch (e) {} },
+    clear() { try { Object.keys(localStorage).filter(k => k.startsWith('kf_') && !['kf_theme', 'kf_view', 'kf_palL', 'kf_palD', 'kf_look', 'kf_paint', 'kf_font'].includes(k)).forEach(k => localStorage.removeItem(k)); } catch (e) {} },
 };
 
 const low = s => String(s).toLocaleLowerCase('de');
@@ -1324,6 +1324,53 @@ function applyView() {
     btn.title = tr({ tiles: 'Zur Kachel-Ansicht', compact: 'Zur kompakten Ansicht', shop: 'Zum Laden-Modus' }[next]);
 }
 
+/** Schriftgrößen, gemerkt pro Gerät wie die Ansicht: je ein Faktor (1 = Standard, Grenzen von bis) und wie fett die Anzahl ohne Einheit ist.
+    Landen als CSS-Variablen --fs-… und --fw-cnt an der Seite, boot.js setzt sie schon vor dem ersten Bild. */
+const FONTS = [['all', 'Alle Schriften', .85, 1.4], ['head', 'Überschriften', .7, 1.5], ['name', 'Produktnamen', .7, 1.5],
+    ['qty', 'Menge', .7, 1.5], ['cnt', 'Anzahl', .6, 1.5], ['hint', 'Hinweis', .7, 1.5]];
+const WEIGHTS = [[800, 'Fett'], [600, 'Halbfett'], [400, 'Normal']];
+function curFont() {
+    const f = LS.get('font', null) || {}, o = {};
+    for (const [k, , lo, hi] of FONTS) o[k] = +f[k] >= lo && +f[k] <= hi ? +f[k] : 1;
+    o.w = WEIGHTS.some(([w]) => w === +f.w) ? +f.w : 800;
+    return o;
+}
+function applyFont() {
+    const f = curFont(), st = document.documentElement.style;
+    for (const [k] of FONTS) st.setProperty('--fs-' + k, String(f[k]));
+    st.setProperty('--fw-cnt', String(f.w));
+}
+/** Fenster für die Schriftgrößen: oben eine Vorschau in der Ansicht dieses Geräts, darunter je ein Regler */
+function editFont() {
+    const sh = sheet(tr('Schriftgrößen'));
+    const v = curView();
+    const prev = h('div', { class: 'prev' + (v === 'tiles' ? '' : ' ' + v), 'aria-hidden': 'true' },
+        h('h2', null, tr('Noch zu kaufen'), h('small', null, '3')),
+        h('div', { class: 'grp' }, dc('Milch & Käse')),
+        h('div', { class: 'grid todo' }, tile('on', {}, dn('Milch'), '3'), tile('on', {}, dn('Butter'), '2 Packungen, die guten'), tile('on', {}, dn('Quark'), '1,5 kg')));
+    prev.querySelectorAll('button').forEach(b => { b.tabIndex = -1; });
+    let f = curFont();
+    const save = () => { LS.set('font', f); applyFont(); };
+    const rows = FONTS.map(([k, name, lo, hi]) => {
+        const out = h('b');
+        const r = h('input', { type: 'range', min: String(lo * 100), max: String(hi * 100), step: '5', 'aria-label': tr(name),
+            oninput: () => { f[k] = +r.value / 100; out.textContent = r.value + ' %'; save(); } });
+        return { k, r, out, node: h('label', { class: 'sl fs' }, h('span', { class: 'fsl' }, tr(name), out), r) };
+    });
+    const wSel = h('select', { onchange: () => { f.w = +wSel.value; save(); } }, WEIGHTS.map(([w, s]) => h('option', { value: String(w) }, tr(s))));
+    const show = () => {
+        for (const x of rows) { x.r.value = String(Math.round(f[x.k] * 100)); x.out.textContent = x.r.value + ' %'; }
+        wSel.value = String(f.w);
+    };
+    put(sh.body, prev, rows.map(x => x.node),
+        h('label', { class: 'field' }, tr('Anzahl ohne Einheit'), wSel),
+        h('p', { class: 'info' }, tr('Gilt nur auf diesem Gerät. 100 % und fett ist der Standard.')),
+        h('div', { class: 'btns' },
+            h('button', { class: 'btn', type: 'button', onclick: () => { LS.set('font', null); f = curFont(); applyFont(); show(); } }, tr('Zurücksetzen')),
+            h('button', { class: 'btn primary', type: 'button', onclick: () => sh.close() }, tr('Fertig'))));
+    show();
+}
+
 /** Sprache: was am Konto gewählt ist, sonst was dieses Gerät zuletzt hatte (Cookie, auch vom Umschalter der Anmeldeseite), sonst die Sprache des Geräts. */
 const pickLang = () => look.lang || (/(?:^|; )kf_lang=(de|en)/.exec(document.cookie) || [])[1] || (/^de/i.test(navigator.language || 'de') ? 'de' : 'en');
 function applyLang() {
@@ -1454,6 +1501,8 @@ function showSettings() {
     put(sh.body,
         h('label', { class: 'field' }, 'Sprache / Language', langSel),
         h('label', { class: 'field' }, tr('Ansicht (nur dieses Gerät)'), view),
+        h('div', { class: 'qlabel' }, tr('Schrift (nur dieses Gerät)')),
+        h('button', { class: 'btn fontbtn', type: 'button', onclick: editFont }, tr('Schriftgrößen anpassen …')),
         h('label', { class: 'field' }, tr('Hell oder dunkel'), theme),
         h('div', { class: 'qlabel' }, tr('Design für hell')), swatches('light'),
         h('div', { class: 'qlabel' }, tr('Design für dunkel')), swatches('dark'),
@@ -1549,6 +1598,7 @@ window.addEventListener('online', tick);
 window.addEventListener('offline', () => setOnline(false));
 
 applyTheme();
+applyFont();
 applyLang();
 render();
 tick();

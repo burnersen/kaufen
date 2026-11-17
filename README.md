@@ -51,6 +51,7 @@ Produkte tippt man aus einem fertigen Katalog an, sortiert nach Warengruppen. Im
 - **Katalog verwalten:** Produkte und Warengruppen anlegen, umbenennen, verschieben, löschen. Der Administrator kann den ganzen Katalog als CSV oder JSON exportieren, bearbeiten und wieder importieren, jeweils mit deutschem und englischem Namen. Ein Suchfeld filtert den Katalog, Enter legt das Gesuchte neu an, wenn es noch fehlt. Der Administrator kann alles löschen und den Standard wiederherstellen. Vor jeder großen Änderung wird automatisch gesichert, die letzten 10 Stände lassen sich zurückholen.
 - **Konten:** das erste Konto ist der Administrator, er legt die anderen an. Eine offene Registrierung gibt es nicht.
 - **Drei Ansichten:** kleine Kacheln, kompakt oder Laden-Modus (große Zeilen fürs Abhaken im Laden), umschaltbar mit dem Knopf oben rechts, gemerkt pro Gerät.
+- **Schriftgrößen:** in den Einstellungen pro Gerät, für alles zusammen oder einzeln für Überschriften, Produktnamen, Menge, Anzahl und Hinweis, dazu wie fett die Anzahl ist. Mit Vorschau in der gewählten Ansicht.
 - Als App installierbar (PWA), heller und dunkler Modus, Bremse gegen das Durchprobieren von Passwörtern.
 
 ## Voraussetzungen
