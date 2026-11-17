@@ -242,6 +242,7 @@ ui: {
     'Schrift (nur dieses Gerät)': 'Text (this device only)',
     'Schriftgrößen anpassen …': 'Adjust text sizes …',
     'Schriftgrößen': 'Text sizes',
+    'Beim Ziehen am Regler die echte Liste zeigen': 'Show the real list while dragging a slider',
     'Alle Schriften': 'All text', 'Produktnamen': 'Product names', 'Anzahl': 'Count',
     'Anzahl ohne Einheit': 'Count without a unit',
     'Fett': 'Bold', 'Halbfett': 'Semibold', 'Normal': 'Regular',
