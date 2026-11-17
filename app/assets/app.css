@@ -255,6 +255,12 @@ button.row { font-weight: 600; }
 .auto[aria-pressed="true"]::before { content: "✓"; color: var(--acc); font-weight: 700; }
 /* Schriftgrößen: Regler mit Prozentangabe */
 .fontbtn { width: 100%; margin-bottom: .9rem; }
+/* Beim Ziehen die echte Liste zeigen: Fenster und Abdunklung verschwinden, nur der angefasste Regler bleibt als Leiste stehen.
+   Der Rand um die Leiste kommt aus dem Schatten, damit sich unter dem Finger nichts verschiebt. */
+#layer.peek .ov { background: none; }
+#layer.peek .sheet { visibility: hidden; box-shadow: none; animation: none; }
+#layer.peek .sl.peeking { visibility: visible; background: var(--card); border-radius: .9rem; box-shadow: 0 0 0 .6rem var(--card), 0 10px 30px rgba(0, 0, 0, .35); }
+.check.peekopt { margin: 0 0 .9rem; }
 .sl.fs { --track: linear-gradient(to right, var(--acc-soft), var(--acc)); }
 .sl.fs .fsl { display: flex; justify-content: space-between; }
 .sl.fs b { color: var(--text); }

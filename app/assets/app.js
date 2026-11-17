@@ -1609,6 +1609,35 @@ function applyFont() {
     for (const [k] of FONTS) st.setProperty('--fs-' + k, String(f[k]));
     st.setProperty('--fw-cnt', String(f.w));
 }
+/** Beim Ziehen an einem Regler die echte Liste zeigen (Schalter im Farbmischer und bei den Schriftgrößen, gemerkt pro Gerät):
+    alle Fenster werden unsichtbar, nur die Zeile mit dem Regler bleibt als Leiste stehen. on(true) beim Anfassen, on(false) beim Loslassen. */
+function peekOnDrag(input, on) {
+    let active = false;
+    const ends = [[window, 'pointerup'], [window, 'touchend'], [window, 'touchcancel'], [input, 'change'], [input, 'blur']];
+    const end = () => {
+        if (!active) return;
+        active = false;
+        input.closest('.sl').classList.remove('peeking');
+        $('#layer').classList.remove('peek');
+        for (const [t, ev] of ends) t.removeEventListener(ev, end);
+        if (on) on(false);
+    };
+    const start = e => {
+        if (active || !LS.get('peek', false) || e.button > 0) return;
+        active = true;
+        input.closest('.sl').classList.add('peeking');
+        $('#layer').classList.add('peek');
+        for (const [t, ev] of ends) t.addEventListener(ev, end);
+        if (on) on(true);
+    };
+    input.addEventListener('pointerdown', start);
+    input.addEventListener('touchstart', start, { passive: true });
+}
+/** Der Schalter dazu, in beiden Fenstern derselbe */
+function peekOption() {
+    const box = h('input', { type: 'checkbox', checked: LS.get('peek', false), onchange: () => LS.set('peek', box.checked) });
+    return h('label', { class: 'check peekopt' }, box, h('span', null, tr('Beim Ziehen am Regler die echte Liste zeigen')));
+}
 /** Fenster für die Schriftgrößen: oben eine Vorschau in der Ansicht dieses Geräts, darunter je ein Regler */
 function editFont() {
     const sh = sheet(tr('Schriftgrößen'));
@@ -1624,6 +1653,7 @@ function editFont() {
         const out = h('b');
         const r = h('input', { type: 'range', min: String(lo * 100), max: String(hi * 100), step: '5', 'aria-label': tr(name),
             oninput: () => { f[k] = +r.value / 100; out.textContent = r.value + ' %'; save(); } });
+        peekOnDrag(r);
         return { k, r, out, node: h('label', { class: 'sl fs' }, h('span', { class: 'fsl' }, tr(name), out), r) };
     });
     const wSel = h('select', { onchange: () => { f.w = +wSel.value; save(); } }, WEIGHTS.map(([w, s]) => h('option', { value: String(w) }, tr(s))));
@@ -1631,7 +1661,7 @@ function editFont() {
         for (const x of rows) { x.r.value = String(Math.round(f[x.k] * 100)); x.out.textContent = x.r.value + ' %'; }
         wSel.value = String(f.w);
     };
-    put(sh.body, prev, rows.map(x => x.node),
+    put(sh.body, prev, peekOption(), rows.map(x => x.node),
         h('label', { class: 'field' }, tr('Anzahl ohne Einheit'), wSel),
         h('p', { class: 'info' }, tr('Gilt nur auf diesem Gerät. 100 % und fett ist der Standard.')),
         h('div', { class: 'btns' },
@@ -1679,8 +1709,12 @@ function editLook(mode, redraw) {
         h('div', { class: 'cat' }, dc('Getränke'), h('small', null, '12'), icon(I.down)),
         h('div', { class: 'btns' }, h('span', { class: 'btn' }, tr('Knopf')), h('span', { class: 'btn primary' }, tr('Speichern'))));
     const tabs = ALL.map(([k, name]) => h('button', { class: 'seg', type: 'button', onclick: () => { part = k; show(); } }, h('i'), tr(name)));
+    // Beim Ziehen mit freiem Blick: die echte Seite zeigt genau die Farben, an denen gedreht wird, auch wenn das Gerät gerade die andere Seite (hell/dunkel) zeigt
+    let peeking = false;
+    const peek = on => { peeking = on; if (on) setVars(document.documentElement, col); else applyTheme(); };
     const range = (cls, label, max, i) => {
         const r = h('input', { type: 'range', min: '0', max: String(max), step: '1', 'aria-label': label, oninput: () => { hsl[part][i] = +r.value; col[part] = hsl2hex(hsl[part]); edited(); show(); } });
+        peekOnDrag(r, peek);
         return [h('label', { class: 'sl ' + cls }, label, r), r];
     };
     const [hueL, hue] = range('hue', tr('Farbton'), 360, 0), [satL, sat] = range('sat', tr('Sättigung'), 100, 1), [ligL, lig] = range('lig', tr('Helligkeit'), 100, 2);
@@ -1710,6 +1744,7 @@ function editLook(mode, redraw) {
         for (const [k] of TPARTS) if (!col[k]) hsl[k] = hex2hsl(eff(k));   // automatische gehen mit den Grundfarben mit
         setVars(prev, col);
         setLook({ [ck]: { ...col } }, true);   // die App dahinter färbt sich gleich mit, zum Konto geht es beim Schließen
+        if (peeking) setVars(document.documentElement, col);
         tabs.forEach((t, i) => { const k = ALL[i][0]; t.firstChild.style.setProperty('--c', eff(k)); t.setAttribute('aria-pressed', String(k === part)); });
         const [a, b, c] = hsl[part];
         hue.value = a; sat.value = b; lig.value = c;
@@ -1721,7 +1756,7 @@ function editLook(mode, redraw) {
         warn.textContent = tr('Schwer zu lesen: {0}', bad.join(', '));
         warn.hidden = !bad.length;
     }
-    put(sh.body, prev, h('div', { class: 'segs' }, tabs), sliders,
+    put(sh.body, prev, h('div', { class: 'segs' }, tabs), peekOption(), sliders,
         h('div', { class: 'pick' }, h('label', { class: 'btn' }, picker, tr('Farbwähler')), code), matchBtn,
         h('p', { class: 'info' }, tr('Wählt zur Akzentfarbe eine gut lesbare Listenschrift und eine Mengenfarbe aus dem Farbkreis, die sich davon abhebt. Bleibt dran, wenn du den Akzent änderst.')), warn,
         h('label', { class: 'field' }, base),
