@@ -8,7 +8,8 @@
  *   app/views/   Anmeldeseite und Hauptseite
  *   app/assets/  CSS, JavaScript, Symbole (werden über diese Datei ausgeliefert)
  *
- * Reines PHP mit SQLite, keine Abhängigkeiten, nichts wird von fremden Servern nachgeladen.
+ * PHP mit SQLite auf dem Server, schlichtes JavaScript und CSS im Browser. Keine Frameworks, keine Abhängigkeiten,
+ * nichts wird von fremden Servern nachgeladen.
  * Der Code enthält KEINE Zugangsdaten. Alles Geheime entsteht beim ersten Aufruf und liegt
  * dann im Ordner data/. Den Ordner data/ niemals veröffentlichen oder ins Git legen.
  *
