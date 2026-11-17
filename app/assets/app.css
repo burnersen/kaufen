@@ -235,8 +235,11 @@ button.row { font-weight: 600; }
 .pick input[type="color"] { width: 2rem; height: 2rem; padding: 0; border: 1px solid var(--line); border-radius: .5rem; background: none; cursor: pointer; }
 .pick .hex { flex: 1; min-width: 6.5rem; padding: .6rem .8rem; border: 1px solid var(--line); border-radius: .8rem; background: var(--card); outline: none; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .95rem; }
 .pick .hex:focus { border-color: var(--acc); box-shadow: 0 0 0 3px var(--acc-soft); }
-.pick .auto[aria-pressed="true"] { border-color: var(--acc); background: var(--acc-soft); }
-.pick .auto[aria-pressed="true"]::before { content: "✓"; color: var(--acc); font-weight: 700; }
+/* Knopf „Schriftfarben automatisch abstimmen“: gedrückt, solange Listenschrift und Menge dem Akzent folgen */
+.btn.match { width: 100%; }
+.btn.match + .info { margin: .4rem 0 .8rem; }
+.auto[aria-pressed="true"] { border-color: var(--acc); background: var(--acc-soft); }
+.auto[aria-pressed="true"]::before { content: "✓"; color: var(--acc); font-weight: 700; }
 /* Schriftgrößen: Regler mit Prozentangabe */
 .fontbtn { width: 100%; margin-bottom: .9rem; }
 .sl.fs { --track: linear-gradient(to right, var(--acc-soft), var(--acc)); }
