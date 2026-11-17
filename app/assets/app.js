@@ -871,7 +871,7 @@ function parseMulti(raw) {
             const nm = p ? p.n : canon(name.charAt(0).toLocaleUpperCase(lang) + name.slice(1)).slice(0, 60);
             const note = q && !(q.n === 1 && q.u < 0 && !q.cu) ? fmtQty(q, 'de', '') : '';
             out.delete(low(nm));
-            out.set(low(nm), { n: nm, c: p ? p.c : guessCat(nm), note, known: !!p });
+            out.set(low(nm), { n: nm, c: p ? p.c : 0, note, known: !!p });
         }
     }
     return [...out.values()];
@@ -891,40 +891,6 @@ function addMulti(m) {
     qInput.blur();
     render();
     toast(tr('{0} Produkte auf der Liste', m.length), fresh.length ? tr('Rückgängig') : null, () => op(fresh.map(uid => ({ t: 'remove', uid }))));
-}
-
-/** Warengruppe für ein neues Produkt raten. Deutsche Wörter tragen ihre Bedeutung hinten: Bergkäse wie Käse, Dinkelbrötchen wie Brötchen,
-    Hundefutter wie Katzenfutter. Verglichen wird mit allen Produkten im Katalog (deutsch und englisch), Wort für Wort von hinten:
-    erst das letzte Wort, passt das nirgends hin, das davor („Windeln Größe 4“). Ein ganzes Katalogwort am Ende zählt doppelt,
-    ein bloß gleiches Wortende (ab 5 Buchstaben) nur, wenn mindestens zwei Produkte derselben Gruppe so enden. Namen aus mehreren
-    Wörtern („Gehackte Tomaten“) zählen halb. Gewinnt keine Gruppe klar (mindestens die Hälfte der Stimmen), bleibt es bei 0. */
-function guessCat(name) {
-    const words = s => norm(s).split(/[\s-]+/).filter(x => /^[a-z]{3,}$/.test(x));
-    const cands = [];
-    for (const p of S.catalog.products) for (const pn of [p.n, enName(p.n)]) {
-        const pw = pn && words(pn).pop();
-        if (pw) cands.push([pw, p.c, /\s/.test(pn.trim()) ? .5 : 1]);
-    }
-    for (const w of words(name).reverse()) {
-        const votes = new Map();
-        let total = 0;
-        for (const [pw, c, f] of cands) {
-            if (pw === w) return c;   // gleiches Wort: „Bio Milch“ ist Milch
-            let k = 0;
-            while (k < w.length && k < pw.length && w[w.length - 1 - k] === pw[pw.length - 1 - k]) k++;
-            const whole = k === pw.length;
-            if (!(whole && k >= 3) && k < 5) continue;
-            const v = votes.get(c) || { s: 0, whole: 0, part: 0 };
-            v.s += k * k * (whole ? 2 : 1) * f;
-            if (whole) v.whole++; else v.part++;
-            votes.set(c, v);
-            total += k * k * (whole ? 2 : 1) * f;
-        }
-        let best = 0, bv = null;
-        for (const [c, v] of votes) if (!bv || v.s > bv.s) { best = c; bv = v; }
-        if (bv && bv.s >= total * .5 && (bv.whole || bv.part >= 2)) return best;
-    }
-    return 0;
 }
 
 /* ---------- Tippen und lange drücken ---------- */
@@ -972,7 +938,7 @@ function newProduct(name, catId) {
     ask(tr('Neues Produkt'), [
         { k: 'n', label: tr('Name'), value: name, max: 60 },
         { k: 'note', type: 'qty' },
-        { k: 'c', label: tr('Warengruppe'), type: 'select', value: catId || (name ? guessCat(canon(name)) : 0), options: catOptions() },   // geraten am Wortende
+        { k: 'c', label: tr('Warengruppe'), type: 'select', value: catId || 0, options: catOptions() },
         cats.length && { k: 'keep', type: 'checkbox', label: tr('Auch im Katalog speichern'), value: true },
     ], tr('Auf die Liste'), async v => {
         const n = canon(v.n.trim().replace(/\s+/g, ' '));
