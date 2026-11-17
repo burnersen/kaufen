@@ -539,15 +539,33 @@ function canonNote(s) {
     return p.n ? fmtQty(p, 'de', p.hint) : s;
 }
 /** Eigene Einheit fürs Konto anlegen, z. B. Kasten. done bekommt den Namen. */
-function addUnit(done) {
-    ask(tr('Eigene Einheit'), [{ k: 'u', label: tr('Name'), placeholder: tr('z. B. Kasten, Beutel, Rolle'), max: 12 }], tr('Hinzufügen'), v => {
-        const u = v.u.trim();
-        if (!/^[^\d\s,;]{1,12}$/.test(u)) throw new Error(tr('Bitte ein einzelnes Wort ohne Ziffern eingeben, höchstens 12 Zeichen.'));
-        if (unitIndex(u) >= 0 || look.units.some(s => low(s) === low(u))) throw new Error(tr('Diese Einheit gibt es schon.'));
-        if (look.units.length >= 12) throw new Error(tr('Mehr als 12 eigene Einheiten gehen nicht.'));
-        setLook({ units: [...look.units, u] });
-        done(u);
-    });
+function addUnit(done) { unitDialog('', (u, old) => done(u)); }
+/** Eigene Einheit anlegen (old leer) oder umbenennen und löschen. done(neuer Name, alter Name), beim Löschen ist der neue Name leer.
+    Mengen, die schon mit der alten Einheit auf Listen stehen, bleiben als Text stehen („2 Kasten“). */
+function unitDialog(old, done) {
+    ask(old ? tr('Einheit bearbeiten') : tr('Eigene Einheit'), [{ k: 'u', label: tr('Name'), value: old, placeholder: tr('z. B. Kasten, Beutel, Rolle'), max: 12 },
+        old && { type: 'info', text: tr('Mengen, die schon mit „{0}“ auf einer Liste stehen, bleiben als Text stehen.', old) }],
+        old ? tr('Speichern') : tr('Hinzufügen'), v => {
+            const u = v.u.trim();
+            if (u === old) return;
+            if (!/^[^\d\s,;]{1,12}$/.test(u)) throw new Error(tr('Bitte ein einzelnes Wort ohne Ziffern eingeben, höchstens 12 Zeichen.'));
+            if (unitIndex(u) >= 0 || look.units.some(s => low(s) === low(u) && s !== old)) throw new Error(tr('Diese Einheit gibt es schon.'));
+            if (!old && look.units.length >= 12) throw new Error(tr('Mehr als 12 eigene Einheiten gehen nicht.'));
+            setLook({ units: old ? look.units.map(x => x === old ? u : x) : [...look.units, u] });
+            done(u, old);
+        },
+        [old && { label: tr('Löschen'), danger: true, fn: () => { setLook({ units: look.units.filter(x => x !== old) }); done('', old); } }]);
+}
+/** Alle eigenen Einheiten auf einen Blick: antippen zum Umbenennen oder Löschen, dazu „+ Einheit“. changed(neu, alt) nach jeder Änderung. */
+function manageUnits(changed) {
+    const sh = sheet(tr('Eigene Einheiten'));
+    const box = h('div', { class: 'chips' });
+    const after = (u, old) => { draw(); changed(u, old); };
+    const draw = () => fill(box, look.units.map(u => h('button', { class: 'chip', type: 'button', 'aria-label': tr('{0} bearbeiten', u), onclick: () => unitDialog(u, after) }, u)),
+        h('button', { class: 'chip add', type: 'button', onclick: () => unitDialog('', after) }, tr('+ Einheit')));
+    draw();
+    put(sh.body, h('p', { class: 'info' }, tr('Antippen zum Umbenennen oder Löschen.')), box,
+        h('div', { class: 'btns' }, h('button', { class: 'btn primary', type: 'button', onclick: () => sh.close() }, tr('Fertig'))));
 }
 function qtyField(value) {
     const st = parseQty(value);
@@ -571,7 +589,11 @@ function qtyField(value) {
     const drawChips = () => {
         chips = [...UNITS.map((u, i) => h('button', { class: 'chip', type: 'button', onclick: () => pick(i, '') })),
             ...look.units.map(cu => h('button', { class: 'chip', type: 'button', onclick: () => pick(-1, cu) }, cu))];
-        fill(chipBox, chips, h('button', { class: 'chip add', type: 'button', onclick: () => addUnit(cu => { drawChips(); if (st.cu !== cu) pick(-1, cu); }) }, tr('+ Einheit')));
+        fill(chipBox, chips, h('button', { class: 'chip add', type: 'button', onclick: () => addUnit(cu => { drawChips(); if (st.cu !== cu) pick(-1, cu); }) }, tr('+ Einheit')),
+            look.units.length > 0 && h('button', { class: 'chip add', type: 'button', onclick: () => manageUnits((u, old) => {
+                if (old && st.cu === old) st.cu = u;   // die gewählte Einheit umbenannt oder gelöscht
+                drawChips();
+            }) }, tr('✎ Bearbeiten')));
         show(true);
     };
     const minus = h('button', { class: 'qbtn', type: 'button', 'aria-label': tr('Weniger') }, '−');
@@ -871,7 +893,7 @@ function parseMulti(raw) {
             const nm = p ? p.n : canon(name.charAt(0).toLocaleUpperCase(lang) + name.slice(1)).slice(0, 60);
             const note = q && !(q.n === 1 && q.u < 0 && !q.cu) ? fmtQty(q, 'de', '') : '';
             out.delete(low(nm));
-            out.set(low(nm), { n: nm, c: p ? p.c : 0, note, known: !!p });
+            out.set(low(nm), { n: nm, c: p ? p.c : guessCat(nm), note, known: !!p });
         }
     }
     return [...out.values()];
@@ -891,6 +913,40 @@ function addMulti(m) {
     qInput.blur();
     render();
     toast(tr('{0} Produkte auf der Liste', m.length), fresh.length ? tr('Rückgängig') : null, () => op(fresh.map(uid => ({ t: 'remove', uid }))));
+}
+
+/** Warengruppe für ein neues Produkt raten. Deutsche Wörter tragen ihre Bedeutung hinten: Bergkäse wie Käse, Dinkelbrötchen wie Brötchen,
+    Hundefutter wie Katzenfutter. Verglichen wird mit allen Produkten im Katalog (deutsch und englisch), Wort für Wort von hinten:
+    erst das letzte Wort, passt das nirgends hin, das davor („Windeln Größe 4“). Ein ganzes Katalogwort am Ende zählt doppelt,
+    ein bloß gleiches Wortende (ab 5 Buchstaben) nur, wenn mindestens zwei Produkte derselben Gruppe so enden. Namen aus mehreren
+    Wörtern („Gehackte Tomaten“) zählen halb. Gewinnt keine Gruppe klar (mindestens die Hälfte der Stimmen), bleibt es bei 0. */
+function guessCat(name) {
+    const words = s => norm(s).split(/[\s-]+/).filter(x => /^[a-z]{3,}$/.test(x));
+    const cands = [];
+    for (const p of S.catalog.products) for (const pn of [p.n, enName(p.n)]) {
+        const pw = pn && words(pn).pop();
+        if (pw) cands.push([pw, p.c, /\s/.test(pn.trim()) ? .5 : 1]);
+    }
+    for (const w of words(name).reverse()) {
+        const votes = new Map();
+        let total = 0;
+        for (const [pw, c, f] of cands) {
+            if (pw === w) return c;   // gleiches Wort: „Bio Milch“ ist Milch
+            let k = 0;
+            while (k < w.length && k < pw.length && w[w.length - 1 - k] === pw[pw.length - 1 - k]) k++;
+            const whole = k === pw.length;
+            if (!(whole && k >= 3) && k < 5) continue;
+            const v = votes.get(c) || { s: 0, whole: 0, part: 0 };
+            v.s += k * k * (whole ? 2 : 1) * f;
+            if (whole) v.whole++; else v.part++;
+            votes.set(c, v);
+            total += k * k * (whole ? 2 : 1) * f;
+        }
+        let best = 0, bv = null;
+        for (const [c, v] of votes) if (!bv || v.s > bv.s) { best = c; bv = v; }
+        if (bv && bv.s >= total * .5 && (bv.whole || bv.part >= 2)) return best;
+    }
+    return 0;
 }
 
 /* ---------- Tippen und lange drücken ---------- */
@@ -938,7 +994,7 @@ function newProduct(name, catId) {
     ask(tr('Neues Produkt'), [
         { k: 'n', label: tr('Name'), value: name, max: 60 },
         { k: 'note', type: 'qty' },
-        { k: 'c', label: tr('Warengruppe'), type: 'select', value: catId || 0, options: catOptions() },
+        { k: 'c', label: tr('Warengruppe'), type: 'select', value: catId || (name ? guessCat(canon(name)) : 0), options: catOptions() },   // geraten am Wortende
         cats.length && { k: 'keep', type: 'checkbox', label: tr('Auch im Katalog speichern'), value: true },
     ], tr('Auf die Liste'), async v => {
         const n = canon(v.n.trim().replace(/\s+/g, ' '));
@@ -1358,6 +1414,9 @@ function showUsers() {
             h('p', { class: 'info' }, tr('Konten legst nur du an, eine offene Registrierung gibt es nicht. Gib Name und Passwort einfach weiter, jeder kann sein Passwort danach selbst ändern.')),
             S.users.map(u => h('div', { class: 'row' },
                 h('span', { class: 'grow' }, u.n, u.admin && h('span', { class: 'badge' }, tr('Administrator'))),
+                h('button', { class: 'btn small', type: 'button', onclick: () => ask(tr('Konto umbenennen'), [{ k: 'name', label: tr('Name'), value: u.n, max: 30 },
+                    { type: 'info', text: tr('Angemeldete Geräte bleiben angemeldet. Beim nächsten Anmelden gilt der neue Name.') }], tr('Speichern'),
+                    v => v.name.trim() === u.n ? null : act('user_rename', { id: u.id, name: v.name.trim() })) }, tr('Name')),
                 h('button', { class: 'btn small', type: 'button', onclick: () => ask(tr('Neues Passwort für {0}', u.n), [{ k: 'pass', label: tr('Neues Passwort (mindestens 8 Zeichen)'), type: 'password' }], tr('Setzen'),
                     async v => { await act('user_pass', { id: u.id, pass: v.pass }); toast(tr('Passwort geändert')); }) }, tr('Passwort')),
                 u.id !== S.me.id && h('button', { class: 'btn small danger', type: 'button', onclick: () => confirmDlg(tr('Konto löschen'),
@@ -1680,7 +1739,7 @@ function showSettings() {
     const keepBox = h('input', { type: 'checkbox', checked: look.keep, onchange: () => { setLook({ keep: keepBox.checked }); render(); } });
     const unitBox = h('div', { class: 'chips' });
     const drawUnits = () => fill(unitBox,
-        look.units.map(u => h('button', { class: 'chip', type: 'button', 'aria-label': tr('{0} entfernen', u), onclick: () => { setLook({ units: look.units.filter(x => x !== u) }); drawUnits(); } }, u + ' ✕')),
+        look.units.map(u => h('button', { class: 'chip', type: 'button', 'aria-label': tr('{0} bearbeiten', u), onclick: () => unitDialog(u, drawUnits) }, u)),
         h('button', { class: 'chip add', type: 'button', onclick: () => addUnit(drawUnits) }, tr('+ Einheit')));
     drawUnits();
     // Mitteilungen: der Haken zeigt, ob dieses Gerät angemeldet ist
@@ -1732,7 +1791,7 @@ function showSettings() {
         h('label', { class: 'check' }, dueBox, h('span', null, tr('Vorschlagen, was bald wieder fällig ist'))),
         h('p', { class: 'info' }, tr('Kaufen lernt beim Abhaken, wie oft ihr etwas kauft, zum Beispiel Milch alle 5 Tage. Ist es wieder so weit, steht es unter der Liste bei „Bald wieder fällig“. Ein Produkt braucht dafür ein paar Einkäufe.')),
         h('div', { class: 'qlabel' }, tr('Eigene Einheiten')), unitBox,
-        h('p', { class: 'info units' }, tr('Erscheinen bei der Mengenauswahl neben Stück, Packung und Liter. Antippen entfernt eine Einheit.')),
+        h('p', { class: 'info units' }, tr('Erscheinen bei der Mengenauswahl neben Stück, Packung und Liter. Antippen zum Umbenennen oder Löschen.')),
         pushCan() && h('label', { class: 'check' }, pushBox, h('span', null, tr('Mitteilungen auf diesem Gerät'))),
         h('p', { class: 'info' }, pushCan() ? tr('Du bekommst eine Mitteilung, wenn jemand etwas auf eine Liste setzt, die ihr teilt. Mehrere Produkte kommen gebündelt in einer Mitteilung, sobald der andere Kaufen verlässt.')
             : S.push ? tr('Mitteilungen gehen auf diesem Gerät oder in diesem Browser nicht. Auf dem iPhone muss Kaufen dafür über „Zum Home-Bildschirm“ installiert sein (ab iOS 16.4).')
