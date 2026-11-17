@@ -1269,6 +1269,40 @@ function derive(c) {
         '--danger': dark ? '#ff8a7a' : '#b42318', '--shadow': dark ? 'none' : '0 1px 2px rgba(0, 0, 0, .08)', 'color-scheme': dark ? 'dark' : 'light',
     };
 }
+/** Schriftfarben auf dem Akzent abstimmen (Knopf im Farbmischer).
+    Listenschrift: so lesbar wie möglich, fast Weiß oder fast Schwarz mit einem Hauch vom Farbton des Akzents.
+    Menge: eine Farbe aus dem Farbkreis, die zum Akzent passt (schräg gegenüber und Dreiklang am liebsten, genau gegenüber flimmert leicht),
+    so kräftig wie möglich, aber gut lesbar (Kontrast 4,5, geht das mit Farbe nicht, 3,5) und damit klar anders als die Listenschrift.
+    Bei grauem Akzent die klassischen Hervorhebungen: Gold auf dunkel, Blau auf hell. */
+function matchText(acc) {
+    const [ah, asat] = hex2hsl(acc), la = lum(acc);
+    const light = contrast(acc, '#ffffff') >= contrast(acc, '#101418');   // helle Schrift auf diesem Akzent?
+    const plain = light ? '#ffffff' : '#101418', tint = hsl2hex([ah, asat < 12 ? 0 : 35, light ? 97 : 9]);
+    const at = contrast(acc, tint) >= contrast(acc, plain) * .9 ? tint : plain;
+    const fit = (hue, up) => {
+        if (asat < 12) return up ? (hue >= 35 && hue <= 55 ? 1 : .8) : (hue >= 205 && hue <= 235 ? 1 : .8);
+        const d = Math.min(Math.abs(hue - ah), 360 - Math.abs(hue - ah));   // Abstand im Farbkreis
+        return d >= 165 ? .9 : d >= 100 ? 1 : d >= 60 ? .8 : d >= 30 ? .55 : .3;
+    };
+    const chroma = c => { const v = hex2rgb(c); return (Math.max(...v) - Math.min(...v)) / 255; };   // wie bunt
+    for (const goal of [4.5, 3.5]) {
+        let best = null;
+        for (let hue = 0; hue < 360; hue += 5) for (const up of [light, !light]) for (const sat of [70, 100]) {
+            // von der Mitte (kräftigste Farbe) Richtung hell bzw. dunkel, bis es lesbar genug ist, dann noch ein Stück Reserve.
+            // Ab „bunt genug“ zählt mehr Farbe nicht mehr, so gewinnt der gedämpfte Ton statt Neon.
+            for (let l = 50; l >= 4 && l <= 96; l += up ? 1 : -1) {
+                const lc = lum(hsl2hex([hue, sat, l]));
+                if ((lc > la) !== up || (Math.max(lc, la) + .05) / (Math.min(lc, la) + .05) < goal) continue;
+                const r = hsl2hex([hue, sat, Math.max(4, Math.min(96, l + (up ? 5 : -5)))]);
+                const score = fit(hue, up) * (up === light ? 1 : .8) * Math.min(chroma(r), .5);
+                if (!best || score > best.score + 1e-9) best = { c: r, score };
+                break;
+            }
+        }
+        if (best && best.score >= .2) return { at, qty: best.c };
+    }
+    return { at, qty: at };
+}
 const VARS = Object.keys(derive({ bg: '#ffffff', card: '#ffffff', text: '#000000', acc: '#000000' }));
 const setVars = (el, c) => { const v = c ? derive(c) : null; for (const k of VARS) { if (v) el.style.setProperty(k, v[k]); else el.style.removeProperty(k); } };
 /** Die vier Grundfarben eines fertigen Designs, aus app.css gelesen (Startpunkt fürs eigene Design) */
@@ -1397,6 +1431,10 @@ function editLook(mode, redraw) {
     const eff = k => col[k] || derive(col)[tvar[k]];   // die Farbe, die gerade gilt, auch wenn sie automatisch ist
     for (const [k] of ALL) hsl[k] = hex2hsl(eff(k));
     let part = 'acc';
+    // Abgestimmt (Knopf): Listenschrift und Menge gehen mit dem Akzent mit, bis man eine der beiden selbst einstellt
+    const matched = () => { const m = matchText(col.acc); return col.at === m.at && col.qty === m.qty; };
+    let follow = matched();
+    const edited = () => { if (part === 'at' || part === 'qty') follow = false; };
     const sh = sheet(mode === 'dark' ? tr('Eigenes Design für dunkel') : tr('Eigenes Design für hell'), { onclose: () => { saveLook(); redraw(); } });
     const demo = (cls, name, note) => h('span', { class: 'tile ' + cls }, h('span', { class: 'tn' }, name), note && h('span', { class: 'tt' }, note));
     const prev = h('div', { class: 'prev', 'aria-hidden': 'true' },
@@ -1407,23 +1445,25 @@ function editLook(mode, redraw) {
         h('div', { class: 'btns' }, h('span', { class: 'btn' }, tr('Knopf')), h('span', { class: 'btn primary' }, tr('Speichern'))));
     const tabs = ALL.map(([k, name]) => h('button', { class: 'seg', type: 'button', onclick: () => { part = k; show(); } }, h('i'), tr(name)));
     const range = (cls, label, max, i) => {
-        const r = h('input', { type: 'range', min: '0', max: String(max), step: '1', 'aria-label': label, oninput: () => { hsl[part][i] = +r.value; col[part] = hsl2hex(hsl[part]); show(); } });
+        const r = h('input', { type: 'range', min: '0', max: String(max), step: '1', 'aria-label': label, oninput: () => { hsl[part][i] = +r.value; col[part] = hsl2hex(hsl[part]); edited(); show(); } });
         return [h('label', { class: 'sl ' + cls }, label, r), r];
     };
     const [hueL, hue] = range('hue', tr('Farbton'), 360, 0), [satL, sat] = range('sat', tr('Sättigung'), 100, 1), [ligL, lig] = range('lig', tr('Helligkeit'), 100, 2);
     const sliders = h('div', { class: 'sliders' }, hueL, satL, ligL);
-    const picker = h('input', { type: 'color', 'aria-label': tr('Farbwähler'), oninput: () => { col[part] = picker.value.toLowerCase(); hsl[part] = hex2hsl(col[part]); show(); } });
+    const picker = h('input', { type: 'color', 'aria-label': tr('Farbwähler'), oninput: () => { col[part] = picker.value.toLowerCase(); hsl[part] = hex2hsl(col[part]); edited(); show(); } });
     // Farbcode zum Eintippen oder Einfügen: #7c3aed, 7c3aed oder kurz #73e
     const code = h('input', { type: 'text', class: 'hex', maxlength: 7, spellcheck: 'false', autocomplete: 'off', autocapitalize: 'none', 'aria-label': tr('Farbcode'), enterkeyhint: 'done',
         onchange: () => {
             let v = code.value.trim().toLowerCase().replace(/^#/, '');
             if (/^[0-9a-f]{3}$/.test(v)) v = v.replace(/./g, '$&$&');
-            if (/^[0-9a-f]{6}$/.test(v)) { col[part] = '#' + v; hsl[part] = hex2hsl(col[part]); }
+            if (/^[0-9a-f]{6}$/.test(v) && col[part] !== '#' + v) { col[part] = '#' + v; hsl[part] = hex2hsl(col[part]); edited(); }
             show();
         },
         onkeydown: e => { if (e.key === 'Enter') { e.preventDefault(); code.blur(); } } });
-    const load = c => { for (const [k] of TPARTS) delete col[k]; Object.assign(col, c); for (const [k] of ALL) hsl[k] = hex2hsl(eff(k)); show(); };
-    const autoBtn = h('button', { class: 'btn auto', type: 'button', onclick: () => { delete col[part]; show(); } }, tr('Automatisch'));
+    const load = c => { for (const [k] of TPARTS) delete col[k]; Object.assign(col, c); follow = matched(); for (const [k] of ALL) hsl[k] = hex2hsl(eff(k)); show(); };
+    // Ein Knopf für alle Schriftfarben: Listenschrift und Menge passend zum Akzent, Überschriften und Nebentext wieder wie die Schrift
+    const matchBtn = h('button', { class: 'btn auto match', type: 'button', onclick: () => { delete col.head; delete col.mut; follow = true; show(); } },
+        tr('Schriftfarben automatisch abstimmen'));
     const base = h('select', { 'aria-label': tr('Fertiges Design als Ausgangspunkt'), onchange: () => { if (base.value) load(palColors(base.value)); base.value = ''; } },
         h('option', { value: '' }, tr('Von einem fertigen Design ausgehen …')),
         [['Hell', PALS.light], ['Dunkel', PALS.dark]].map(([g, list]) => h('optgroup', { label: tr(g) }, list.map(([id, name]) => h('option', { value: id }, tr(name))))));
@@ -1431,6 +1471,7 @@ function editLook(mode, redraw) {
     // Welche Schrift auf welchem Untergrund steht. Geprüft werden die Schrift und alles, was selbst eingestellt ist.
     const pairs = [['text', ['bg', 'card']], ['head', ['bg']], ['mut', ['bg', 'card']], ['at', ['acc']], ['qty', ['acc']]];
     function show() {
+        if (follow) { Object.assign(col, matchText(col.acc)); hsl.at = hex2hsl(col.at); hsl.qty = hex2hsl(col.qty); }
         for (const [k] of TPARTS) if (!col[k]) hsl[k] = hex2hsl(eff(k));   // automatische gehen mit den Grundfarben mit
         setVars(prev, col);
         setLook({ [ck]: { ...col } }, true);   // die App dahinter färbt sich gleich mit, zum Konto geht es beim Schließen
@@ -1440,14 +1481,14 @@ function editLook(mode, redraw) {
         sliders.style.setProperty('--h', a); sliders.style.setProperty('--s', b + '%'); sliders.style.setProperty('--l', c + '%');
         picker.value = eff(part);
         code.value = eff(part);
-        autoBtn.hidden = !tvar[part];
-        autoBtn.setAttribute('aria-pressed', String(!col[part]));
+        matchBtn.setAttribute('aria-pressed', String(follow));
         const bad = pairs.filter(([k, on]) => col[k] && on.some(u => contrast(col[k], col[u]) < 3)).map(([k]) => tr(ALL.find(x => x[0] === k)[1]));
         warn.textContent = tr('Schwer zu lesen: {0}', bad.join(', '));
         warn.hidden = !bad.length;
     }
     put(sh.body, prev, h('div', { class: 'segs' }, tabs), sliders,
-        h('div', { class: 'pick' }, h('label', { class: 'btn' }, picker, tr('Farbwähler')), code, autoBtn), warn,
+        h('div', { class: 'pick' }, h('label', { class: 'btn' }, picker, tr('Farbwähler')), code), matchBtn,
+        h('p', { class: 'info' }, tr('Wählt zur Akzentfarbe eine gut lesbare Listenschrift und eine Mengenfarbe aus dem Farbkreis, die sich davon abhebt. Bleibt dran, wenn du den Akzent änderst.')), warn,
         h('label', { class: 'field' }, base),
         h('div', { class: 'btns' },
             h('button', { class: 'btn', type: 'button', onclick: () => load(start) }, tr('Zurücksetzen')),
