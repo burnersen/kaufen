@@ -139,9 +139,13 @@ function kfListData(int $lid): array {
     foreach (kfQ('SELECT uid, name, cat_id, note, added_by, added_at FROM items WHERE list_id = ? ORDER BY added_at, uid', [$lid]) as $r) {
         $items[] = ['uid' => $r['uid'], 'n' => $r['name'], 'c' => (int)$r['cat_id'], 'note' => $r['note'], 'by' => (int)$r['added_by'], 'at' => (int)$r['added_at']];
     }
+    // Gekauftes: die 80 jüngsten immer, dazu alles aus den letzten 120 Tagen (für „vor 3 Tagen“ und „Bald wieder fällig“).
+    // g = mittlerer Abstand zwischen zwei Käufen in Sekunden, gn = wie viele Abstände eingeflossen sind (-1 = nicht vorschlagen)
     $usage = [];
-    foreach (kfQ('SELECT name, cat_id, cnt, last_at FROM usage WHERE list_id = ? ORDER BY last_at DESC LIMIT 80', [$lid]) as $r) {
-        $usage[] = ['n' => $r['name'], 'c' => (int)$r['cat_id'], 'cnt' => (int)$r['cnt'], 'last' => (int)$r['last_at']];
+    $since = time() - 120 * 86400;
+    foreach (kfQ('SELECT name, cat_id, cnt, last_at, gap, gn FROM usage WHERE list_id = ? ORDER BY last_at DESC LIMIT 800', [$lid]) as $i => $r) {
+        if ($i >= 80 && (int)$r['last_at'] < $since) break;
+        $usage[] = ['n' => $r['name'], 'c' => (int)$r['cat_id'], 'cnt' => (int)$r['cnt'], 'last' => (int)$r['last_at'], 'g' => (int)$r['gap'], 'gn' => (int)$r['gn']];
     }
     $order = [];
     foreach (kfQ('SELECT cat_id FROM list_order WHERE list_id = ? ORDER BY pos', [$lid]) as $r) $order[] = (int)$r['cat_id'];
@@ -178,6 +182,8 @@ function kfState(array $me): array {
         'startList' => (int)kfGet('start_list', '0'),
         'push' => kfPushPublic(),   // öffentlicher Schlüssel für Mitteilungen, leer = dieser Server kann keine verschicken
         'users' => $users, 'lists' => $lists, 'catalog' => kfCatalog(), 'templates' => kfTemplates(),
+        // nur für den Administrator: neuere Version bekannt? Soll das Gerät heute nachsehen lassen (tägliches Nachsehen eingeschaltet)?
+        'upd' => $me['is_admin'] ? ['v' => kfUpdNewer($i = kfUpdInfo()) ? $i['v'] : '', 'check' => kfGet('upd_auto') === '1' && time() - (int)kfGet('upd_at', '0') > 20 * 3600] : null,
     ];
 }
 
@@ -210,8 +216,11 @@ function kfApplyOps(array $me, int $lid, array $ops): void {
                 $changed = true;
                 if ($t === 'add') kfPushQueue($lid, $me['id'], $name);   // die anderen erfahren es gebündelt, siehe push.php
             }
-            if ($t === 'restore') {
-                kfQ('UPDATE usage SET cnt = cnt - 1 WHERE list_id = ? AND name = ?', [$lid, $name]);
+            if ($t === 'restore') {   // Abhaken rückgängig: Zähler und Kaufrhythmus wie vorher
+                $u = kfQ('SELECT prev FROM usage WHERE list_id = ? AND name = ?', [$lid, $name])->fetch();
+                $p = $u ? explode(',', (string)$u['prev']) : [];
+                if (count($p) === 3) kfQ("UPDATE usage SET cnt = cnt - 1, last_at = ?, gap = ?, gn = ?, prev = '' WHERE list_id = ? AND name = ?", [(int)$p[0], (int)$p[1], (int)$p[2], $lid, $name]);
+                else kfQ('UPDATE usage SET cnt = cnt - 1 WHERE list_id = ? AND name = ?', [$lid, $name]);
                 kfQ('DELETE FROM usage WHERE list_id = ? AND name = ? AND cnt <= 0', [$lid, $name]);
             }
         } elseif (($t === 'done' || $t === 'remove') && $uidOk) {
@@ -220,9 +229,21 @@ function kfApplyOps(array $me, int $lid, array $ops): void {
             kfQ('DELETE FROM items WHERE uid = ?', [$uid]);
             kfPushUnqueue($lid, $row['name']);
             if ($t === 'done') {
-                kfQ('INSERT INTO usage (list_id, name, cat_id, cnt, last_at, note) VALUES (?, ?, ?, 1, ?, ?)
-                     ON CONFLICT(list_id, name) DO UPDATE SET cnt = cnt + 1, last_at = excluded.last_at, cat_id = excluded.cat_id, note = excluded.note',
-                    [$lid, $row['name'], (int)$row['cat_id'], $now, (string)$row['note']]);
+                // Kaufrhythmus lernen: Abstand zum letzten Kauf, geglättet. Unter 12 Stunden ist es derselbe Einkauf,
+                // ein Ausreißer (Urlaub) zählt höchstens dreimal so viel wie der bisherige Abstand.
+                $u = kfQ('SELECT last_at, gap, gn FROM usage WHERE list_id = ? AND name = ?', [$lid, $row['name']])->fetch();
+                $gap = $u ? (int)$u['gap'] : 0;
+                $gn = $u ? (int)$u['gn'] : 0;
+                $d = $u ? $now - (int)$u['last_at'] : 0;
+                if ($u && $d >= 43200) {
+                    if ($gap > 0) $d = min($d, 3 * $gap);
+                    $gap = $gap > 0 ? (int)round($gap * .6 + $d * .4) : $d;
+                    if ($gn >= 0) $gn++;
+                }
+                kfQ('INSERT INTO usage (list_id, name, cat_id, cnt, last_at, note, gap, gn, prev) VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?)
+                     ON CONFLICT(list_id, name) DO UPDATE SET cnt = cnt + 1, last_at = excluded.last_at, cat_id = excluded.cat_id, note = excluded.note,
+                     gap = excluded.gap, gn = excluded.gn, prev = excluded.prev',
+                    [$lid, $row['name'], (int)$row['cat_id'], $now, (string)$row['note'], $gap, $gn, $u ? $u['last_at'] . ',' . $u['gap'] . ',' . $u['gn'] : '']);
             }
             $changed = true;
         } elseif ($t === 'edit' && $uidOk) {
@@ -230,6 +251,10 @@ function kfApplyOps(array $me, int $lid, array $ops): void {
             $changed = $changed || $st->rowCount() > 0;
         } elseif ($t === 'forget' && $name !== '') {
             $st = kfQ('DELETE FROM usage WHERE list_id = ? AND name = ?', [$lid, $name]);
+            $changed = $changed || $st->rowCount() > 0;
+        } elseif (($t === 'nodue' || $t === 'redue') && $name !== '') {   // „Bald wieder fällig“ für dieses Produkt aus oder wieder an
+            $st = $t === 'nodue' ? kfQ('UPDATE usage SET gn = -1 WHERE list_id = ? AND name = ? AND gn >= 0', [$lid, $name])
+                                 : kfQ('UPDATE usage SET gn = CASE WHEN gap > 0 THEN 2 ELSE 0 END WHERE list_id = ? AND name = ? AND gn < 0', [$lid, $name]);
             $changed = $changed || $st->rowCount() > 0;
         } elseif ($t === 'unmem' && $name !== '') {   // gemerkte Menge vergessen, „Zuletzt gekauft“ bleibt
             $st = kfQ("UPDATE usage SET note = '' WHERE list_id = ? AND name = ? AND note <> ''", [$lid, $name]);
