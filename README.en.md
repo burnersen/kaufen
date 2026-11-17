@@ -63,7 +63,9 @@ Upload `kaufen-install.php`, open it in the browser, create the first account. T
 ### Quantities and notes
 
 - **Quantity or note:** long-press (on a computer: right-click). The counter starts at 1 with no unit. Adjust it with plus and minus, tap a unit if you want one (piece, pack, liter, kg …) and add a note. A plain 1 is not shown on the tile, a number without a unit is shown large as “3×”. Halves work too: type “2.5” or “2 1/2” or tap the ½ button, it shows as 2½.
-- **Custom units:** each account can add its own, such as "crate", "bag" or "roll", right in the quantity picker or in the settings. They can be renamed and deleted in both places. Quantities already saved stay as text.
+- **Singular and plural on one button:** the same button reads “jar” for 1 and “jars” from 2 on. Dictating and typing understand both forms.
+- **More units:** besides piece, pack, liter, kg and so on there are crate, case, tub, bag, net, tray, roll, bar, tube, sack, slice, head, clove, cube, stick and portion. The settings decide which ones are always shown in the quantity picker, the rest waits under “More …”.
+- **Custom units:** each account can add its own, such as “bucket”, with singular and plural, right in the quantity picker or in the settings. They can be renamed and deleted in both places. Quantities already saved stay as text.
 - **Remembers quantities:** when you check a product off, Kaufen remembers what was on it. Bought five colas, and next time it says "5" again, visible on the tile, and one tap puts it on the list the same way. Each account can turn this off in the settings, then it always starts at 1. "Reset quantity" forgets the remembered quantity of a product.
 
 ### Shopping together

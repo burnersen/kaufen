@@ -168,7 +168,7 @@ function applyState(s, oldLook) {
     S = s;
     csrf = s.csrf;
     iv = s.interval;
-    if (s.me.look && !oldLook && !LS.get('lookDirty', false)) { look = normLook(s.me.look); LS.set('look', look); applyTheme(); applyLang(); }   // das Aussehen gehört zum Konto
+    if (s.me.look && !oldLook && !LS.get('lookDirty', false)) { look = normLook(s.me.look); LS.set('look', look); applyTheme(); applyLang(); tidyUnits(); }   // das Aussehen gehört zum Konto
     LS.set('state', S);
     if (!S.lists.some(l => l.id === cur)) {
         cur = S.lists.length ? S.lists[0].id : null;
@@ -489,9 +489,27 @@ function ask(title, fields, okLabel, submit, extra = []) {
 // Einheit: deutsch Einzahl und Mehrzahl, Schrittweite, englisch Einzahl und Mehrzahl
 const UNITS = [['Stück', 'Stück', 1, 'piece', 'pieces'], ['Packung', 'Packungen', 1, 'pack', 'packs'], ['Flasche', 'Flaschen', 1, 'bottle', 'bottles'],
     ['Dose', 'Dosen', 1, 'can', 'cans'], ['Glas', 'Gläser', 1, 'jar', 'jars'], ['Bund', 'Bund', 1, 'bunch', 'bunches'],
-    ['Liter', 'Liter', .5, 'liter', 'liters'], ['ml', 'ml', 50, 'ml', 'ml'], ['kg', 'kg', .5, 'kg', 'kg'], ['g', 'g', 50, 'g', 'g']];
+    ['Liter', 'Liter', .5, 'liter', 'liters'], ['ml', 'ml', 50, 'ml', 'ml'], ['kg', 'kg', .5, 'kg', 'kg'], ['g', 'g', 50, 'g', 'g'],
+    // ab hier Gebinde, die bei der Mengenauswahl erst unter „Weitere …“ stehen, bis man sie in den Einstellungen dazuholt
+    ['Kiste', 'Kisten', 1, 'crate', 'crates'], ['Kasten', 'Kästen', 1, 'case', 'cases'], ['Becher', 'Becher', 1, 'tub', 'tubs'],
+    ['Beutel', 'Beutel', 1, 'bag', 'bags'], ['Tüte', 'Tüten', 1, 'bag', 'bags'], ['Netz', 'Netze', 1, 'net', 'nets'],
+    ['Schale', 'Schalen', 1, 'tray', 'trays'], ['Rolle', 'Rollen', 1, 'roll', 'rolls'], ['Tafel', 'Tafeln', 1, 'bar', 'bars'],
+    ['Tube', 'Tuben', 1, 'tube', 'tubes'], ['Sack', 'Säcke', 1, 'sack', 'sacks'], ['Scheibe', 'Scheiben', 1, 'slice', 'slices'],
+    ['Kopf', 'Köpfe', 1, 'head', 'heads'], ['Zehe', 'Zehen', 1, 'clove', 'cloves'], ['Würfel', 'Würfel', 1, 'cube', 'cubes'],
+    ['Stange', 'Stangen', 1, 'stick', 'sticks'], ['Portion', 'Portionen', 1, 'portion', 'portions']];
 const unitName = (i, n, lg) => UNITS[i][(lg === 'en' ? 3 : 0) + (n > 1 ? 1 : 0)];
 const unitIndex = w => UNITS.findIndex(x => [x[0], x[1], x[3], x[4]].some(s => low(s) === low(w)));
+// Welche mitgelieferten Einheiten bei der Mengenauswahl immer dastehen (look.uv, null = die ersten zehn wie bisher). Schlüssel ist die deutsche Einzahl.
+const UDEF = UNITS.slice(0, 10).map(x => x[0]);
+const uvis = () => look.uv || UDEF;
+/* Eigene Einheit, gespeichert als „Kiste/Kisten“ (Einzahl/Mehrzahl) oder nur „Beutel“, wenn beide gleich sind. Ein Knopf für beide Formen. */
+const UWORD = /^[^\d\s,;\/]{1,12}$/;
+const cuForms = s => { const [a, b] = String(s).split('/'); return [a, b || a]; };
+const cuName = (s, n) => cuForms(s)[n > 1 ? 1 : 0];
+const cuLabel = s => [...new Set(cuForms(s))].join(' / ');
+const cuFind = w => look.units.find(s => cuForms(s).some(f => low(f) === low(w))) || '';
+/** Mehrzahl raten, wenn man sie leer lässt: Kiste wird Kisten, sonst bleibt das Wort (Beutel, Eimer) */
+const guessPl = s => /e$/.test(s) ? s + 'n' : s;
 /* Zahlen: gespeichert immer als Kommazahl (2,5), angezeigt mit Bruch (nice: 2½). Getippt werden darf 2,5 · 2.5 · 2½ · 2 1/2 · 1/2 · ½ */
 const FRAC = { '½': .5, '¼': .25, '¾': .75, '1/2': .5, '1/4': .25, '3/4': .75 };
 const NUM = String.raw`\d{1,4}(?:[.,]\d{1,2}|\s*[½¼¾]|\s+(?:1\/[24]|3\/4))?|[½¼¾]|1\/[24]|3\/4`;
@@ -512,13 +530,13 @@ function parseQty(note) {
     const m = QTY_RE.exec(raw);
     if (m) {
         const u = m[2] ? unitIndex(m[2]) : -1;
-        const cu = m[2] && u < 0 ? look.units.find(s => low(s) === low(m[2])) || '' : '';
+        const cu = m[2] && u < 0 ? cuFind(m[2]) : '';
         const n = parseNum(m[1]);
         if (n > 0 && (!m[2] || u >= 0 || cu)) return { n, u, cu, hint: m[3] || '' };
     }
     return { n: 0, u: -1, cu: '', hint: raw };
 }
-const fmtQty = (st, lg, hint, nice) => [st.n ? fmtNum(st.n, lg, nice) + (st.u >= 0 ? ' ' + unitName(st.u, st.n, lg) : st.cu ? ' ' + st.cu : '') : '', hint].filter(Boolean).join(', ');
+const fmtQty = (st, lg, hint, nice) => [st.n ? fmtNum(st.n, lg, nice) + (st.u >= 0 ? ' ' + unitName(st.u, st.n, lg) : st.cu ? ' ' + cuName(st.cu, st.n) : '') : '', hint].filter(Boolean).join(', ');
 /** Menge für die Anzeige: in der Sprache des Kontos, halbe und viertel als Bruch. Was nicht ins Muster passt, bleibt, wie es ist. */
 function dnote(note) {
     if (!note) return note;
@@ -538,30 +556,68 @@ function canonNote(s) {
     const p = parseQty(s);
     return p.n ? fmtQty(p, 'de', p.hint) : s;
 }
-/** Eigene Einheit fürs Konto anlegen, z. B. Kasten. done bekommt den Namen. */
-function addUnit(done) { unitDialog('', (u, old) => done(u)); }
-/** Eigene Einheit anlegen (old leer) oder umbenennen und löschen. done(neuer Name, alter Name), beim Löschen ist der neue Name leer.
-    Mengen, die schon mit der alten Einheit auf Listen stehen, bleiben als Text stehen („2 Kasten“). */
+/** Eigene Einheit fürs Konto anlegen, z. B. Eimer. done(Name, Index einer mitgelieferten Einheit, falls es die schon gibt). */
+function addUnit(done) { unitDialog('', (u, old, bi) => done(u, bi)); }
+/** Eigene Einheit anlegen (old leer) oder umbenennen und löschen, mit Einzahl und Mehrzahl. done(neuer Name, alter Name), beim Löschen ist der neue Name leer.
+    Gibt es die neue Einheit schon fest eingebaut, wird stattdessen die eingebaute immer angezeigt: done('', '', Index).
+    Mengen, die schon mit der alten Einheit auf Listen stehen, bleiben als Text stehen („2 Eimer“). */
 function unitDialog(old, done) {
-    ask(old ? tr('Einheit bearbeiten') : tr('Eigene Einheit'), [{ k: 'u', label: tr('Name'), value: old, placeholder: tr('z. B. Kasten, Beutel, Rolle'), max: 12 },
-        old && { type: 'info', text: tr('Mengen, die schon mit „{0}“ auf einer Liste stehen, bleiben als Text stehen.', old) }],
+    const [osg, opl] = old ? cuForms(old) : ['', ''];
+    const sh = ask(old ? tr('Einheit bearbeiten') : tr('Eigene Einheit'), [
+        { k: 'u', label: tr('Einzahl'), value: osg, placeholder: tr('z. B. Eimer'), max: 12 },
+        { k: 'p', label: tr('Mehrzahl'), value: opl !== osg ? opl : '', placeholder: osg ? guessPl(osg) : tr('leer = wie Einzahl'), max: 12 },
+        { type: 'info', text: tr('Einzahl und Mehrzahl teilen sich einen Knopf: bei 1 steht „Eimer“ da, ab 2 die Mehrzahl. Diktieren und Tippen verstehen beide.') },
+        old && { type: 'info', text: tr('Mengen, die schon mit „{0}“ auf einer Liste stehen, bleiben als Text stehen.', cuLabel(old)) }],
         old ? tr('Speichern') : tr('Hinzufügen'), v => {
-            const u = v.u.trim();
+            const sg = v.u.trim(), pl = v.p.trim() || guessPl(sg);
+            if (!UWORD.test(sg) || !UWORD.test(pl)) throw new Error(tr('Bitte ein einzelnes Wort ohne Ziffern eingeben, höchstens 12 Zeichen.'));
+            const u = low(pl) === low(sg) ? sg : sg + '/' + pl;
             if (u === old) return;
-            if (!/^[^\d\s,;]{1,12}$/.test(u)) throw new Error(tr('Bitte ein einzelnes Wort ohne Ziffern eingeben, höchstens 12 Zeichen.'));
-            if (unitIndex(u) >= 0 || look.units.some(s => low(s) === low(u) && s !== old)) throw new Error(tr('Diese Einheit gibt es schon.'));
+            const bi = [sg, pl].map(unitIndex).find(i => i >= 0);
+            if (bi !== undefined && !old) {   // gibt es schon fest eingebaut: die nehmen und immer anzeigen
+                const was = uvis().includes(UNITS[bi][0]);
+                if (!was) setLook({ uv: UNITS.map(x => x[0]).filter(k => k === UNITS[bi][0] || uvis().includes(k)) });
+                toast(tr(was ? '„{0}“ gibt es schon.' : '„{0}“ ist schon dabei und steht jetzt immer bei der Mengenauswahl.', unitName(bi, 1, lang)));
+                done('', '', bi);
+                return;
+            }
+            if (bi !== undefined || look.units.some(s => s !== old && cuForms(s).some(f => [sg, pl].some(g => low(f) === low(g)))))
+                throw new Error(tr('Diese Einheit gibt es schon.'));
             if (!old && look.units.length >= 12) throw new Error(tr('Mehr als 12 eigene Einheiten gehen nicht.'));
             setLook({ units: old ? look.units.map(x => x === old ? u : x) : [...look.units, u] });
             done(u, old);
         },
         [old && { label: tr('Löschen'), danger: true, fn: () => { setLook({ units: look.units.filter(x => x !== old) }); done('', old); } }]);
+    // Beim Tippen der Einzahl die geratene Mehrzahl als Vorschlag zeigen
+    const [iu, ip] = sh.body.querySelectorAll('input');
+    if (iu && ip) iu.addEventListener('input', () => { const t = iu.value.trim(); ip.placeholder = t ? guessPl(t) : tr('leer = wie Einzahl'); });
+}
+/** Aufräumen, wenn das Aussehen vom Server kommt: eigene Einheiten, die es jetzt fest eingebaut gibt, fallen weg (die eingebaute wird dafür
+    immer angezeigt), und zwei eigene wie „Eimer“ und „Eimern“ oder „Topf“ und „Töpfe“ werden ein Knopf mit Einzahl und Mehrzahl. */
+function tidyUnits() {
+    const plain = s => low(s).replace(/ä/g, 'a').replace(/ö/g, 'o').replace(/ü/g, 'u');
+    const pair = (x, y) => { const [a, b] = [x, y].sort((p, q) => p.length - q.length); return a !== b && plain(b).startsWith(plain(a)) && b.length - a.length <= 2 ? a + '/' + b : ''; };
+    const units = [], add = [];
+    let changed = false;
+    for (const s of look.units) {
+        const bi = cuForms(s).map(unitIndex).find(i => i >= 0);
+        if (bi !== undefined) { add.push(UNITS[bi][0]); changed = true; continue; }
+        const k = units.findIndex(t => cuForms(t).some(f => cuForms(s).some(g => low(f) === low(g))));   // eine Form gibt es schon
+        const j = k >= 0 || s.includes('/') ? -1 : units.findIndex(t => !t.includes('/') && pair(t, s));
+        if (k >= 0) { if (s.includes('/') && !units[k].includes('/')) units[k] = s; changed = true; }
+        else if (j >= 0) { units[j] = pair(units[j], s); changed = true; }
+        else units.push(s);
+    }
+    if (!changed) return;
+    const vis = [...uvis(), ...add];
+    setLook({ units, uv: add.every(k => uvis().includes(k)) ? look.uv : UNITS.map(x => x[0]).filter(k => vis.includes(k)) });
 }
 /** Alle eigenen Einheiten auf einen Blick: antippen zum Umbenennen oder Löschen, dazu „+ Einheit“. changed(neu, alt) nach jeder Änderung. */
 function manageUnits(changed) {
     const sh = sheet(tr('Eigene Einheiten'));
     const box = h('div', { class: 'chips' });
     const after = (u, old) => { draw(); changed(u, old); };
-    const draw = () => fill(box, look.units.map(u => h('button', { class: 'chip', type: 'button', 'aria-label': tr('{0} bearbeiten', u), onclick: () => unitDialog(u, after) }, u)),
+    const draw = () => fill(box, look.units.map(u => h('button', { class: 'chip', type: 'button', 'aria-label': tr('{0} bearbeiten', cuLabel(u)), onclick: () => unitDialog(u, after) }, cuLabel(u))),
         h('button', { class: 'chip add', type: 'button', onclick: () => unitDialog('', after) }, tr('+ Einheit')));
     draw();
     put(sh.body, h('p', { class: 'info' }, tr('Antippen zum Umbenennen oder Löschen.')), box,
@@ -585,11 +641,18 @@ function qtyField(value) {
         show(true);
     };
     const chipBox = h('div', { class: 'chips' });
-    let chips = [];
+    let chips = [], more = false;   // chips: { b: Knopf, u: mitgelieferte, cu: eigene }. more: „Weitere …“ ist aufgeklappt
     const drawChips = () => {
-        chips = [...UNITS.map((u, i) => h('button', { class: 'chip', type: 'button', onclick: () => pick(i, '') })),
-            ...look.units.map(cu => h('button', { class: 'chip', type: 'button', onclick: () => pick(-1, cu) }, cu))];
-        fill(chipBox, chips, h('button', { class: 'chip add', type: 'button', onclick: () => addUnit(cu => { drawChips(); if (st.cu !== cu) pick(-1, cu); }) }, tr('+ Einheit')),
+        const all = UNITS.map((x, i) => i), vis = uvis();
+        const shown = all.filter(i => vis.includes(UNITS[i][0]) || i === st.u), rest = all.filter(i => !shown.includes(i));
+        const mk = (u, cu) => ({ u, cu, b: h('button', { class: 'chip', type: 'button', onclick: () => pick(u, cu) }) });
+        chips = [...shown.map(i => mk(i, '')), ...look.units.map(cu => mk(-1, cu)), ...(more ? rest.map(i => mk(i, '')) : [])];
+        fill(chipBox, chips.map(c => c.b),
+            rest.length > 0 && h('button', { class: 'chip add', type: 'button', 'aria-expanded': String(more), onclick: () => { more = !more; drawChips(); } }, more ? tr('Weniger anzeigen') : tr('Weitere …')),
+            h('button', { class: 'chip add', type: 'button', onclick: () => addUnit((cu, bi) => {
+                if (bi >= 0) { drawChips(); if (st.u !== bi) pick(bi, ''); return; }
+                drawChips(); if (st.cu !== cu) pick(-1, cu);
+            }) }, tr('+ Einheit')),
             look.units.length > 0 && h('button', { class: 'chip add', type: 'button', onclick: () => manageUnits((u, old) => {
                 if (old && st.cu === old) st.cu = u;   // die gewählte Einheit umbenannt oder gelöscht
                 drawChips();
@@ -609,12 +672,12 @@ function qtyField(value) {
         if (writeNum) num.value = st.n ? fmtNum(st.n, lang, true) : '';
         minus.disabled = !st.n;
         half.setAttribute('aria-pressed', String(!auto && Math.abs(st.n % 1 - .5) < 1e-9));
-        chips.forEach((c, i) => {
-            const sel = i < UNITS.length ? i === st.u : look.units[i - UNITS.length] === st.cu;
-            c.classList.toggle('sel', sel);
-            c.setAttribute('aria-pressed', String(sel));
-            if (i < UNITS.length) c.textContent = unitName(i, sel ? st.n : 1, lang);
-        });
+        for (const { b, u, cu } of chips) {
+            const sel = cu ? st.cu === cu : u === st.u;
+            b.classList.toggle('sel', sel);
+            b.setAttribute('aria-pressed', String(sel));
+            b.textContent = cu ? cuName(cu, sel ? st.n : 1) : unitName(u, sel ? st.n : 1, lang);
+        }
     }
     const bump = d => {
         const s = step();
@@ -804,8 +867,8 @@ const NUMW = { ein: 1, eine: 1, einen: 1, eins: 1, zwei: 2, drei: 3, vier: 4, 'f
 // Andere Schreibweisen für die mitgelieferten Einheiten
 const UNITA = { kilo: 'kg', kilos: 'kg', kilogramm: 'kg', gramm: 'g', gr: 'g', l: 'Liter', ltr: 'Liter', litre: 'Liter', litres: 'Liter', 'päckchen': 'Packung',
     pkg: 'Packung', pck: 'Packung', stk: 'Stück', 'stücke': 'Stück', milliliter: 'ml' };
-// Gebinde ohne eigene Einheit: bleiben als Text stehen („2 Kästen“)
-const FREEU = /^(?:kasten|kästen|kisten?|becher|netze?|beutel|tüten?|rollen?|tafeln?|schalen?|säcke?|sack|pakete?|töpfe?|topf|eimer|riegel|scheiben|portionen?|crates?|bags?|boxes|box|rolls?|tubs?)$/i;
+// Gebinde ohne eingebaute Einheit: bleiben als Text stehen („2 Eimer“)
+const FREEU = /^(?:pakete?|töpfe?|topf|eimer|riegel|boxes|box)$/i;
 /** Menge ab Wort i: Zahl (Ziffern, Bruch, Zahlwort) und vielleicht eine Einheit oder „x“. Liefert { n, u, cu, len } oder null. */
 function readQty(t, i) {
     let n = NaN, len = 0;
@@ -820,7 +883,7 @@ function readQty(t, i) {
     const w = t[i + len];
     let r = { n, u: -1, cu: '', len };
     if (w) {
-        const al = UNITA[low(w)], u = unitIndex(al || w), cu = look.units.find(s => low(s) === low(w));
+        const al = UNITA[low(w)], u = unitIndex(al || w), cu = cuFind(w);
         if (u >= 0) r = { n, u, cu: '', len: len + 1 };
         else if (cu || FREEU.test(w)) r = { n, u: -1, cu: cu || w, len: len + 1 };
         else if (/^(?:x|×|mal)$/i.test(w)) r = { n, u: -1, cu: '', len: len + 1 };
@@ -1443,11 +1506,13 @@ const PARTS = [['bg', 'Hintergrund'], ['card', 'Kacheln'], ['text', 'Schrift'], 
 const TPARTS = [['head', 'Überschriften', '--head'], ['mut', 'Nebentext', '--mut'], ['at', 'Listenschrift', '--acc-text'], ['qty', 'Menge', '--qty']];
 const isHex = v => /^#[0-9a-f]{6}$/.test(v);
 const okCols = c => c && PARTS.every(([k]) => isHex(c[k])) ? Object.fromEntries([...PARTS, ...TPARTS].filter(([k]) => isHex(c[k])).map(([k]) => [k, c[k]])) : null;
-const okUnit = u => typeof u === 'string' && /^[^\d\s,;]{1,12}$/.test(u);
+const okUnit = u => typeof u === 'string' && u.split('/').length <= 2 && u.split('/').every(x => UWORD.test(x));
 const normLook = o => ({ mode: o && ['light', 'dark'].includes(o.mode) ? o.mode : 'auto', l: String(o && o.l || ''), d: String(o && o.d || ''), cl: okCols(o && o.cl), cd: okCols(o && o.cd),
-    lang: o && ['de', 'en'].includes(o.lang) ? o.lang : '', keep: !(o && o.keep === false), who: !(o && o.who === false), due: !(o && o.due === false), units: Array.isArray(o && o.units) ? o.units.filter(okUnit).slice(0, 12) : [] });
+    lang: o && ['de', 'en'].includes(o.lang) ? o.lang : '', keep: !(o && o.keep === false), who: !(o && o.who === false), due: !(o && o.due === false), units: Array.isArray(o && o.units) ? o.units.filter(okUnit).slice(0, 12) : [],
+    uv: Array.isArray(o && o.uv) ? UNITS.map(x => x[0]).filter(k => o.uv.includes(k)) : null });
 /** Einstellungen des Kontos: mode = auto|light|dark, l/d = gewähltes Design für hell/dunkel, cl/cd = eigene Farben,
-    lang = Sprache ('' = noch nicht gewählt), keep = zuletzt benutzte Menge merken, who = anzeigen, wer einen Artikel hinzugefügt hat, due = „Bald wieder fällig“ zeigen, units = eigene Einheiten. Liegt auf dem Server, hier nur die Kopie. */
+    lang = Sprache ('' = noch nicht gewählt), keep = zuletzt benutzte Menge merken, who = anzeigen, wer einen Artikel hinzugefügt hat, due = „Bald wieder fällig“ zeigen, units = eigene Einheiten,
+    uv = mitgelieferte Einheiten, die bei der Mengenauswahl immer dastehen (null = Standard). Liegt auf dem Server, hier nur die Kopie. */
 let look = normLook(LS.get('look', null) || { mode: LS.get('theme', 'auto'), l: LS.get('palL', ''), d: LS.get('palD', '') });
 const palOf = mode => {
     const v = look[mode === 'dark' ? 'd' : 'l'];
@@ -1774,9 +1839,17 @@ function showSettings() {
     const keepBox = h('input', { type: 'checkbox', checked: look.keep, onchange: () => { setLook({ keep: keepBox.checked }); render(); } });
     const unitBox = h('div', { class: 'chips' });
     const drawUnits = () => fill(unitBox,
-        look.units.map(u => h('button', { class: 'chip', type: 'button', 'aria-label': tr('{0} bearbeiten', u), onclick: () => unitDialog(u, drawUnits) }, u)),
-        h('button', { class: 'chip add', type: 'button', onclick: () => addUnit(drawUnits) }, tr('+ Einheit')));
+        look.units.map(u => h('button', { class: 'chip', type: 'button', 'aria-label': tr('{0} bearbeiten', cuLabel(u)), onclick: () => unitDialog(u, () => { drawUnits(); drawStd(); }) }, cuLabel(u))),
+        h('button', { class: 'chip add', type: 'button', onclick: () => addUnit(() => { drawUnits(); drawStd(); }) }, tr('+ Einheit')));
+    // Mitgelieferte Einheiten: markierte stehen bei der Mengenauswahl immer da, die anderen unter „Weitere …“
+    const stdBox = h('div', { class: 'chips' });
+    const drawStd = () => fill(stdBox, UNITS.map((x, i) => {
+        const on = uvis().includes(x[0]);
+        return h('button', { class: 'chip' + (on ? ' sel' : ''), type: 'button', 'aria-pressed': String(on),
+            onclick: () => { setLook({ uv: UNITS.map(y => y[0]).filter(k => k === x[0] ? !on : uvis().includes(k)) }); drawStd(); } }, unitName(i, 1, lang));
+    }));
     drawUnits();
+    drawStd();
     // Mitteilungen: der Haken zeigt, ob dieses Gerät angemeldet ist
     const pushBox = h('input', { type: 'checkbox', disabled: true, onchange: async () => {
         pushBox.disabled = true;
@@ -1825,8 +1898,10 @@ function showSettings() {
         h('p', { class: 'info' }, tr('Beim Abhaken merkt sich Kaufen, welche Menge am Produkt stand, und setzt es beim nächsten Mal wieder genauso auf die Liste. Ohne Haken steht immer 1 da.')),
         h('label', { class: 'check' }, dueBox, h('span', null, tr('Vorschlagen, was bald wieder fällig ist'))),
         h('p', { class: 'info' }, tr('Kaufen lernt beim Abhaken, wie oft ihr etwas kauft, zum Beispiel Milch alle 5 Tage. Ist es wieder so weit, steht es unter der Liste bei „Bald wieder fällig“. Ein Produkt braucht dafür ein paar Einkäufe.')),
+        h('div', { class: 'qlabel' }, tr('Einheiten bei der Mengenauswahl')), stdBox,
+        h('p', { class: 'info' }, tr('Markierte stehen immer da, die anderen findest du dort unter „Weitere …“. Diktieren und Tippen verstehen alle, egal ob „eine Kiste“ oder „zwei Kisten“.')),
         h('div', { class: 'qlabel' }, tr('Eigene Einheiten')), unitBox,
-        h('p', { class: 'info units' }, tr('Erscheinen bei der Mengenauswahl neben Stück, Packung und Liter. Antippen zum Umbenennen oder Löschen.')),
+        h('p', { class: 'info units' }, tr('Erscheinen bei der Mengenauswahl neben den mitgelieferten, mit Einzahl und Mehrzahl auf einem Knopf. Antippen zum Umbenennen oder Löschen.')),
         pushCan() && h('label', { class: 'check' }, pushBox, h('span', null, tr('Mitteilungen auf diesem Gerät'))),
         h('p', { class: 'info' }, pushCan() ? tr('Du bekommst eine Mitteilung, wenn jemand etwas auf eine Liste setzt, die ihr teilt. Mehrere Produkte kommen gebündelt in einer Mitteilung, sobald der andere Kaufen verlässt.')
             : S.push ? tr('Mitteilungen gehen auf diesem Gerät oder in diesem Browser nicht. Auf dem iPhone muss Kaufen dafür über „Zum Home-Bildschirm“ installiert sein (ab iOS 16.4).')

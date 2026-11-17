@@ -63,7 +63,9 @@ Produkte tippt man aus einem fertigen Katalog an, sortiert nach Warengruppen. Im
 ### Mengen und Hinweise
 
 - **Menge oder Hinweis:** lange drücken (am Rechner: Rechtsklick). Im Zähler steht erst einmal 1, ohne Einheit. Mit Plus und Minus einstellen, bei Bedarf eine Einheit antippen (Stück, Packung, Liter, kg …) und einen Hinweis dazuschreiben. Eine schlichte 1 wird an der Kachel nicht eigens angezeigt, eine Zahl ohne Einheit steht groß als „3×“ da. Halbe gehen auch: „2,5“ oder „2 1/2“ tippen oder den Knopf ½ drücken, angezeigt wird 2½.
-- **Eigene Einheiten:** „Kasten“, „Beutel“ oder „Rolle“ legt jedes Konto selbst an, direkt in der Mengenauswahl oder in den Einstellungen. Umbenennen und löschen geht an beiden Stellen. Schon gespeicherte Mengen bleiben dabei als Text stehen.
+- **Einzahl und Mehrzahl auf einem Knopf:** „Glas“ steht bei 1 da, ab 2 heißt derselbe Knopf „Gläser“. Diktieren und Tippen verstehen beide Formen, „eine Kiste Wasser“ genauso wie „zwei Kisten Wasser“.
+- **Mehr Einheiten:** neben Stück, Packung, Liter, kg und Co. gibt es Kiste, Kasten, Becher, Beutel, Tüte, Netz, Schale, Rolle, Tafel, Tube, Sack, Scheibe, Kopf, Zehe, Würfel, Stange und Portion. In den Einstellungen legst du fest, welche bei der Mengenauswahl immer dastehen, der Rest wartet unter „Weitere …“.
+- **Eigene Einheiten:** z. B. „Eimer“ legt jedes Konto selbst an, mit Einzahl und Mehrzahl, direkt in der Mengenauswahl oder in den Einstellungen. Die Mehrzahl wird vorgeschlagen (Kanne wird Kannen). Umbenennen und löschen geht an beiden Stellen. Schon gespeicherte Mengen bleiben dabei als Text stehen.
 - **Menge merken:** beim Abhaken merkt sich Kaufen, was am Produkt stand. Fünfmal Cola gekauft, dann steht beim nächsten Mal wieder „5“ da, schon an der Kachel zu sehen, und ein Tipp setzt es genauso auf die Liste. Jedes Konto kann das in den Einstellungen abschalten, dann steht immer 1 da. „Menge zurücksetzen“ vergisst die gemerkte Menge eines Produkts.
 
 ### Gemeinsam einkaufen
