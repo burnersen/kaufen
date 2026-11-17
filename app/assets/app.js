@@ -480,36 +480,56 @@ function ask(title, fields, okLabel, submit, extra = []) {
     return sh;
 }
 /* ---------- Menge: Zähler, Einheit zum Antippen, freier Hinweis. Gespeichert wird schlichter Text wie „2 Liter, die grünen“,
-   immer in deutscher Schreibweise. Für die Anzeige auf Englisch wird er übersetzt (dnote), Eingaben auf Englisch gehen den Weg zurück (canonNote). ---------- */
+   immer in deutscher Schreibweise und mit Komma (2,5). Für die Anzeige wird er übersetzt und bekommt Brüche (dnote: 2½), getippte Mengen gehen den Weg zurück (canonNote). ---------- */
 // Einheit: deutsch Einzahl und Mehrzahl, Schrittweite, englisch Einzahl und Mehrzahl
 const UNITS = [['Stück', 'Stück', 1, 'piece', 'pieces'], ['Packung', 'Packungen', 1, 'pack', 'packs'], ['Flasche', 'Flaschen', 1, 'bottle', 'bottles'],
     ['Dose', 'Dosen', 1, 'can', 'cans'], ['Glas', 'Gläser', 1, 'jar', 'jars'], ['Bund', 'Bund', 1, 'bunch', 'bunches'],
     ['Liter', 'Liter', .5, 'liter', 'liters'], ['ml', 'ml', 50, 'ml', 'ml'], ['kg', 'kg', .5, 'kg', 'kg'], ['g', 'g', 50, 'g', 'g']];
 const unitName = (i, n, lg) => UNITS[i][(lg === 'en' ? 3 : 0) + (n > 1 ? 1 : 0)];
 const unitIndex = w => UNITS.findIndex(x => [x[0], x[1], x[3], x[4]].some(s => low(s) === low(w)));
-const fmtNum = (n, lg = lang) => String(Math.round(n * 100) / 100).replace('.', lg === 'en' ? '.' : ',');
+/* Zahlen: gespeichert immer als Kommazahl (2,5), angezeigt mit Bruch (nice: 2½). Getippt werden darf 2,5 · 2.5 · 2½ · 2 1/2 · 1/2 · ½ */
+const FRAC = { '½': .5, '¼': .25, '¾': .75, '1/2': .5, '1/4': .25, '3/4': .75 };
+const NUM = String.raw`\d{1,4}(?:[.,]\d{1,2}|\s*[½¼¾]|\s+(?:1\/[24]|3\/4))?|[½¼¾]|1\/[24]|3\/4`;
+const NUM_RE = new RegExp('^(?:' + NUM + ')$'), QTY_RE = new RegExp('^(' + NUM + ')\\s*([^\\d\\s,]*)\\s*(?:,\\s*(.*))?$');
+function parseNum(s) {
+    s = String(s || '').trim();
+    if (!NUM_RE.test(s)) return NaN;
+    const f = /(?:[½¼¾]|1\/[24]|3\/4)$/.exec(s), whole = f ? s.slice(0, f.index).trim() : s;
+    return (whole ? parseFloat(whole.replace(',', '.')) : 0) + (f ? FRAC[f[0]] : 0);
+}
+function fmtNum(n, lg = lang, nice) {
+    const r = Math.round(n * 100) / 100, w = Math.floor(r), f = nice && { .25: '¼', .5: '½', .75: '¾' }[Math.round((r - w) * 100) / 100];
+    return f ? (w || '') + f : String(r).replace('.', lg === 'en' ? '.' : ',');
+}
 /** Zerlegt einen Hinweis in Zahl, Einheit (u = mitgelieferte, cu = eigene des Kontos) und Rest. Passt er nicht ins Muster, bleibt er als Ganzes der freie Hinweis. */
 function parseQty(note) {
     const raw = String(note || '').trim();
-    const m = /^(\d{1,4}(?:[.,]\d{1,2})?)\s*([^\d\s,]*)\s*(?:,\s*(.*))?$/.exec(raw);
+    const m = QTY_RE.exec(raw);
     if (m) {
         const u = m[2] ? unitIndex(m[2]) : -1;
         const cu = m[2] && u < 0 ? look.units.find(s => low(s) === low(m[2])) || '' : '';
-        const n = parseFloat(m[1].replace(',', '.'));
+        const n = parseNum(m[1]);
         if (n > 0 && (!m[2] || u >= 0 || cu)) return { n, u, cu, hint: m[3] || '' };
     }
     return { n: 0, u: -1, cu: '', hint: raw };
 }
-const fmtQty = (st, lg, hint) => [st.n ? fmtNum(st.n, lg) + (st.u >= 0 ? ' ' + unitName(st.u, st.n, lg) : st.cu ? ' ' + st.cu : '') : '', hint].filter(Boolean).join(', ');
-/** Menge für die Anzeige. Auf Deutsch bleibt der gespeicherte Text, wie er ist. */
+const fmtQty = (st, lg, hint, nice) => [st.n ? fmtNum(st.n, lg, nice) + (st.u >= 0 ? ' ' + unitName(st.u, st.n, lg) : st.cu ? ' ' + st.cu : '') : '', hint].filter(Boolean).join(', ');
+/** Menge für die Anzeige: in der Sprache des Kontos, halbe und viertel als Bruch. Was nicht ins Muster passt, bleibt, wie es ist. */
 function dnote(note) {
-    if (lang === 'de' || !note) return note;
+    if (!note) return note;
     const p = parseQty(note);
-    return p.n ? fmtQty(p, 'en', p.hint) : note;
+    return p.n ? fmtQty(p, lang, p.hint, true) : note;
 }
-/** Getippte Menge (Vorlagen) in die gespeicherte Schreibweise bringen */
+/** Menge und Hinweis getrennt für die Kacheln. Eine Zahl ohne Einheit wird zu „3×“ (cnt) und groß gezeigt, ein halbes bleibt „½“. */
+function noteParts(note) {
+    const p = parseQty(note);
+    if (!p.n) return { q: '', hint: p.hint, cnt: false };
+    const cnt = p.u < 0 && !p.cu;
+    return { q: cnt ? fmtNum(p.n, lang, true) + (p.n >= 1 ? '×' : '') : fmtQty(p, lang, '', true), hint: p.hint, cnt };
+}
+/** Getippte Menge (Vorlagen) in die gespeicherte Schreibweise bringen, z. B. „1/2 Liter“ zu „0,5 Liter“ */
 function canonNote(s) {
-    if (lang === 'de' || !s) return s;
+    if (!s) return s;
     const p = parseQty(s);
     return p.n ? fmtQty(p, 'de', p.hint) : s;
 }
@@ -530,7 +550,7 @@ function qtyField(value) {
     if (auto) st.n = 1;
     const step = () => st.u >= 0 ? UNITS[st.u][2] : 1;
     const num = h('input', { type: 'text', inputmode: 'decimal', maxlength: 7, placeholder: '–', 'aria-label': tr('Menge'), autocomplete: 'off', enterkeyhint: 'done',
-        oninput: () => { const n = parseFloat(num.value.replace(',', '.')); st.n = n > 0 ? Math.min(n, 9999) : 0; auto = false; show(false); },
+        oninput: () => { let n = parseNum(num.value); if (isNaN(n)) n = parseFloat(num.value.replace(',', '.')); st.n = n > 0 ? Math.min(n, 9999) : 0; auto = false; show(false); },
         onfocus: () => num.select() });
     const hint = h('input', { type: 'text', value: st.hint, placeholder: tr('z. B. die grünen, vom Bäcker'), maxlength: 60, autocomplete: 'off', enterkeyhint: 'done' });
     // Einheit an- oder abwählen. Steht noch die 1 vom Anfang da, springt die Zahl auf einen sinnvollen Startwert (50 g statt 1 g).
@@ -551,9 +571,17 @@ function qtyField(value) {
     };
     const minus = h('button', { class: 'qbtn', type: 'button', 'aria-label': tr('Weniger') }, '−');
     const plus = h('button', { class: 'qbtn', type: 'button', 'aria-label': tr('Mehr') }, '+');
+    // ½ dazu oder wieder weg: aus 2 wird 2½ und zurück. Steht noch die 1 vom Anfang da, gibt es ein schlichtes ½.
+    const half = h('button', { class: 'qbtn half', type: 'button', 'aria-label': tr('Halbe dazu'), onclick: () => {
+        const w = Math.floor(st.n + 1e-9);
+        st.n = auto ? .5 : Math.abs(st.n - w - .5) < 1e-9 ? w : w + .5;
+        auto = false;
+        show(true);
+    } }, '½');
     function show(writeNum) {
-        if (writeNum) num.value = st.n ? fmtNum(st.n) : '';
+        if (writeNum) num.value = st.n ? fmtNum(st.n, lang, true) : '';
         minus.disabled = !st.n;
+        half.setAttribute('aria-pressed', String(!auto && Math.abs(st.n % 1 - .5) < 1e-9));
         chips.forEach((c, i) => {
             const sel = i < UNITS.length ? i === st.u : look.units[i - UNITS.length] === st.cu;
             c.classList.toggle('sel', sel);
@@ -581,7 +609,7 @@ function qtyField(value) {
         type: 'qty',
         node: h('div', { class: 'qty' },
             h('div', { class: 'qlabel' }, tr('Menge')),
-            h('div', { class: 'qrow' }, minus, num, plus),
+            h('div', { class: 'qrow' }, minus, num, plus, half),
             chipBox,
             h('label', { class: 'field' }, tr('Hinweis'), hint)),
         get value() {
@@ -596,12 +624,15 @@ const confirmDlg = (title, text, okLabel, fn) => ask(title, [{ type: 'info', tex
 const act = async (action, body) => { const e = lookEpoch; applyState(await api(action, body), e !== lookEpoch); };
 
 /* ---------- Hauptansicht ---------- */
+/** Eine Kachel. note ist die gespeicherte Menge: Menge (tt) und Hinweis (th) bekommen je eine eigene Zeile. */
 function tile(cls, data, name, note, by) {
-    return h('button', { class: 'tile ' + cls, type: 'button', data }, h('span', { class: 'tn' }, name), note && h('span', { class: 'tt' }, note), by && h('span', { class: 'tb' }, by));
+    const p = noteParts(note);
+    return h('button', { class: 'tile ' + cls, type: 'button', data }, h('span', { class: 'tn' }, name),
+        p.q && h('span', { class: p.cnt ? 'tt cnt' : 'tt' }, p.q), p.hint && h('span', { class: 'th' }, p.hint), by && h('span', { class: 'tb' }, by));
 }
 const prodTile = (n, c, src) => {
     const it = itemByName(n);
-    return tile(it ? 'has' : '', { k: 'prod', n, c, src: src || '' }, dn(n), dnote(it ? it.note : memOf(n)));
+    return tile(it ? 'has' : '', { k: 'prod', n, c, src: src || '' }, dn(n), it ? it.note : memOf(n));
 };
 
 function render() {
@@ -631,7 +662,7 @@ function viewHome(l) {
     for (const [id, items] of groups) {
         if (!items.length) continue;
         out.push(h('div', { class: 'grp' }, catName(id)));
-        out.push(h('div', { class: 'grid todo' }, items.map(it => tile('on', { k: 'item', uid: it.uid }, dn(it.n), dnote(it.note), shared && look.who && it.by !== S.me.id && userName(it.by)))));
+        out.push(h('div', { class: 'grid todo' }, items.map(it => tile('on', { k: 'item', uid: it.uid }, dn(it.n), it.note, shared && look.who && it.by !== S.me.id && userName(it.by)))));
     }
 
     // Zuletzt gekauft: erst die jüngsten, dann aufgefüllt mit den häufigsten
@@ -1171,9 +1202,12 @@ const PALS = {
     dark: [['lagune', 'Lagune'], ['mitternacht', 'Nacht'], ['glut', 'Glut'], ['aubergine', 'Pflaume'], ['schwarz', 'Schwarz']],
 };
 const darkMq = window.matchMedia('(prefers-color-scheme: dark)');
-/** Die vier Farben, die man selbst einstellen kann. Alles Weitere (Linien, Nebentext, zarter Akzent …) wird daraus abgeleitet. */
+/** Die vier Grundfarben, die man selbst einstellen muss. Linien und zarter Akzent werden daraus abgeleitet, die Schriftfarben aus TPARTS auch, solange man sie nicht selbst setzt. */
 const PARTS = [['bg', 'Hintergrund'], ['card', 'Kacheln'], ['text', 'Schrift'], ['acc', 'Akzent']];
-const okCols = c => c && PARTS.every(([k]) => /^#[0-9a-f]{6}$/.test(c[k])) ? Object.fromEntries(PARTS.map(([k]) => [k, c[k]])) : null;
+/** Weitere Schriftfarben, freiwillig. Fehlt eine, wird sie wie bisher ausgerechnet. Dazu die CSS-Variable, die sie setzt. */
+const TPARTS = [['head', 'Überschriften', '--head'], ['mut', 'Nebentext', '--mut'], ['at', 'Listenschrift', '--acc-text'], ['qty', 'Menge', '--qty']];
+const isHex = v => /^#[0-9a-f]{6}$/.test(v);
+const okCols = c => c && PARTS.every(([k]) => isHex(c[k])) ? Object.fromEntries([...PARTS, ...TPARTS].filter(([k]) => isHex(c[k])).map(([k]) => [k, c[k]])) : null;
 const okUnit = u => typeof u === 'string' && /^[^\d\s,;]{1,12}$/.test(u);
 const normLook = o => ({ mode: o && ['light', 'dark'].includes(o.mode) ? o.mode : 'auto', l: String(o && o.l || ''), d: String(o && o.d || ''), cl: okCols(o && o.cl), cd: okCols(o && o.cd),
     lang: o && ['de', 'en'].includes(o.lang) ? o.lang : '', keep: !(o && o.keep === false), who: !(o && o.who === false), units: Array.isArray(o && o.units) ? o.units.filter(okUnit).slice(0, 12) : [] });
@@ -1224,12 +1258,14 @@ function hex2hsl(x) {
     if (d) hh = ((mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4) * 60 + 360) % 360;
     return [Math.round(hh), Math.round((d ? d / (1 - Math.abs(2 * l - 1)) : 0) * 100), Math.round(l * 100)];
 }
-/** Aus den vier gewählten Farben alle Farben der Oberfläche. Die Schrift auf dem Akzent wird so gewählt, dass sie lesbar bleibt. */
+/** Aus den gewählten Farben alle Farben der Oberfläche. Ohne eigene Wahl wird die Schrift auf dem Akzent so gewählt, dass sie lesbar bleibt. */
 function derive(c) {
     const dark = lum(c.bg) < .2;
+    const at = c.at || (contrast(c.acc, '#ffffff') >= contrast(c.acc, '#101418') ? '#ffffff' : '#101418');
     return {
-        '--bg': c.bg, '--card': c.card, '--text': c.text, '--acc': c.acc, '--mut': mix(c.text, c.bg, .4), '--line': mix(c.text, c.bg, .85),
-        '--acc-text': contrast(c.acc, '#ffffff') >= contrast(c.acc, '#101418') ? '#ffffff' : '#101418', '--acc-soft': mix(c.acc, c.card, .82),
+        '--bg': c.bg, '--card': c.card, '--text': c.text, '--acc': c.acc, '--mut': c.mut || mix(c.text, c.bg, .4), '--line': mix(c.text, c.bg, .85),
+        '--head': c.head || c.text, '--qty': c.qty || at,
+        '--acc-text': at, '--acc-soft': mix(c.acc, c.card, .82),
         '--danger': dark ? '#ff8a7a' : '#b42318', '--shadow': dark ? 'none' : '0 1px 2px rgba(0, 0, 0, .08)', 'color-scheme': dark ? 'dark' : 'light',
     };
 }
@@ -1304,21 +1340,25 @@ function applyLang() {
     applyView();
 }
 
-/** Farbmischer fürs eigene Design: vier Farben, je drei Regler oder der Farbwähler des Geräts, oben eine Vorschau, die sofort mitgeht. */
+/** Farbmischer fürs eigene Design: vier Grundfarben und vier freiwillige Schriftfarben, je drei Regler oder der Farbwähler des Geräts,
+    oben eine Vorschau, die sofort mitgeht. Eine Schriftfarbe auf „Automatisch“ wird aus den anderen ausgerechnet. */
 function editLook(mode, redraw) {
     const ck = mode === 'dark' ? 'cd' : 'cl';
     const start = { ...look[ck] };
     const col = { ...start }, hsl = {};
-    for (const [k] of PARTS) hsl[k] = hex2hsl(col[k]);
+    const ALL = [...PARTS, ...TPARTS], tvar = Object.fromEntries(TPARTS.map(([k, , v]) => [k, v]));
+    const eff = k => col[k] || derive(col)[tvar[k]];   // die Farbe, die gerade gilt, auch wenn sie automatisch ist
+    for (const [k] of ALL) hsl[k] = hex2hsl(eff(k));
     let part = 'acc';
     const sh = sheet(mode === 'dark' ? tr('Eigenes Design für dunkel') : tr('Eigenes Design für hell'), { onclose: () => { saveLook(); redraw(); } });
     const demo = (cls, name, note) => h('span', { class: 'tile ' + cls }, h('span', { class: 'tn' }, name), note && h('span', { class: 'tt' }, note));
     const prev = h('div', { class: 'prev', 'aria-hidden': 'true' },
         h('h2', null, tr('Noch zu kaufen'), h('small', null, '1')),
+        h('div', { class: 'grp' }, dc('Milch & Käse')),
         h('div', { class: 'grid' }, demo('on', dn('Milch'), dnote('2 Liter')), demo('has', dn('Brot')), demo('', dn('Butter')), demo('new', tr('+ Neu'))),
         h('div', { class: 'cat' }, dc('Getränke'), h('small', null, '12'), icon(I.down)),
         h('div', { class: 'btns' }, h('span', { class: 'btn' }, tr('Knopf')), h('span', { class: 'btn primary' }, tr('Speichern'))));
-    const tabs = PARTS.map(([k, name]) => h('button', { class: 'seg', type: 'button', onclick: () => { part = k; show(); } }, h('i'), tr(name)));
+    const tabs = ALL.map(([k, name]) => h('button', { class: 'seg', type: 'button', onclick: () => { part = k; show(); } }, h('i'), tr(name)));
     const range = (cls, label, max, i) => {
         const r = h('input', { type: 'range', min: '0', max: String(max), step: '1', 'aria-label': label, oninput: () => { hsl[part][i] = +r.value; col[part] = hsl2hex(hsl[part]); show(); } });
         return [h('label', { class: 'sl ' + cls }, label, r), r];
@@ -1335,24 +1375,32 @@ function editLook(mode, redraw) {
             show();
         },
         onkeydown: e => { if (e.key === 'Enter') { e.preventDefault(); code.blur(); } } });
-    const load = c => { Object.assign(col, c); for (const [k] of PARTS) hsl[k] = hex2hsl(col[k]); show(); };
+    const load = c => { for (const [k] of TPARTS) delete col[k]; Object.assign(col, c); for (const [k] of ALL) hsl[k] = hex2hsl(eff(k)); show(); };
+    const autoBtn = h('button', { class: 'btn auto', type: 'button', onclick: () => { delete col[part]; show(); } }, tr('Automatisch'));
     const base = h('select', { 'aria-label': tr('Fertiges Design als Ausgangspunkt'), onchange: () => { if (base.value) load(palColors(base.value)); base.value = ''; } },
         h('option', { value: '' }, tr('Von einem fertigen Design ausgehen …')),
         [['Hell', PALS.light], ['Dunkel', PALS.dark]].map(([g, list]) => h('optgroup', { label: tr(g) }, list.map(([id, name]) => h('option', { value: id }, tr(name))))));
-    const warn = h('p', { class: 'err', hidden: true }, tr('Die Schrift ist auf diesem Untergrund schwer zu lesen.'));
+    const warn = h('p', { class: 'err', hidden: true });
+    // Welche Schrift auf welchem Untergrund steht. Geprüft werden die Schrift und alles, was selbst eingestellt ist.
+    const pairs = [['text', ['bg', 'card']], ['head', ['bg']], ['mut', ['bg', 'card']], ['at', ['acc']], ['qty', ['acc']]];
     function show() {
+        for (const [k] of TPARTS) if (!col[k]) hsl[k] = hex2hsl(eff(k));   // automatische gehen mit den Grundfarben mit
         setVars(prev, col);
         setLook({ [ck]: { ...col } }, true);   // die App dahinter färbt sich gleich mit, zum Konto geht es beim Schließen
-        tabs.forEach((t, i) => { const k = PARTS[i][0]; t.firstChild.style.setProperty('--c', col[k]); t.setAttribute('aria-pressed', String(k === part)); });
+        tabs.forEach((t, i) => { const k = ALL[i][0]; t.firstChild.style.setProperty('--c', eff(k)); t.setAttribute('aria-pressed', String(k === part)); });
         const [a, b, c] = hsl[part];
         hue.value = a; sat.value = b; lig.value = c;
         sliders.style.setProperty('--h', a); sliders.style.setProperty('--s', b + '%'); sliders.style.setProperty('--l', c + '%');
-        picker.value = col[part];
-        code.value = col[part];
-        warn.hidden = Math.min(contrast(col.text, col.bg), contrast(col.text, col.card)) >= 3;
+        picker.value = eff(part);
+        code.value = eff(part);
+        autoBtn.hidden = !tvar[part];
+        autoBtn.setAttribute('aria-pressed', String(!col[part]));
+        const bad = pairs.filter(([k, on]) => col[k] && on.some(u => contrast(col[k], col[u]) < 3)).map(([k]) => tr(ALL.find(x => x[0] === k)[1]));
+        warn.textContent = tr('Schwer zu lesen: {0}', bad.join(', '));
+        warn.hidden = !bad.length;
     }
     put(sh.body, prev, h('div', { class: 'segs' }, tabs), sliders,
-        h('div', { class: 'pick' }, h('label', { class: 'btn' }, picker, tr('Farbwähler')), code), warn,
+        h('div', { class: 'pick' }, h('label', { class: 'btn' }, picker, tr('Farbwähler')), code, autoBtn), warn,
         h('label', { class: 'field' }, base),
         h('div', { class: 'btns' },
             h('button', { class: 'btn', type: 'button', onclick: () => load(start) }, tr('Zurücksetzen')),
