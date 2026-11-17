@@ -47,8 +47,9 @@
     --acc: #e4e4e7; --acc-text: #111113; --acc-soft: #26262a; --danger: #ff8a7a; --shadow: none; color-scheme: dark; }
 * { box-sizing: border-box; }
 /* Kein Zoomen mit den Fingern: die Oberfläche passt sich der Breite an. pan-x pan-y lässt Rollen zu, aber kein Aufziehen und kein Doppeltipp-Zoom. */
-html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; touch-action: pan-x pan-y; }
-body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+/* --fs-all: „Alle Schriften“ aus den Schriftgrößen (nur dieses Gerät). Alles ist in rem angegeben und wächst mit. */
+html { font-size: calc(100% * var(--fs-all, 1)); -webkit-text-size-adjust: 100%; text-size-adjust: 100%; touch-action: pan-x pan-y; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 1rem/1.4 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
        -webkit-tap-highlight-color: transparent; overscroll-behavior-y: contain; }
 button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; }
@@ -80,12 +81,12 @@ svg { width: 1.25rem; height: 1.25rem; flex: none; }
 
 /* Inhalt */
 #main { padding: .75rem .75rem calc(5rem + env(safe-area-inset-bottom)); }
-h2 { margin: 1.4rem 0 .6rem; font-size: 1.25rem; font-weight: 800; letter-spacing: -.01em; display: flex; align-items: center; gap: .55rem; }
+h2 { margin: 1.4rem 0 .6rem; font-size: calc(1.25rem * var(--fs-head, 1)); font-weight: 800; letter-spacing: -.01em; display: flex; align-items: center; gap: .55rem; color: var(--head, var(--text)); }
 h2:first-child { margin-top: .25rem; }
 h2 small { font-weight: 700; font-size: .8rem; letter-spacing: 0; }
 h2 small:not(:empty) { padding: .1rem .55rem; border-radius: 1rem; background: var(--acc-soft); color: var(--acc); }
 /* Überschrift einer Warengruppe: kräftige Schrift, dahinter eine feine Linie bis zum Rand */
-.grp { display: flex; align-items: center; gap: .6rem; margin: .95rem 0 .4rem; font-size: .8rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--text); }
+.grp { display: flex; align-items: center; gap: .6rem; margin: .95rem 0 .4rem; font-size: calc(.8rem * var(--fs-head, 1)); font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--head, var(--text)); }
 .grp::after { content: ""; flex: 1; height: 1px; background: var(--line); }
 h2 + .grp { margin-top: .2rem; }
 .hint { color: var(--mut); margin: .5rem 0 1rem; }
@@ -95,9 +96,16 @@ h2 + .grp { margin-top: .2rem; }
         font-size: .84rem; line-height: 1.2; overflow-wrap: anywhere; hyphens: auto; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
         touch-action: manipulation; transition: transform .08s; }
 .tile:active { transform: scale(.96); }
-.tile .tt { font-size: .72rem; opacity: .85; }
-.tile .tb { font-size: .68rem; opacity: .7; }
+/* Menge (tt) und Hinweis (th): nie mitten im Wort trennen. Eine Zahl ohne Einheit (cnt, „3×“) steht groß da. Lange Hinweise enden nach 2 Zeilen mit „…“.
+   Die Faktoren --fs-… und --fw-cnt kommen aus den Schriftgrößen (nur dieses Gerät), ohne Einstellung gilt 1 bzw. fett. */
+.tile .tn { font-size: calc(1em * var(--fs-name, 1)); }
+.tile .tt, .tile .th { max-width: 100%; hyphens: manual; overflow-wrap: break-word; }
+.tile .tt { font-size: calc(.76rem * var(--fs-qty, 1)); }
+.tile .tt.cnt { font-size: calc(1.05rem * var(--fs-cnt, 1)); font-weight: var(--fw-cnt, 800); line-height: 1.1; }
+.tile .th { font-size: calc(.7rem * var(--fs-hint, 1)); opacity: .9; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.tile .tb { font-size: .68rem; opacity: .8; }
 .tile.on { background: var(--acc); border-color: var(--acc); color: var(--acc-text); font-weight: 600; }
+.tile.on .tt, .tile.on .th { color: var(--qty, var(--acc-text)); }
 .tile.has { border-color: var(--acc); background: var(--acc-soft); }
 .tile.has .tn::before { content: "✓ "; color: var(--acc); font-weight: 700; }
 .tile.new { border-style: dashed; border-color: var(--acc); color: var(--acc); font-weight: 600; }
@@ -107,6 +115,8 @@ h2 + .grp { margin-top: .2rem; }
 .cat svg { transition: transform .15s; color: var(--mut); }
 .cat.open svg { transform: rotate(180deg); }
 .cat + .grid { margin: .45rem 0 .8rem; }
+/* Die Liste bekommt breitere Kacheln als der Katalog (am Handy 3 statt 4 nebeneinander), damit Namen und Mengen Platz haben */
+.grid.todo { grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr)); }
 .cat.solo { margin-top: 1.1rem; }
 
 /* Knöpfe */
@@ -173,6 +183,8 @@ button.row { font-weight: 600; }
         color: var(--acc); user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: manipulation; transition: transform .08s; }
 .qbtn:active { transform: scale(.94); background: var(--acc-soft); }
 .qbtn:disabled { opacity: .4; cursor: default; }
+.qbtn.half { width: 2.9rem; font-size: 1.25rem; }
+.qbtn.half[aria-pressed="true"] { background: var(--acc); border-color: var(--acc); color: var(--acc-text); }
 .qrow input { flex: 1; min-width: 0; padding: 0 .5rem; border: 1px solid var(--line); border-radius: .9rem; background: var(--card); outline: none; text-align: center;
               font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 .qrow input:focus { border-color: var(--acc); box-shadow: 0 0 0 3px var(--acc-soft); }
@@ -196,14 +208,14 @@ button.row { font-weight: 600; }
 .prev { position: sticky; top: 0; z-index: 1; margin-bottom: .8rem; padding: .7rem .75rem .75rem; border: 1px solid var(--line); border-radius: 1rem; background: var(--bg); color: var(--text);
         box-shadow: 0 6px 18px rgba(0, 0, 0, .22); }
 .prev h2 { margin: 0 0 .4rem; }
-.prev .grid { grid-template-columns: repeat(4, 1fr); }
-.prev .tile { min-height: 3rem; }
+.prev .grid:not(.todo) { grid-template-columns: repeat(4, 1fr); }
+.prev .grid:not(.todo) .tile { min-height: 3rem; }
 .prev .cat { margin-top: .5rem; padding: .6rem .85rem; }
 .prev .btns { margin-top: .5rem; }
 .prev .btn { min-height: 2.3rem; padding: .3rem .8rem; font-size: .9rem; }
 .segs { display: grid; grid-template-columns: repeat(4, 1fr); gap: .35rem; margin-bottom: .8rem; }
 .seg { display: flex; flex-direction: column; align-items: center; gap: .25rem; min-width: 0; padding: .5rem .1rem .4rem; border: 2px solid var(--line); border-radius: .9rem; background: var(--card);
-       font-size: .75rem; font-weight: 600; }
+       font-size: .75rem; font-weight: 600; text-align: center; line-height: 1.15; overflow-wrap: anywhere; hyphens: auto; }
 .seg i { width: 1.7rem; height: 1.7rem; border-radius: 50%; background: var(--c); border: 1px solid var(--line); }
 .seg[aria-pressed="true"] { border-color: var(--acc); background: var(--acc-soft); }
 .sl { display: block; margin-bottom: .7rem; font-size: .82rem; font-weight: 600; color: var(--mut); }
@@ -219,10 +231,17 @@ button.row { font-weight: 600; }
 .sl.hue { --track: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00); }
 .sl.sat { --track: linear-gradient(to right, hsl(var(--h) 0% var(--l)), hsl(var(--h) 100% var(--l))); }
 .sl.lig { --track: linear-gradient(to right, #000, hsl(var(--h) var(--s) 50%), #fff); }
-.pick { display: flex; align-items: center; gap: .75rem; margin: .2rem 0 .8rem; }
+.pick { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; margin: .2rem 0 .8rem; }
 .pick input[type="color"] { width: 2rem; height: 2rem; padding: 0; border: 1px solid var(--line); border-radius: .5rem; background: none; cursor: pointer; }
-.pick .hex { flex: 1; min-width: 0; padding: .6rem .8rem; border: 1px solid var(--line); border-radius: .8rem; background: var(--card); outline: none; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .95rem; }
+.pick .hex { flex: 1; min-width: 6.5rem; padding: .6rem .8rem; border: 1px solid var(--line); border-radius: .8rem; background: var(--card); outline: none; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .95rem; }
 .pick .hex:focus { border-color: var(--acc); box-shadow: 0 0 0 3px var(--acc-soft); }
+.pick .auto[aria-pressed="true"] { border-color: var(--acc); background: var(--acc-soft); }
+.pick .auto[aria-pressed="true"]::before { content: "✓"; color: var(--acc); font-weight: 700; }
+/* Schriftgrößen: Regler mit Prozentangabe */
+.fontbtn { width: 100%; margin-bottom: .9rem; }
+.sl.fs { --track: linear-gradient(to right, var(--acc-soft), var(--acc)); }
+.sl.fs .fsl { display: flex; justify-content: space-between; }
+.sl.fs b { color: var(--text); }
 
 /* Anmeldung */
 .loginpage { min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; padding: 1.25rem; }
@@ -241,13 +260,16 @@ button.row { font-weight: 600; }
 .compact .grid { display: flex; flex-wrap: wrap; gap: .3rem; }
 .compact .tile { flex-direction: row; flex-wrap: wrap; align-items: center; align-content: center; column-gap: .35rem; min-height: 2.25rem; padding: .3rem .7rem; border-radius: 1.2rem;
                  font-size: .9rem; hyphens: manual; text-align: left; max-width: 100%; }
+.compact .tile .tt { font-size: calc(.8rem * var(--fs-qty, 1)); }
+.compact .tile .tt.cnt { font-size: calc(1rem * var(--fs-cnt, 1)); }
+.compact .tile .th { display: block; max-width: 8rem; white-space: nowrap; text-overflow: ellipsis; }
 .compact .grp { margin: .7rem 0 .3rem; }
 .compact .cat { padding: .55rem .85rem; margin-top: .3rem; }
 .compact .cat + .grid { margin: .35rem 0 .6rem; }
 .compact h2 { margin-top: 1rem; }
 
 /* Eingabefelder nie kleiner als 16px: darunter zoomt das iPhone beim Antippen in die Seite hinein */
-.field input, .field select, .field textarea, .login input, .pick .hex, .sheet select, .sheet textarea { font-size: 1rem; }
+.field input, .field select, .field textarea, .login input, .pick .hex, .sheet select, .sheet textarea, #q, .csearch input { font-size: max(16px, 1rem); }
 
 /* Laden-Modus: die Einkaufsliste als große Zeilen zum Abhaken. Am Handy eine Spalte, auf breiten Bildschirmen mehrere nebeneinander. */
 .shop .todo { grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr)); gap: .45rem; }
@@ -255,6 +277,8 @@ button.row { font-weight: 600; }
                     font-size: 1.15rem; text-align: left; hyphens: manual; }
 .shop .todo .tile::before { content: ""; flex: none; width: 1.35rem; height: 1.35rem; border: 2px solid currentColor; border-radius: 50%; opacity: .75; }
 .shop .todo .tn { flex: 1 1 0; min-width: 0; }
-.shop .todo .tt { flex: none; max-width: 50%; font-size: 1rem; font-weight: 500; opacity: .9; text-align: right; }
+.shop .todo .tt { flex: none; max-width: 50%; font-size: calc(1rem * var(--fs-qty, 1)); font-weight: 500; text-align: right; }
+.shop .todo .tt.cnt { font-size: calc(1.35rem * var(--fs-cnt, 1)); font-weight: var(--fw-cnt, 800); }
+.shop .todo .th { flex: 1 0 100%; padding-left: 1.95rem; font-size: calc(.9rem * var(--fs-hint, 1)); font-weight: 400; -webkit-line-clamp: unset; }
 .shop .todo .tb { flex: 1 0 100%; padding-left: 1.95rem; font-size: .78rem; font-weight: 400; }
-.shop .grp { margin: 1.1rem 0 .45rem; font-size: .88rem; }
+.shop .grp { margin: 1.1rem 0 .45rem; font-size: calc(.88rem * var(--fs-head, 1)); }
