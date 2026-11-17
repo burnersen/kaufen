@@ -104,6 +104,12 @@ ui: {
     'Diese Einheit gibt es schon.': 'This unit already exists.',
     'Mehr als 12 eigene Einheiten gehen nicht.': 'You cannot have more than 12 custom units.',
     'Menge zurücksetzen': 'Reset quantity',
+    'Einheit bearbeiten': 'Edit unit', '{0} bearbeiten': 'Edit {0}', '✎ Bearbeiten': '✎ Edit',
+    'Mengen, die schon mit „{0}“ auf einer Liste stehen, bleiben als Text stehen.': 'Quantities already on a list with “{0}” stay as plain text.',
+    'Antippen zum Umbenennen oder Löschen.': 'Tap to rename or delete.',
+    'Erscheinen bei der Mengenauswahl neben Stück, Packung und Liter. Antippen zum Umbenennen oder Löschen.': 'Appear in the quantity picker next to piece, pack and liter. Tap to rename or delete.',
+    'Konto umbenennen': 'Rename account',
+    'Angemeldete Geräte bleiben angemeldet. Beim nächsten Anmelden gilt der neue Name.': 'Signed-in devices stay signed in. The new name applies from the next sign-in.',
     'Gemerkte Menge vergessen': 'Forget remembered quantity',
 
     // Hauptansicht
@@ -271,8 +277,6 @@ ui: {
     'Zuletzt benutzte Menge merken': 'Remember the last quantity used',
     'Beim Abhaken merkt sich Kaufen, welche Menge am Produkt stand, und setzt es beim nächsten Mal wieder genauso auf die Liste. Ohne Haken steht immer 1 da.': 'When you check off a product, Kaufen remembers its quantity and puts it on the list the same way next time. Without the checkmark it always starts at 1.',
     'Eigene Einheiten': 'Custom units',
-    'Erscheinen bei der Mengenauswahl neben Stück, Packung und Liter. Antippen entfernt eine Einheit.': 'They appear in the quantity picker next to piece, pack and liter. Tap a unit to remove it.',
-    '{0} entfernen': 'Remove {0}',
     'Passwort ändern': 'Change password',
     'Bisheriges Passwort': 'Current password',
     'Neues Passwort wiederholen': 'Repeat new password',

@@ -305,6 +305,15 @@ try {
         kfDb()->commit();
         $state();
 
+    case 'user_rename':   // Namen eines Kontos ändern. Angemeldete Geräte bleiben angemeldet, beim nächsten Anmelden gilt der neue Name.
+        $admin();
+        $name = kfClean($in['name'] ?? '', 30);
+        if (($e = kfCheckName($name)) !== '') kfFail($e);
+        if (kfQ('SELECT 1 FROM users WHERE name = ? AND id <> ?', [$name, $int('id')])->fetchColumn()) kfFail(kfT('Diesen Namen gibt es schon.'));
+        kfQ('UPDATE users SET name = ? WHERE id = ?', [$name, $int('id')]);
+        kfBump('lv');
+        $state();
+
     case 'user_pass':
         $admin();
         $pass = (string)($in['pass'] ?? '');
