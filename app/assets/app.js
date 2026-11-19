@@ -2094,7 +2094,7 @@ function showImport() {
         fill(prev, m.length ? [
             h('h2', null, tr('Erkannt'), h('small', null, String(m.length))),
             m.map(x => h('div', { class: 'row plain' + (isNew(x) ? '' : ' off') }, h('span', { class: 'grow' }, dn(x.n),
-                h('small', null, [paperNote(x.note), extra(x)].filter(Boolean).join(' · ') || catName(x.c))))),
+                h('small', null, [paperNote(x.note), extra(x) || catName(x.c)].filter(Boolean).join(' · '))))),
         ] : box.value.trim() ? h('p', { class: 'info' }, tr('Darin ist nichts, was nach einem Produkt aussieht.')) : null);
     }
     put(sh.body,

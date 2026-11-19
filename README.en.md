@@ -36,9 +36,14 @@ Upload `kaufen-install.php`, open it in the browser, create the first account. T
     <td align="center"><img src="docs/en/menu.png" alt="The menu" width="250"><br><sub>Menu</sub></td>
     <td align="center"><img src="docs/en/backup.png" alt="Backup and update for the administrator" width="250"><br><sub>Backup and update</sub></td>
   </tr>
+  <tr>
+    <td align="center"><img src="docs/en/print.png" alt="Print and share: shopping list as PDF, list as text" width="250"><br><sub>Print and share</sub></td>
+    <td align="center"><img src="docs/en/paste.png" alt="Paste from text, with a preview of what was recognized" width="250"><br><sub>Paste from text</sub></td>
+    <td align="center"><img src="docs/en/shopping-list.png" alt="The shopping list as PDF: two columns, boxes to tick off" width="250"><br><sub>The PDF to print</sub></td>
+  </tr>
 </table>
 
-<sub>Screenshots of version 1.11.1. Names and entries are made up.</sub>
+<sub>Screenshots of versions 1.11.1 and 1.13.0. Names and entries are made up.</sub>
 
 > 💜 **Using Kaufen and happy with it?** A ⭐ on GitHub is the easiest way to let me know, and it does more than you'd think: stars are the visible proof that a project does good work, and they are how small projects like this one get found by other people in the first place. Or [tell me what you use it for](https://github.com/burnersen/kaufen/issues/new), I read every message. Thanks for being here!
 

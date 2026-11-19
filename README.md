@@ -36,9 +36,14 @@ Produkte tippt man aus einem fertigen Katalog an, sortiert nach Warengruppen. Im
     <td align="center"><img src="docs/de/menue.png" alt="Das Menü" width="250"><br><sub>Menü</sub></td>
     <td align="center"><img src="docs/de/sicherung.png" alt="Sicherung und Update für den Administrator" width="250"><br><sub>Sicherung und Update</sub></td>
   </tr>
+  <tr>
+    <td align="center"><img src="docs/de/drucken.png" alt="Drucken und Teilen: Einkaufszettel als PDF, Liste als Text" width="250"><br><sub>Drucken und Teilen</sub></td>
+    <td align="center"><img src="docs/de/einfuegen.png" alt="Aus Text einfügen, mit Vorschau, was erkannt wurde" width="250"><br><sub>Aus Text einfügen</sub></td>
+    <td align="center"><img src="docs/de/zettel.png" alt="Der Einkaufszettel als PDF: zwei Spalten, Kästchen zum Abhaken" width="250"><br><sub>Der Zettel zum Ausdrucken</sub></td>
+  </tr>
 </table>
 
-<sub>Screenshots von Version 1.11.1. Namen und Einträge sind erfunden.</sub>
+<sub>Screenshots von Version 1.11.1 und 1.13.0. Namen und Einträge sind erfunden.</sub>
 
 > 💜 **Gefällt dir Kaufen?** Ein ⭐ auf GitHub ist die einfachste Art, mir das zu sagen, und es bringt mehr, als man denkt: Sterne sind der sichtbare Beweis, dass ein Projekt gute Arbeit leistet, und genau darüber finden andere kleine Projekte wie dieses überhaupt erst Leute. Oder [erzähl mir, wofür du es nutzt](https://github.com/burnersen/kaufen/issues/new), ich lese jede Nachricht. Danke, dass du da bist!
 
