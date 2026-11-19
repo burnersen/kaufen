@@ -74,7 +74,9 @@ Upload `kaufen-install.php`, open it in the browser, create the first account. T
 - **Multiple lists:** everyone can create lists and share them with any accounts. If you were invited, you can also leave a list again.
 - **Who added it:** in shared lists the product shows who put it there. Each account can hide this in the settings.
 - **Notifications on your phone:** if you like, you get a notification when someone puts something on a shared list. Each account turns this on or off per device in the settings. Bundled instead of one by one: three products make one notification, sent the moment the other person leaves Kaufen. Checking things off in the store does not notify anyone.
-- **Share a list as text:** the open list goes to your messenger, mail and so on as plain text, or to the clipboard, for people without an account.
+- **Shopping list as PDF:** for the days the phone stays at home. Two columns to make full use of the page, sorted by category in the order of your own store, with a box in front of every item to tick off with a pen. Plain black and white, so it prints well on any printer. At the bottom, optional blank “Also get” lines to write on, and an empty list gives you a blank sheet. On a phone the PDF goes straight to the printer via sharing. It is created in the browser, without any third-party library and even offline.
+- **List as text:** the open list goes to your messenger, mail and so on as plain text, to the clipboard or into a text file, for people without an account. Both are under Menu → Print and share.
+- **Paste from text:** paste text or open a text file, and everything lands on the open list. Kaufen understands its own export, lists with dashes, boxes or numbers, and free text like “milk, 2 kg apples and bread”. A preview shows what was recognized first. Anything already on the list is not added twice, ticked lines ([x]) are left out.
 - **Store layout:** the categories can be ordered per list to match the way your own store is laid out.
 - **Templates:** "BBQ" or "Breakfast" puts several products on the list with one tap. The current list can be saved as a template too.
 
@@ -187,7 +189,7 @@ index.php      entry point and settings (PHP)
 app/lib/       language, database, accounts and sign-in, lists and catalog, default catalog, notifications, backup and update (PHP)
 app/routes/    all JSON actions (PHP)
 app/views/     sign-in page and main page (PHP/HTML)
-app/assets/    the app in the browser (JavaScript, CSS), English translation, icons, service worker
+app/assets/    the app in the browser (JavaScript, CSS), PDF shopping list, English translation, icons, service worker
 data/          created on first start, holds the database and accounts
 tools/         builds the release files (php tools/build-release.php)
 ```

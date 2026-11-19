@@ -952,14 +952,18 @@ function parseMulti(raw) {
         // an „und“ nur trennen, wenn das Ganze kein bekanntes Produkt ist („Erbsen und Möhren“)
         const segs = findProd(piece) ? [piece] : piece.split(/\s+(?:und|sowie|and|plus)\s+|\s*[&+]\s*/i);
         for (const seg of segs) for (const { name, q } of parsePiece(seg.trim())) {
-            const p = findProd(name);
-            const nm = p ? p.n : canon(name.charAt(0).toLocaleUpperCase(lang) + name.slice(1)).slice(0, 60);
-            const note = q && !(q.n === 1 && q.u < 0 && !q.cu) ? fmtQty(q, 'de', '') : '';
-            out.delete(low(nm));
-            out.set(low(nm), { n: nm, c: p ? p.c : guessCat(nm), note, known: !!p });
+            const x = entryOf(name, q && !(q.n === 1 && q.u < 0 && !q.cu) ? fmtQty(q, 'de', '') : '');
+            out.delete(low(x.n));
+            out.set(low(x.n), x);
         }
     }
     return [...out.values()];
+}
+/** Ein Eintrag für die Vorschau: Name wie im Katalog (oder groß geschrieben, wie getippt), Warengruppe bekannt oder geraten */
+function entryOf(name, note) {
+    const p = findProd(name);
+    const nm = p ? p.n : canon(name.charAt(0).toLocaleUpperCase(lang) + name.slice(1)).slice(0, 60);
+    return { n: nm, c: p ? p.c : guessCat(nm), note, known: !!p };
 }
 /** Lohnt sich die Vorschau? Ab zwei Produkten, oder bei einem mit Menge („2 Liter Milch“). */
 const multiOf = raw => { const m = parseMulti(raw); return m.length >= 2 || (m.length === 1 && m[0].note) ? m : null; };
@@ -1936,20 +1940,81 @@ async function logout() {
     else go().catch(e => toast(e.message));
 }
 
+/* ---------- Drucken und Teilen: Einkaufszettel als PDF (pdf.js), Liste als Text. Und der Weg zurück: aus Text einfügen. ---------- */
+/** Die offene Liste nach Warengruppen, in der Reihenfolge des Ladens: [[Warengruppe, [Einträge]]] */
+function listGroups() {
+    const groups = new Map(catOrder().map(id => [id, []]));
+    for (const it of L.items) groups.get(hasCat(it.c) ? it.c : 0).push(it);
+    return [...groups].filter(g => g[1].length);
+}
+const locale = () => lang === 'en' ? 'en-US' : 'de-DE';
+/** Dateiname aus Listenname und heutigem Datum, z. B. „Wocheneinkauf 2026-11-19.pdf“ */
+function exportName(ext) {
+    const d = new Date(), p = n => String(n).padStart(2, '0');
+    return (curList().n.replace(/[\\/:*?"<>|\u0000-\u001f]+/g, ' ').replace(/\s+/g, ' ').trim() || 'Kaufen') + ' ' + d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + '.' + ext;
+}
+/** Menge für Zettel und Text wie auf den Kacheln: „6×“ statt bloß „6“ */
+const paperNote = note => { const p = noteParts(note); return [p.q, p.hint].filter(Boolean).join(', '); };
+/** Die Liste als schlichter Text. Genau dieses Format versteht „Aus Text einfügen“ wieder. */
+function listText() {
+    const lines = [curList().n + ' (' + new Date().toLocaleDateString(locale()) + ')'];
+    for (const [id, items] of listGroups()) {
+        lines.push('', catName(id) + ':');
+        for (const it of items) lines.push('- ' + dn(it.n) + (it.note ? ' (' + paperNote(it.note) + ')' : ''));
+    }
+    return lines.join('\n');
+}
+/** Einkaufszettel als PDF: zwei Spalten, Kästchen zum Abhaken. Eine leere Liste ergibt einen leeren Zettel zum Selberschreiben. */
+function listPdf(extra) {
+    const n = L.items.length;
+    return self.kfPdf({
+        title: curList().n,
+        date: new Date().toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
+        count: n === 1 ? tr('1 Eintrag') : n ? tr('{0} Einträge', n) : '',
+        sections: listGroups().map(([id, items]) => ({ name: catName(id), items: items.map(it => ({ n: dn(it.n), q: paperNote(it.note) })) })),
+        extra: !n ? { name: '', lines: 54 } : extra ? { name: tr('Noch dazu'), lines: 6 } : null,   // leere Liste: ganze Seite Schreiblinien
+        more: tr('Forts.'), brand: 'Kaufen', page: (i, k) => tr('Seite {0} von {1}', i, k),
+    });
+}
+/** Kann das Gerät Dateien teilen (Handy: teilen, drucken, in Dateien sichern)? */
+function canShareFiles() {
+    try { return !!(navigator.canShare && navigator.canShare({ files: [new File(['x'], 'x.pdf', { type: 'application/pdf' })] })); } catch (e) { return false; }
+}
+
+function showExport() {
+    if (!curList() || !L) return;
+    const sh = sheet(tr('Drucken und Teilen'));
+    const ex = h('input', { type: 'checkbox', checked: LS.get('pdfx', true), onchange: () => LS.set('pdfx', ex.checked) });
+    const pdf = async share => {
+        if (typeof self.kfPdf !== 'function') return toast(tr('Das PDF lässt sich gerade nicht erstellen. Lade die Seite neu.'));
+        const bytes = listPdf(ex.checked), name = exportName('pdf');
+        if (!share) return download(name, bytes, 'application/pdf');
+        try { await navigator.share({ files: [new File([bytes], name, { type: 'application/pdf' })], title: curList().n }); }
+        catch (e) { if (!e || e.name !== 'AbortError') download(name, bytes, 'application/pdf'); }
+    };
+    const empty = () => !L.items.length && (toast(tr('Die Liste ist leer, es gibt nichts zu teilen.')), true);
+    const btn = (label, fn, primary) => h('button', { class: 'btn' + (primary ? ' primary' : ''), type: 'button', onclick: fn }, label);
+    const files = canShareFiles();
+    put(sh.body,
+        h('h2', null, tr('Einkaufszettel')),
+        h('p', { class: 'info' }, tr('Zum Ausdrucken, falls das Handy mal zu Hause bleibt: zwei Spalten, nach Warengruppen in der Reihenfolge deines Ladens, mit Kästchen zum Abhaken. Ist die Liste leer, gibt es einen leeren Zettel zum Selberschreiben.')),
+        h('label', { class: 'check' }, ex, h('span', null, tr('Leere Zeilen „Noch dazu“ zum Dazuschreiben'))),
+        h('div', { class: 'btns' },
+            files && btn(tr('PDF teilen oder drucken'), () => pdf(true), true),
+            btn(tr('PDF speichern'), () => pdf(false), !files)),
+        h('h2', null, tr('Als Text')),
+        h('p', { class: 'info' }, tr('Für WhatsApp, Mail und Co. oder als Datei zum Aufheben. Über „Aus Text einfügen“ kommt so ein Text wieder auf eine Liste.')),
+        h('div', { class: 'btns' },
+            btn(tr('Text teilen'), () => { if (!empty()) { sh.close(); shareText(); } }, true),
+            btn(tr('Textdatei speichern'), () => { if (!empty()) download(exportName('txt'), '﻿' + listText().replace(/\n/g, '\r\n') + '\r\n', 'text/plain;charset=utf-8'); })));
+}
+
 /** Die offene Liste als schlichten Text weitergeben (WhatsApp, Mail …), für Leute ohne Konto. Ohne Teilen-Funktion des Geräts wird kopiert. */
 async function shareText() {
     const l = curList();
     if (!l || !L) return;
     if (!L.items.length) return toast(tr('Die Liste ist leer, es gibt nichts zu teilen.'));
-    const groups = new Map(catOrder().map(id => [id, []]));
-    for (const it of L.items) groups.get(hasCat(it.c) ? it.c : 0).push(it);
-    const lines = [l.n];
-    for (const [id, items] of groups) {
-        if (!items.length) continue;
-        lines.push('', catName(id) + ':');
-        for (const it of items) lines.push('- ' + dn(it.n) + (it.note ? ' (' + dnote(it.note) + ')' : ''));
-    }
-    const text = lines.join('\n');
+    const text = listText();
     try {
         if (navigator.share) return await navigator.share({ title: l.n, text });
         await navigator.clipboard.writeText(text);
@@ -1963,6 +2028,83 @@ async function shareText() {
     }
 }
 
+/** Text in Einträge zerlegen. Versteht das eigene Format von oben („Obst & Gemüse:“, „- Äpfel (2 kg)“) und andere Listen mit
+    Spiegelstrichen, Kästchen oder Nummern. Stehen solche Zeichen im Text, zählen nur diese Zeilen, der Rest (Titel, Grüße) bleibt draußen.
+    Ohne solche Zeichen geht alles durch dieselbe Erkennung wie das Suchfeld („Milch, 2 kg Äpfel und Brot“).
+    Überschriften mit Doppelpunkt, die wie eine Warengruppe heißen, gelten für unbekannte Produkte darunter. Abgehakte Zeilen ([x], ☑, ✓) fallen weg. */
+const IMP_BUL = /^(?:[-*•·–—+▪◦○●]|\[ ?\]|[☐□▢]|\d{1,3}[.)](?=\s))\s*/;
+const IMP_DONE = /^(?:\[[xX✓✔]\]|[☑☒✓✔✅])/;
+function parseImport(text) {
+    const lines = String(text).replace(/^﻿/, '').split(/\r?\n/).map(x => x.trim()).filter(Boolean);
+    const bullets = lines.some(x => IMP_BUL.test(x) || IMP_DONE.test(x));
+    const catBy = name => {
+        const k = norm(name);
+        if (k === norm(tr('Sonstiges')) || k === 'sonstiges' || k === 'other') return 0;
+        const c = S.catalog.cats.find(c => [c.n, dc(c.n), enCat(c.n)].some(x => x && norm(x) === k));
+        return c ? c.id : null;
+    };
+    const out = new Map();
+    let cat = null;
+    for (const line of lines) {
+        if (IMP_DONE.test(line)) continue;
+        const b = IMP_BUL.exec(line);
+        if (!b && /:$/.test(line)) { cat = catBy(line.slice(0, -1)); continue; }
+        if (bullets && !b) continue;
+        const body = (b ? line.slice(b[0].length) : line).trim();
+        if (!body) continue;
+        const m = /^(.+?)\s*\((.+)\)$/.exec(body);   // „Äpfel (2 kg)“
+        const items = m ? [entryOf(m[1].trim(), canonNote(m[2].trim().replace(/^(\d[\d,.]*\s*[½¼¾]?|[½¼¾])\s*[×x]$/i, '$1')).slice(0, 80))] : parseMulti(body);
+        for (const x of items) {
+            if (!x.known && cat != null) x.c = cat;
+            out.delete(low(x.n));
+            out.set(low(x.n), x);
+        }
+    }
+    return [...out.values()].slice(0, 300);
+}
+
+function showImport() {
+    if (!curList() || !L) return;
+    const sh = sheet(tr('Aus Text einfügen'));
+    let m = [], timer = 0;
+    const isNew = x => { const it = itemByName(x.n); return !it || (x.note && x.note !== it.note); };
+    const box = h('textarea', { placeholder: tr('Liste hier einfügen, z. B.\n- Milch (2 Liter)\n- Äpfel\noder einfach: Milch, 2 kg Äpfel und Brot'),
+        oninput: () => { clearTimeout(timer); timer = setTimeout(draw, 250); } });
+    const prev = h('div', { class: 'imp' });
+    const go = h('button', { class: 'btn primary', type: 'button', disabled: true, onclick: () => {
+        const todo = m.filter(isNew);
+        if (!todo.length) return;
+        addMulti(todo);
+        sh.close();
+    } }, tr('Auf die Liste'));
+    const file = h('input', { type: 'file', accept: '.txt,.md,.csv,text/plain', hidden: true, onchange: async () => {
+        const f = file.files[0];
+        file.value = '';
+        if (!f) return;
+        if (f.size > 1e6) return toast(tr('Die Datei ist zu groß.'));
+        box.value = await f.text();
+        draw();
+    } });
+    function draw() {
+        m = parseImport(box.value);
+        const n = m.filter(isNew).length;
+        go.disabled = !n;
+        go.textContent = n > 1 ? tr('Alle {0} auf die Liste', n) : tr('Auf die Liste');
+        const extra = x => { const it = itemByName(x.n); return it ? (isNew(x) ? tr('neue Menge') : tr('steht schon drauf')) : x.known ? '' : tr('neu: {0}', catName(x.c)); };
+        fill(prev, m.length ? [
+            h('h2', null, tr('Erkannt'), h('small', null, String(m.length))),
+            m.map(x => h('div', { class: 'row plain' + (isNew(x) ? '' : ' off') }, h('span', { class: 'grow' }, dn(x.n),
+                h('small', null, [paperNote(x.note), extra(x)].filter(Boolean).join(' · ') || catName(x.c))))),
+        ] : box.value.trim() ? h('p', { class: 'info' }, tr('Darin ist nichts, was nach einem Produkt aussieht.')) : null);
+    }
+    put(sh.body,
+        h('p', { class: 'info' }, tr('Text einfügen oder eine Textdatei öffnen. Kaufen versteht den eigenen Export („Liste als Text“), Listen mit Spiegelstrichen oder Kästchen und freien Text. Was schon auf der Liste steht, kommt nicht doppelt drauf.')),
+        h('label', { class: 'field' }, box),
+        h('div', { class: 'btns' }, h('button', { class: 'btn', type: 'button', onclick: () => file.click() }, tr('Textdatei öffnen')), go),
+        file, prev);
+    if (!('ontouchstart' in window)) box.focus();
+}
+
 function showMenu() {
     const sh = sheet(tr('Menü'));
     const btn = (label, fn) => h('button', { class: 'row', type: 'button', onclick: () => { sh.close(); fn(); } }, label);
@@ -1970,7 +2112,8 @@ function showMenu() {
         btn(tr('Listen'), showLists),
         L && btn(tr('Vorlagen'), showTemplates),
         L && btn(tr('Reihenfolge im Laden'), showOrder),
-        L && btn(tr('Liste als Text teilen'), shareText),
+        L && btn(tr('Drucken und Teilen'), showExport),
+        L && btn(tr('Aus Text einfügen'), showImport),
         btn(tr('Katalog verwalten'), showCatalog),
         S.me.admin && btn(tr('Konten'), showUsers),
         S.me.admin && btn([tr('Sicherung und Update'), S.upd && S.upd.v && h('span', { class: 'badge' }, tr('Neu: {0}', S.upd.v))], showMaint),

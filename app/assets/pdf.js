@@ -85,8 +85,9 @@
             }
         }
         if (d.extra && d.extra.lines > 0) {
-            heading(d.extra.name || '');
-            for (let i = 0; i < d.extra.lines; i++) { blocks.push({ t: 'e', h: ROW + 2, gap: 0, head }); head.sec += ROW + 2; }
+            head = null;
+            if (d.extra.name) heading(d.extra.name);   // ohne Namen: leerer Zettel nur mit Zeilen
+            for (let i = 0; i < d.extra.lines; i++) { blocks.push({ t: 'e', h: ROW + 2, gap: 0, head }); if (head) head.sec += ROW + 2; }
         }
 
         /* ---------- 2. Auf Spalten und Seiten verteilen. Kleine Warengruppen bleiben zusammen, große werden frühestens nach zwei Zeilen geteilt.
@@ -97,7 +98,7 @@
             let i = start;
             for (let c = 0; c < 2 && i < blocks.length; c++) {
                 let y = 0;
-                if (blocks[i].t !== 'h') {   // Fortsetzung
+                if (blocks[i].t !== 'h' && blocks[i].head) {   // Fortsetzung
                     cols[c].push({ b: { t: 'h', text: blocks[i].head.text + '  (' + more + ')', h: 26 }, y: 0 });
                     y = 26;
                 }
