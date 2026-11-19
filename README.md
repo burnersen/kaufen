@@ -71,7 +71,7 @@ Wer gar nichts auf einem Server haben will, tippt auf der Anmeldeseite auf **„
 ## So funktioniert's
 
 1. **Auf die Liste:** Produkte im Katalog antippen oder oben eintippen, auch mehrere auf einmal („Milch, 2 kg Äpfel und Brot“). Alle, die die Liste teilen, sehen es nach ein paar Sekunden.
-2. **Im Laden abhaken:** Eintrag antippen, dann wandert er mit Haken in den Einkaufskorb unter der Liste. Vertippt? Im Korb nochmal antippen, dann ist er wieder oben. Wer mag, lässt Abgehaktes stattdessen durchgestrichen an seinem Platz stehen (in der Listen-Ansicht von Haus aus), dann holen ihn zwei Tipps innerhalb von 2 Sekunden zurück.
+2. **Im Laden abhaken:** Eintrag antippen, dann bleibt er mit Haken durchgestrichen an seinem Platz stehen, wie auf dem Zettel. Vertippt? Zwei Tipps innerhalb von 2 Sekunden holen ihn zurück. Wer mag, lässt Abgehaktes stattdessen in einen Einkaufskorb unter der Liste wandern, dort reicht ein Tipp zum Zurückholen.
 3. **Fertig:** „Einkauf fertig“ unter dem Korb leert ihn nach einer Sicherheitsfrage. Was noch fehlt, bleibt für den nächsten Laden auf der Liste.
 
 | Geste | Auf der Liste und im Korb | Im Katalog |
@@ -82,7 +82,7 @@ Wer gar nichts auf einem Server haben will, tippt auf der Anmeldeseite auf **„
 | Halten | Warengruppe wechseln (etwa eine Sekunde, ein Ring zeigt es an) | Menge und Hinweis (eine halbe Sekunde) |
 | Am Rechner | mit gedrückter Maus ziehen statt wischen, Rechtsklick statt halten | Rechtsklick statt halten |
 
-**Kurz erklärt in der App:** Menü → Hilfe zeigt die Bedienung auf einen Blick, mit allen Gesten.
+**Kurz erklärt in der App:** Menü → Hilfe zeigt die Bedienung auf einen Blick, mit allen Gesten. Beim ersten Start weist ein kleiner Kasten einmal darauf hin.
 
 **Ohne Server:** Im [lokalen Modus](#nur-auf-diesem-gerät-lokaler-modus) funktioniert alles genauso, nur dass die Listen nie das Gerät verlassen.
 
@@ -99,8 +99,8 @@ Wer gar nichts auf einem Server haben will, tippt auf der Anmeldeseite auf **„
 - **Mehrere auf einmal, auch per Sprache:** „Milch, 2 kg Äpfel und ein halbes Brot“ ins Suchfeld tippen oder diktieren, Enter, und alles steht auf der Liste. Getrennt wird an Komma, „und“ oder Zeilenende, ohne Kommas („Milch Brot Äpfel Sahne“) zerlegt der Katalog die Wörter. Mengen dürfen davor oder dahinter stehen, in Ziffern oder Worten. Schon beim Tippen zeigt eine Vorschau, was erkannt wurde.
 - **Zuletzt gekauft:** die jüngsten und häufigsten Produkte, zum Aufklappen wie die Warengruppen. Was in den letzten zwei Wochen gekauft wurde, sagt es an der Kachel dazu („vor 3 Tagen“), beim langen Drücken mit Datum und wie oft.
 - **Bald wieder fällig:** beim Abhaken lernt Kaufen, wie oft ihr etwas kauft (Milch etwa alle 5 Tage). Ist es wieder so weit, steht es unter der Liste zum Antippen bereit. Ein Produkt braucht dafür ein paar Einkäufe. Alles bleibt auf dem eigenen Server, abschaltbar pro Konto oder pro Produkt.
-- **Vier Ansichten:** kleine Kacheln, kompakt, Laden-Modus (große Zeilen fürs Abhaken im Laden) oder Liste (schlichte Zeilen auf einer Karte, je Warengruppe eine Überschrift, links ein Kreis zum Abhaken, die Menge als Pille rechts). Umschaltbar mit dem Knopf oben rechts, gemerkt pro Gerät. Die Farben kommen wie überall aus dem gewählten Design.
-- **Durchstreichen statt Korb:** in den Einstellungen pro Gerät wählbar. Abgehaktes bleibt dann mit Haken und durchgestrichen an seinem Platz stehen, statt in den Einkaufskorb zu wandern. In der Listen-Ansicht ist das von Haus aus so, auf Wunsch in allen Ansichten oder nirgends. Zurück auf die Liste geht es mit zwei Tipps innerhalb von 2 Sekunden, ein einzelner Tipp aus Versehen holt nichts zurück. „Einkauf fertig“ nimmt danach alles Abgehakte von der Liste. Wer die Liste teilt und lieber den Korb mag, sieht dieselben Einträge bei sich im Korb.
+- **Vier Ansichten:** kleine Kacheln, kompakt, Laden-Modus (große Zeilen fürs Abhaken im Laden) oder Liste (schlichte Zeilen auf einer Karte, je Warengruppe eine Überschrift, links ein Kreis zum Abhaken, die Menge als Pille rechts). Von Haus aus startet Kaufen in der Listen-Ansicht, sie kommt einem Einkaufszettel am nächsten. Umschaltbar mit dem Knopf oben rechts, gemerkt pro Gerät und für jede Liste einzeln. Die Farben kommen wie überall aus dem gewählten Design.
+- **Durchstreichen oder Korb:** Abgehaktes bleibt von Haus aus mit Haken und durchgestrichen an seinem Platz stehen. In den Einstellungen pro Gerät wählbar: immer durchstreichen, immer in den Einkaufskorb, oder nur in der Listen-Ansicht durchstreichen. Zurück auf die Liste geht es mit zwei Tipps innerhalb von 2 Sekunden, ein einzelner Tipp aus Versehen holt nichts zurück. „Einkauf fertig“ nimmt danach alles Abgehakte von der Liste. Wer die Liste teilt und lieber den Korb mag, sieht dieselben Einträge bei sich im Korb.
 - **Ohne Netz weiter einkaufen:** die App startet auch ohne Empfang, Änderungen werden gesammelt und nachgereicht.
 - **Bildschirm bleibt an**, solange die App offen ist (abschaltbar).
 - **Hilfe in der App:** Menü → Hilfe erklärt kurz und knapp Tippen, Wischen und Halten, Mengen, den Einkauf im Laden und was oben und im Menü steckt. Die Hilfe passt sich an: wer durchstreicht statt Korb, liest es so.
@@ -153,7 +153,8 @@ Für alle, die Kaufen anderen zum Ausprobieren anbieten wollen, ohne dass sich j
 
 - **Deutsch und Englisch:** jedes Konto wählt seine Sprache in den Einstellungen, ein deutsches Gerät startet deutsch, alle anderen englisch. Übersetzt ist alles, auch der Katalog. In einer geteilten Liste sieht die eine „Milch“ und der andere „Milk“, es bleibt derselbe Eintrag.
 - **Zehn Designs und eigene Farben:** fünf helle und fünf dunkle Farbwelten, dazu je ein eigenes Design aus dem Farbmischer (Regler oder Farbwähler, mit Vorschau). Dort lassen sich auch die Schriftfarben für Überschriften, Nebentext, Listenschrift und Menge selbst wählen. Ein Knopf stimmt sie automatisch auf die Akzentfarbe ab: gut lesbare Listenschrift und eine Mengenfarbe aus dem Farbkreis, die sich davon abhebt. Wer will, sieht beim Ziehen an einem Regler statt der Vorschau die echte Liste. Bei „Wie das Gerät“ wechselt Kaufen automatisch zwischen dem hellen und dem dunklen Favoriten. Das Aussehen gehört zum Konto und gilt auf allen Geräten.
-- **Schrift, Größe und Abstände:** in den Einstellungen pro Gerät, Schriftgrößen für alles zusammen oder einzeln für Überschriften, Produktnamen, Menge, Anzahl und Hinweis, dazu wie fett die Anzahl ist. Dazu die Höhe der Einträge (Kacheln, Schildchen und Zeilen, von 60 bis 180 %) und der Abstand dazwischen (0 bis 300 %), in allen Ansichten. Mit Vorschau in der gewählten Ansicht, auf Wunsch beim Ziehen auch direkt an der echten Liste.
+- **Jede Liste ihr eigenes Aussehen:** Ansicht, Schrift, hell oder dunkel, Design und Farben gelten für die Liste, die gerade offen ist. Der Einkaufszettel als schlichte Liste, der Baumarkt dunkel mit großen Kacheln. Jeder Nutzer stellt das für sich ein, in geteilten Listen sieht jeder sein eigenes Aussehen. „Für alle Listen übernehmen“ in den Einstellungen macht das Aussehen der offenen Liste zum Standard für alle.
+- **Schrift, Größe und Abstände:** in den Einstellungen pro Gerät und Liste, Schriftgrößen für alles zusammen oder einzeln für Überschriften, Produktnamen, Menge, Anzahl und Hinweis, dazu wie fett die Anzahl ist. Dazu die Höhe der Einträge (Kacheln, Schildchen und Zeilen, von 60 bis 180 %) und der Abstand dazwischen (0 bis 300 %), in allen Ansichten. Mit Vorschau in der gewählten Ansicht, auf Wunsch beim Ziehen auch direkt an der echten Liste.
 - **Als App installierbar** (PWA), mit eigenem Symbol auf dem Startbildschirm.
 
 ### Verwalten

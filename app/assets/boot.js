@@ -5,9 +5,9 @@
     try {
         if (document.documentElement.dataset.page === 'login' && JSON.parse(localStorage.getItem('kf_mode')) === 'local') { location.replace('./?local=1'); return; }
     } catch (e) {}
-    // Schriftgrößen dieses Geräts (app.js: applyFont)
+    // Schriftgrößen dieses Geräts, die der zuletzt offenen Liste (app.js: applyFont)
     try {
-        const f = JSON.parse(localStorage.getItem('kf_font'));
+        const f = JSON.parse(localStorage.getItem('kf_fontNow') || localStorage.getItem('kf_font'));
         for (const k in f || {}) if (/^[a-z]{1,4}$/.test(k) && isFinite(f[k])) document.documentElement.style.setProperty(k === 'w' ? '--fw-cnt' : '--fs-' + k, String(+f[k]));
     } catch (e) {}
     try {

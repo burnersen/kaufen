@@ -370,10 +370,21 @@ try {
             }
             return $out;
         };
-        $look = ['mode' => in_array($l['mode'] ?? '', ['light', 'dark'], true) ? $l['mode'] : 'auto',
-                 'l' => $pal($l['l'] ?? ''), 'd' => $pal($l['d'] ?? ''), 'cl' => $cols($l['cl'] ?? null), 'cd' => $cols($l['cd'] ?? null)];
+        $one = function ($v) use ($pal, $cols) {
+            $v = is_array($v) ? $v : [];
+            return ['mode' => in_array($v['mode'] ?? '', ['light', 'dark'], true) ? $v['mode'] : 'auto',
+                    'l' => $pal($v['l'] ?? ''), 'd' => $pal($v['d'] ?? ''), 'cl' => $cols($v['cl'] ?? null), 'cd' => $cols($v['cd'] ?? null)];
+        };
+        $look = $one($l);
         // Sprache, Menge merken, eigene Einheiten. Schickt ein Gerät sie nicht mit (ältere Fassung im Zwischenspeicher), bleibt der gespeicherte Wert.
         $src = function (string $k) use ($l, $old) { return array_key_exists($k, $l) ? $l[$k] : ($old[$k] ?? null); };
+        // Aussehen je Liste (Listennummer => wie oben). Als Objekt speichern, auch wenn es leer ist.
+        $pl = [];
+        foreach ((array)$src('pl') as $k => $v) {
+            if (count($pl) >= 100) break;
+            if (preg_match('/^[\w-]{1,40}$/', (string)$k) && is_array($v)) $pl[(string)$k] = $one($v);
+        }
+        $look['pl'] = (object)$pl;
         $look['lang'] = in_array($src('lang'), ['de', 'en'], true) ? $src('lang') : '';
         $look['keep'] = $src('keep') !== false;
         $look['who'] = $src('who') !== false;
