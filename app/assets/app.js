@@ -1752,8 +1752,10 @@ const normLook = o => ({ ...normC(o), pl: normPl(o && o.pl),
     lang = Sprache ('' = noch nicht gewählt), keep = zuletzt benutzte Menge merken, who = anzeigen, wer einen Artikel hinzugefügt hat, due = „Bald wieder fällig“ zeigen, units = eigene Einheiten,
     uv = mitgelieferte Einheiten, die bei der Mengenauswahl immer dastehen (null = Standard). Liegt auf dem Server, hier nur die Kopie. */
 let look = normLook(LS.get('look', null) || { mode: LS.get('theme', 'auto'), l: LS.get('palL', ''), d: LS.get('palD', '') });
-/** Das Aussehen, das gerade gilt: das eigene der offenen Liste, sonst der Standard des Kontos */
-const lk = () => { const o = cur != null && look.pl[cur]; return o ? { ...look, ...o } : look; };
+/** Schlüssel fürs Aussehen der offenen Liste in der aktuellen Ansicht, z. B. „5_list“ (null = keine Liste offen) */
+const lvKey = () => cur != null ? cur + '_' + curView() : null;
+/** Das Aussehen, das gerade gilt: das eigene der offenen Liste in dieser Ansicht, sonst das der Liste (aus 1.19.0), sonst der Standard des Kontos */
+const lk = () => { const o = cur != null && (look.pl[lvKey()] || look.pl[cur]); return o ? { ...look, ...o } : look; };
 const palOf = mode => {
     const a = lk(), v = a[mode === 'dark' ? 'd' : 'l'];
     if (v === 'eigen' && a[mode === 'dark' ? 'cd' : 'cl']) return v;
@@ -1762,14 +1764,14 @@ const palOf = mode => {
 let lookEpoch = 0;   // zählt jede Änderung an den Einstellungen des Kontos und jedes Speichern, siehe applyState
 function setLook(patch, later) {
     lookEpoch++;
-    // Farben und Design gelten für die offene Liste. Beim ersten Mal übernimmt sie den Standard und ändert dann nur, was sich ändert.
+    // Farben und Design gelten für die offene Liste in der aktuellen Ansicht. Beim ersten Mal übernimmt sie, was bisher galt, und ändert dann nur, was sich ändert.
     const own = {}, rest = {};
     for (const k in patch) (LOOKC.includes(k) ? own : rest)[k] = patch[k];
     if (Object.keys(own).length) {
         if (cur != null) {
             const a = lk(), pl = {};
-            for (const k in look.pl) if (!S || S.lists.some(l => String(l.id) === k)) pl[k] = look.pl[k];   // gelöschte Listen fallen raus
-            pl[cur] = { ...Object.fromEntries(LOOKC.map(k => [k, a[k]])), ...own };
+            for (const k in look.pl) if (!S || S.lists.some(l => String(l.id) === k.split('_')[0])) pl[k] = look.pl[k];   // gelöschte Listen fallen raus
+            pl[lvKey()] = { ...Object.fromEntries(LOOKC.map(k => [k, a[k]])), ...own };
             look.pl = pl;
         } else Object.assign(look, own);
     }
@@ -1919,11 +1921,11 @@ const strikeOn = () => { const t = curTick(); return t === 'strike' || (t === 'a
 /** Ansicht wechseln: Durchstreichen oder Korb kann davon abhängen, deshalb neu zeichnen */
 const setView = v => {
     if (cur != null) { const m = LS.get('viewL', {}); m[cur] = v; LS.set('viewL', m); } else LS.set('view', v);
-    disarm(); applyView(); render();
+    disarm(); applyListLook(); render();   // jede Ansicht kann ihr eigenes Aussehen haben
 };
 /** Beim Wechsel der Liste: ihr Aussehen, ihre Schrift und ihre Ansicht */
 function applyListLook() { applyTheme(); applyFont(); applyView(); }
-/** Das Aussehen der offenen Liste gilt ab jetzt für alle Listen: wird Standard, die eigenen Einstellungen der anderen Listen fallen weg */
+/** Das Aussehen der offenen Liste in dieser Ansicht gilt ab jetzt für alle Listen und Ansichten: wird Standard, alle eigenen Einstellungen fallen weg */
 function lookForAll() {
     const a = lk(), f = fontRaw(), v = curView();
     for (const k of LOOKC) look[k] = a[k];
@@ -1933,7 +1935,7 @@ function lookForAll() {
     setLook({});
     applyListLook();
     render();
-    toast(tr('Gilt jetzt für alle Listen'));
+    toast(tr('Gilt jetzt für alle Listen und Ansichten'));
 }
 
 /** Schriftgrößen, gemerkt pro Gerät wie die Ansicht: je ein Faktor (1 = Standard, Grenzen von bis) und wie fett die Anzahl ohne Einheit ist.
@@ -1943,10 +1945,10 @@ const FONTS = [['all', 'Alle Schriften', .85, 1.4], ['head', 'Überschriften', .
     ['row', 'Höhe der Einträge', .6, 1.8], ['gap', 'Abstand dazwischen', 0, 3]];
 const SIZES = ['row', 'gap'];   // keine Schrift, sondern Größe der Kacheln, Schildchen und Zeilen und die Lücke zwischen ihnen (--fs-row, --fs-gap)
 const WEIGHTS = [[800, 'Fett'], [600, 'Halbfett'], [400, 'Normal']];
-/** Schrift dieses Geräts für die offene Liste (fontL), sonst der Standard dieses Geräts */
-const fontRaw = () => { const m = LS.get('fontL', {}); return cur != null && m[cur] || LS.get('font', null) || {}; };
+/** Schrift dieses Geräts für die offene Liste in dieser Ansicht (fontL), sonst für die Liste, sonst der Standard dieses Geräts */
+const fontRaw = () => { const m = LS.get('fontL', {}); return cur != null && (m[lvKey()] || m[cur]) || LS.get('font', null) || {}; };
 function setFontRaw(f) {
-    if (cur != null) { const m = LS.get('fontL', {}); m[cur] = f; LS.set('fontL', m); } else LS.set('font', f);
+    if (cur != null) { const m = LS.get('fontL', {}); m[lvKey()] = f; LS.set('fontL', m); } else LS.set('font', f);
 }
 function curFont() {
     const f = fontRaw(), o = {};
@@ -1963,7 +1965,7 @@ function applyFont() {
 /** Beim Ziehen an einem Regler die echte Liste zeigen (Schalter im Farbmischer und bei den Schriftgrößen, gemerkt pro Gerät):
     alle Fenster werden unsichtbar, nur die Zeile mit dem Regler bleibt als Leiste stehen. on(true) beim Anfassen, on(false) beim Loslassen. */
 function peekOnDrag(input, on) {
-    let active = false;
+    let active = false, pend = null;
     const ends = [[window, 'pointerup'], [window, 'touchend'], [window, 'touchcancel'], [input, 'change'], [input, 'blur']];
     const end = () => {
         if (!active) return;
@@ -1973,13 +1975,29 @@ function peekOnDrag(input, on) {
         for (const [t, ev] of ends) t.removeEventListener(ev, end);
         if (on) on(false);
     };
-    const start = e => {
-        if (active || !LS.get('peek', false) || e.button > 0) return;
+    // Erst abwarten, wohin der Finger geht: senkrecht ist Rollen und bleibt Rollen, erst waagerecht am Regler schieben macht durchsichtig
+    const watch = [[window, 'pointermove', e => move(e)], [window, 'touchmove', e => move(e)], [window, 'pointerup', () => stop()], [window, 'pointercancel', () => stop()],
+        [window, 'touchend', () => stop()], [window, 'touchcancel', () => stop()]];
+    const stop = () => { if (!pend) return; pend = null; for (const [t, ev, fn] of watch) t.removeEventListener(ev, fn); };
+    const pt = e => e.touches ? e.touches[0] : e;
+    const move = e => {
+        if (!pend || !pt(e)) return;
+        const dx = Math.abs(pt(e).clientX - pend.x), dy = Math.abs(pt(e).clientY - pend.y);
+        if (dx < 8 && dy < 8) return;
+        stop();
+        if (dx > dy) begin();
+    };
+    const begin = () => {
         active = true;
         input.closest('.sl').classList.add('peeking');
         $('#layer').classList.add('peek');
         for (const [t, ev] of ends) t.addEventListener(ev, end);
         if (on) on(true);
+    };
+    const start = e => {
+        if (active || pend || !LS.get('peek', false) || e.button > 0 || !pt(e)) return;
+        pend = { x: pt(e).clientX, y: pt(e).clientY };
+        for (const [t, ev, fn] of watch) t.addEventListener(ev, fn, ev === 'touchmove' ? { passive: true } : undefined);
     };
     input.addEventListener('pointerdown', start);
     input.addEventListener('touchstart', start, { passive: true });
@@ -2018,7 +2036,7 @@ function editFont() {
         h('label', { class: 'field' }, tr('Anzahl ohne Einheit'), wSel),
         h('div', { class: 'qlabel gap' }, tr('Größe und Abstände')), sizeRows.map(x => x.node),
         h('p', { class: 'info' }, tr('Höhe der Einträge macht Kacheln, Schildchen und Zeilen in allen Ansichten größer oder kleiner, Abstand dazwischen die Lücke zwischen ihnen. In der Liste stehen die Zeilen ohne Lücke untereinander.')),
-        h('p', { class: 'info' }, tr('Gilt für diese Liste und nur auf diesem Gerät. 100 % und fett ist der Standard.')),
+        h('p', { class: 'info' }, tr('Gilt für diese Liste in dieser Ansicht und nur auf diesem Gerät. 100 % und fett ist der Standard.')),
         h('div', { class: 'btns' },
             h('button', { class: 'btn', type: 'button', onclick: () => { setFontRaw({}); f = curFont(); applyFont(); show(); } }, tr('Zurücksetzen')),
             h('button', { class: 'btn primary', type: 'button', onclick: () => sh.close() }, tr('Fertig'))));
@@ -2121,8 +2139,9 @@ function editLook(mode, redraw) {
     show();
 }
 
-function showSettings() {
+function showSettings(top) {
     const sh = sheet(tr('Einstellungen'));
+    if (top) requestAnimationFrame(() => { sh.body.scrollTop = top; });   // nach dem Wechsel der Ansicht an derselben Stelle weiter
     // Sprache wechseln: alles neu zeichnen, auch dieses Fenster
     const langSel = h('select', { onchange: () => { setLook({ lang: langSel.value }); applyLang(); pushRefresh(); render(); sh.close(); showSettings(); } },
         [['de', 'Deutsch'], ['en', 'English']].map(([v, s]) => h('option', { value: v, selected: lang === v }, s)));
@@ -2157,7 +2176,8 @@ function showSettings() {
     const whoBox = h('input', { type: 'checkbox', checked: look.who, onchange: () => { setLook({ who: whoBox.checked }); render(); } });
     const dueBox = h('input', { type: 'checkbox', checked: look.due, onchange: () => { setLook({ due: dueBox.checked }); render(); } });
     const ivInput = h('input', { type: 'number', min: '1', max: '60', inputmode: 'numeric', value: String(S.interval) });
-    const view = h('select', { onchange: () => setView(view.value) },
+    // Andere Ansicht, anderes Aussehen: das Fenster zeigt danach die Einstellungen dieser Ansicht
+    const view = h('select', { onchange: () => { const t = sh.body.scrollTop; setView(view.value); sh.close(); showSettings(t); } },
         VIEW_NAMES.map(([v, s]) => h('option', { value: v, selected: curView() === v }, tr(s))));
     const tick = h('select', { onchange: () => { LS.set('tick', tick.value); disarm(); render(); } },
         TICKS.map(([v, s]) => h('option', { value: v, selected: curTick() === v }, tr(s))));
@@ -2182,17 +2202,18 @@ function showSettings() {
         h('p', { class: 'info' }, tr('Durchgestrichenes bleibt an seinem Platz stehen. Zurück auf die Liste kommt es mit zwei Tipps innerhalb von 2 Sekunden, so passiert das nicht aus Versehen. Im Korb reicht ein Tipp.')),
         // Aussehen: gilt für die offene Liste, auf Wunsch für alle
         h('h2', { class: 'looksec' }, curList() ? tr('Aussehen der Liste „{0}“', curList().n) : tr('Aussehen')),
+        curList() && h('p', { class: 'info' }, tr('Jede Ansicht hat ihr eigenes Aussehen. Wähl die Ansicht, dann stellst du Schrift, Design und Farben genau für sie ein.')),
         h('label', { class: 'field' }, tr('Ansicht'), view),
         h('div', { class: 'qlabel' }, tr('Schrift und Größe')),
         h('button', { class: 'btn fontbtn', type: 'button', onclick: editFont }, tr('Schrift, Größe und Abstände anpassen …')),
         h('label', { class: 'field' }, tr('Hell oder dunkel'), theme),
         h('div', { class: 'qlabel' }, tr('Design für hell')), swatches('light'),
         h('div', { class: 'qlabel' }, tr('Design für dunkel')), swatches('dark'),
-        h('p', { class: 'info' }, curList() ? tr('Gilt nur für diese Liste, jede Liste kann anders aussehen. Design und Farben gehören zu deinem Konto und gelten überall, wo du angemeldet bist, Ansicht und Schrift nur auf diesem Gerät. „Eigenes“ öffnet den Farbmischer.')
+        h('p', { class: 'info' }, curList() ? tr('Gilt nur für diese Liste in der Ansicht „{0}“. Design und Farben gehören zu deinem Konto und gelten überall, wo du angemeldet bist, Ansicht und Schrift nur auf diesem Gerät. „Eigenes“ öffnet den Farbmischer.', tr(VIEW_NAMES.find(x => x[0] === curView())[1]))
             : tr('Design und Farben gehören zu deinem Konto und gelten überall, wo du angemeldet bist, Ansicht und Schrift nur auf diesem Gerät. „Eigenes“ öffnet den Farbmischer.')),
-        curList() && S.lists.length > 1 && h('div', { class: 'btns' }, h('button', { class: 'btn', type: 'button', onclick: () => confirmDlg(tr('Für alle Listen übernehmen?'),
-            tr('Ansicht, Schrift, Design und Farben von „{0}“ gelten dann für alle Listen. Was du an anderen Listen eigens eingestellt hast, fällt dabei weg.', curList().n),
-            tr('Für alle übernehmen'), lookForAll) }, tr('Für alle Listen übernehmen'))),
+        curList() && h('div', { class: 'btns' }, h('button', { class: 'btn', type: 'button', onclick: () => confirmDlg(tr('Für alle Listen und Ansichten übernehmen?'),
+            tr('Ansicht, Schrift, Design und Farben, wie du sie gerade bei „{0}“ siehst, gelten dann für alle Listen und alle Ansichten. Was du anderswo eigens eingestellt hast, fällt dabei weg.', curList().n),
+            tr('Für alle übernehmen'), lookForAll) }, tr('Für alle Listen und Ansichten übernehmen'))),
         h('h2', null, tr('Weitere Einstellungen')),
         h('label', { class: 'check' }, whoBox, h('span', null, tr('Anzeigen, wer einen Artikel hinzugefügt hat'))),
         h('label', { class: 'check' }, wakeBox, h('span', null, tr('Bildschirm anlassen, solange Kaufen offen ist'))),
@@ -2723,7 +2744,7 @@ function showHelp() {
                 [tr('Vorlagen'), tr('Antippen setzt alles auf die Liste, der Stift bearbeitet')],
                 [tr('Schließen'), tr('Das ✕ oben oder ein Tipp daneben')]])),
         sec(tr('Aussehen'),
-            p(tr('Ansicht, Schrift, Design und Farben stellst du in den Einstellungen für jede Liste einzeln ein. „Für alle Listen übernehmen“ macht sie überall gleich.'))),
+            p(tr('Schrift, Design und Farben stellst du in den Einstellungen für jede Liste und jede Ansicht einzeln ein, die Ansicht für jede Liste. „Für alle Listen und Ansichten übernehmen“ macht alles überall gleich.'))),
         sec(tr('Am Rechner'),
             p(tr('Mit gedrückter Maus ziehen statt wischen, Rechtsklick statt halten, Doppelklick statt zweimal tippen. Enter im Suchfeld nimmt den ersten Treffer, Esc schließt ein Fenster.'))),
         sec(tr('Gut zu wissen'),
