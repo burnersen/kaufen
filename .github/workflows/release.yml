@@ -1,18 +1,19 @@
 # Baut die Release-Dateien (Installer + ZIP) und hängt sie an ein GitHub-Release.
 #
 # Zwei Wege:
-#   1. Von Hand: Actions → Release → "Run workflow". Ohne Angabe heißt der Tag Kaufen-<Version aus index.php>.
-#   2. Automatisch, sobald ein Tag wie Kaufen-1.0.0 (oder v1.0.0) gepusht wird.
+#   1. Von Hand: Actions → Release → "Run workflow". Ohne Angabe heißt der Tag wie die Version aus index.php, z. B. 1.18.0.
+#      So heißen alle Releases. Ein anderer Name (etwa Kaufen-1.18.0) bringt die Reihenfolge auf GitHub durcheinander.
+#   2. Automatisch, sobald ein Tag wie 1.0.0 (oder Kaufen-1.0.0, v1.0.0) gepusht wird.
 # Gibt es das Release zu dem Tag schon, werden die Dateien nur angehängt bzw. ersetzt.
 name: Release
 
 on:
   push:
-    tags: ['Kaufen-*', 'v*']
+    tags: ['[0-9]*', 'Kaufen-*', 'v*']
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Tag für das Release (leer = Kaufen-<Version aus index.php>)'
+        description: 'Tag für das Release (leer = Version aus index.php, z. B. 1.18.0)'
         required: false
         default: ''
 
@@ -35,7 +36,7 @@ jobs:
           elif [ -n "$INPUT_TAG" ]; then
             TAG="$INPUT_TAG"
           else
-            TAG="Kaufen-$(sed -n "s/^define('KF_VERSION', '\([^']*\)');.*/\1/p" index.php)"
+            TAG="$(sed -n "s/^define('KF_VERSION', '\([^']*\)');.*/\1/p" index.php)"
           fi
           case "$TAG" in
             *[!A-Za-z0-9._-]*|''|Kaufen-) echo "Ungültiger Tag: $TAG"; exit 1 ;;
