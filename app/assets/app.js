@@ -46,7 +46,7 @@ const I = {
 const LS = {
     get(k, d) { try { const v = localStorage.getItem('kf_' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
     set(k, v) { try { localStorage.setItem('kf_' + k, JSON.stringify(v)); } catch (e) {} },
-    clear() { try { Object.keys(localStorage).filter(k => k.startsWith('kf_') && !['kf_theme', 'kf_view', 'kf_palL', 'kf_palD', 'kf_look', 'kf_paint', 'kf_font'].includes(k)).forEach(k => localStorage.removeItem(k)); } catch (e) {} },
+    clear() { try { Object.keys(localStorage).filter(k => k.startsWith('kf_') && !['kf_theme', 'kf_view', 'kf_palL', 'kf_palD', 'kf_look', 'kf_paint', 'kf_font', 'kf_mode', 'kf_ldb', 'kf_pdfo', 'kf_pdfx'].includes(k)).forEach(k => localStorage.removeItem(k)); } catch (e) {} },
 };
 
 const low = s => String(s).toLocaleLowerCase('de');
@@ -103,6 +103,8 @@ let L = cur ? LS.get('list_' + cur, null) : null;   // Inhalt der offenen Liste
 let queue = LS.get('queue', []);          // Änderungen, die der Server noch nicht hat
 let csrf = '';                            // kommt erst mit der ersten Antwort des Servers
 let online = true, flushing = false, timer = 0, iv = S ? S.interval : 5;
+/** Lokaler Modus: alles bleibt auf diesem Gerät, local.js spielt den Server. Umschalten lädt die Seite neu. */
+let LOCAL = LS.get('mode', '') === 'local';
 const stateListeners = new Set();         // offene Fenster, die bei neuem Stand neu zeichnen
 const main = $('#main'), qInput = $('#q');
 
@@ -148,7 +150,12 @@ function showNet() {
     el.textContent = !online ? (n ? tr('Offline · {0} offen', n) : tr('Offline')) : (n ? tr('Sende …') : '');
 }
 
+/** Fehler aus local.js: deutscher Text als Schlüssel, hier übersetzt */
+const lerr = e => Object.assign(new Error(e && e.key ? tr(e.key, ...(e.args || [])) : (e && e.message) || String(e)), { status: e && e.status || 400 });
 async function api(action, body) {
+    if (LOCAL) {
+        try { return self.kfLocal.api(action, body); } catch (e) { throw lerr(e); }
+    }
     let r;
     try {
         r = await fetch('?action=' + action, {
@@ -193,6 +200,7 @@ async function loadState() {
     applyState(await api('state'), e !== lookEpoch);
     flush();
     updAuto();
+    offerImport();
     if (!pushSynced) { pushSynced = true; pushRefresh(); }
 }
 
@@ -335,7 +343,7 @@ async function flush() {
  */
 function rest() {
     clearTimeout(timer);
-    if (!document.hidden) timer = setTimeout(tick, Math.max(1, iv) * 1000);
+    if (!document.hidden && !LOCAL) timer = setTimeout(tick, Math.max(1, iv) * 1000);
 }
 
 /** Der regelmäßige Abgleich. Fragt nur drei Zähler ab und lädt erst nach, wenn sich einer geändert hat. */
@@ -1343,7 +1351,7 @@ function listMenu(l) {
     const btn = (label, fn, danger) => h('button', { class: 'row' + (danger ? ' danger' : ''), type: 'button', onclick: () => { sh.close(); fn(); } }, label);
     put(sh.body, 
         !mine && h('p', { class: 'info' }, tr('Diese Liste gehört {0}.', userName(l.owner) || tr('jemand anderem'))),
-        mine && btn(tr('Teilen mit …'), () => shareList(l)),
+        mine && !LOCAL && btn(tr('Teilen mit …'), () => shareList(l)),
         mine && btn(tr('Umbenennen'), () => ask(tr('Liste umbenennen'), [{ k: 'name', label: tr('Name'), value: l.n, max: 40 }], tr('Speichern'), v => act('list_rename', { id: l.id, name: v.name }))),
         mine && btn(tr('Liste löschen'), () => confirmDlg(tr('Liste löschen'), tr('„{0}“ wird für alle Mitglieder gelöscht, samt allem, was noch draufsteht.', l.n), tr('Endgültig löschen'), () => act('list_delete', { id: l.id }))),
         !mine && btn(tr('Liste verlassen'), () => confirmDlg(tr('Liste verlassen'), tr('Du siehst „{0}“ danach nicht mehr. Wieder rein kommst du nur, wenn dich jemand neu einlädt.', l.n), tr('Verlassen'), () => act('list_leave', { id: l.id }))));
@@ -2090,10 +2098,10 @@ function showSettings() {
         h('div', { class: 'qlabel' }, tr('Eigene Einheiten')), unitBox,
         h('p', { class: 'info units' }, tr('Erscheinen bei der Mengenauswahl neben den mitgelieferten, mit Einzahl und Mehrzahl auf einem Knopf. Antippen zum Umbenennen oder Löschen.')),
         pushCan() && h('label', { class: 'check' }, pushBox, h('span', null, tr('Mitteilungen auf diesem Gerät'))),
-        h('p', { class: 'info' }, pushCan() ? tr('Du bekommst eine Mitteilung, wenn jemand etwas auf eine Liste setzt, die ihr teilt. Mehrere Produkte kommen gebündelt in einer Mitteilung, sobald der andere Kaufen verlässt.')
+        !LOCAL && h('p', { class: 'info' }, pushCan() ? tr('Du bekommst eine Mitteilung, wenn jemand etwas auf eine Liste setzt, die ihr teilt. Mehrere Produkte kommen gebündelt in einer Mitteilung, sobald der andere Kaufen verlässt.')
             : S.push ? tr('Mitteilungen gehen auf diesem Gerät oder in diesem Browser nicht. Auf dem iPhone muss Kaufen dafür über „Zum Home-Bildschirm“ installiert sein (ab iOS 16.4).')
             : tr('Dieser Server kann keine Mitteilungen verschicken.')),
-        h('div', { class: 'btns' }, h('button', { class: 'btn', type: 'button', onclick: () => ask(tr('Passwort ändern'), [
+        !LOCAL && h('div', { class: 'btns' }, h('button', { class: 'btn', type: 'button', onclick: () => ask(tr('Passwort ändern'), [
             { k: 'old', label: tr('Bisheriges Passwort'), type: 'password', auto: 'current-password' },
             { k: 'pass', label: tr('Neues Passwort (mindestens 8 Zeichen)'), type: 'password' },
             { k: 'pass2', label: tr('Neues Passwort wiederholen'), type: 'password' },
@@ -2102,14 +2110,156 @@ function showSettings() {
             await api('me_pass', { old: v.old, pass: v.pass });
             toast(tr('Passwort geändert, andere Geräte wurden abgemeldet'));
         }) }, tr('Passwort ändern'))),
-        S.me.admin && h('h2', null, tr('Für alle')),
-        S.me.admin && h('label', { class: 'field' }, tr('Abgleich alle … Sekunden (1 bis 60)'), ivInput),
-        S.me.admin && h('p', { class: 'info' }, tr('So oft fragt jedes Gerät nach, ob sich an der Liste etwas geändert hat. Kleiner heißt schneller, größer schont Server und Akku.')),
-        S.me.admin && h('div', { class: 'btns' }, h('button', { class: 'btn primary', type: 'button', onclick: async () => {
+        S.me.admin && !LOCAL && h('h2', null, tr('Für alle')),
+        S.me.admin && !LOCAL && h('label', { class: 'field' }, tr('Abgleich alle … Sekunden (1 bis 60)'), ivInput),
+        S.me.admin && !LOCAL && h('p', { class: 'info' }, tr('So oft fragt jedes Gerät nach, ob sich an der Liste etwas geändert hat. Kleiner heißt schneller, größer schont Server und Akku.')),
+        S.me.admin && !LOCAL && h('div', { class: 'btns' }, h('button', { class: 'btn primary', type: 'button', onclick: async () => {
             try { await act('settings_save', { interval: +ivInput.value }); ivInput.value = String(S.interval); toast(tr('Gespeichert: alle {0} Sekunden', S.interval)); }
             catch (e) { toast(e.message); }
         } }, tr('Speichern'))),
-        h('p', { class: 'info' }, tr('Angemeldet als {0} · Kaufen {1}', S.me.n, S.version)));
+        // Lokaler Modus: einschalten (mit Konto) oder Bescheid wissen und wieder beenden
+        h('h2', null, tr(LOCAL ? 'Lokaler Modus' : 'Nur auf diesem Gerät')),
+        h('p', { class: 'info' }, LOCAL
+            ? tr('Alles liegt nur auf diesem Gerät, Kaufen schickt keine Listen ins Netz. Es schaut nur ab und zu nach einer neuen Version von Kaufen. Denk an eine Sicherung als Datei, falls die Browserdaten einmal gelöscht werden.')
+            : tr('Im lokalen Modus läuft Kaufen ganz ohne Server: Listen, Katalog und Einstellungen liegen nur auf diesem Gerät, nichts davon geht ins Netz. Teilen mit anderen und Mitteilungen gibt es dann nicht. Neue Versionen von Kaufen kommen trotzdem.')),
+        h('div', { class: 'btns' }, LOCAL
+            ? [h('button', { class: 'btn', type: 'button', onclick: () => { sh.close(); showLocalBackup(); } }, tr('Sicherung als Datei')),
+               h('button', { class: 'btn', type: 'button', onclick: () => { sh.close(); leaveLocal(); } }, tr('Lokalen Modus beenden'))]
+            : h('button', { class: 'btn', type: 'button', onclick: () => { sh.close(); goLocal(); } }, tr('Lokalen Modus einschalten'))),
+        h('p', { class: 'info' }, LOCAL ? tr('Lokaler Modus · Kaufen {0}', S.version) : tr('Angemeldet als {0} · Kaufen {1}', S.me.n, S.version)));
+}
+
+/* ---------- Lokaler Modus: alles bleibt auf diesem Gerät (local.js). Ein- und Ausschalten, Sicherung als Datei, Übernahme ins Konto. ---------- */
+/** Dem Service Worker Bescheid geben: lokal kommt alles zuerst aus dem Vorrat. Wartet auf seine Antwort, höchstens 1,5 Sekunden. */
+async function swLocal(on) {
+    if (!('serviceWorker' in navigator)) return;
+    const reg = await Promise.race([navigator.serviceWorker.ready, new Promise(r => setTimeout(r, 1500))]);
+    const sw = navigator.serviceWorker.controller || (reg && reg.active);
+    if (!sw) return;
+    await new Promise(res => { const ch = new MessageChannel(); ch.port1.onmessage = res; sw.postMessage({ local: on }, [ch.port2]); setTimeout(res, 1500); });
+}
+/** Seite, Schrift und Programm für den Start ohne Netz vorhalten */
+function precache() {
+    if (!('serviceWorker' in navigator)) return;
+    navigator.serviceWorker.ready.then(reg => {
+        const urls = [LOCAL ? './?local=1' : './', ...[...document.querySelectorAll('link[rel=stylesheet], script[src]')].map(e => e.getAttribute('href') || e.getAttribute('src'))];
+        if (reg.active) reg.active.postMessage({ precache: urls });
+    }).catch(() => {});
+}
+/** Den Browser bitten, die Daten nicht von sich aus wegzuräumen (wichtig, wenn sonst nirgends eine Kopie liegt) */
+const askPersist = () => { try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); } catch (e) {} };
+/** Ohne Konto anfangen (Link auf der Anmeldeseite, ./?local=1): Standardkatalog holen, sonst steht alles schon auf dem Gerät */
+async function localBegin() {
+    try {
+        if (!self.kfLocal.has()) {
+            const r = await fetch('?action=local_seed', { cache: 'no-store' });
+            const seed = await r.json().catch(() => ({}));
+            if (!r.ok || !Array.isArray(seed.catalog)) throw new Error(seed.error || tr('Der Server antwortet nicht richtig ({0}).', r.status));
+            self.kfLocal.create(seed, tr('Ich'), tr('Einkauf'));
+        }
+    } catch (e) {
+        main.replaceChildren(h('p', { class: 'hint' }, e.key ? lerr(e).message : e.message || tr('Keine Verbindung zum Server.')));
+        return;
+    }
+    LS.clear();
+    S = null; L = null; cur = null; queue = [];
+    LS.set('mode', 'local');
+    LOCAL = true;
+    history.replaceState(null, '', './');
+    await swLocal(true);
+    precache();
+    askPersist();
+    toast(tr('Lokaler Modus: alles bleibt auf diesem Gerät'));
+    tick();
+}
+/** Mit Konto in den lokalen Modus: alles vom Server aufs Gerät kopieren, dann vom Server abmelden */
+function goLocal() {
+    confirmDlg(tr('Lokalen Modus einschalten'), tr('Deine Listen, der Katalog, die Vorlagen und dein Aussehen werden auf dieses Gerät kopiert. Danach meldet sich dieses Gerät vom Server ab und Kaufen läuft nur noch hier. Geteilte Listen sind dann eine Kopie und werden nicht mehr abgeglichen. Zurück geht es jederzeit über „Lokalen Modus beenden“.')
+        + (self.kfLocal.has() ? ' ' + tr('Lokale Listen, die noch auf diesem Gerät liegen, werden dabei ersetzt.') : ''),
+        tr('Lokal weitermachen'), async () => {
+            if (!online) throw new Error(tr('Dafür braucht Kaufen einmal Verbindung zum Server.'));
+            await flush();
+            if (queue.length) throw new Error(tr('Erst müssen alle Änderungen beim Server sein. Versuch es gleich noch einmal.'));
+            const lists = [];
+            for (const l of S.lists) lists.push({ meta: l, data: await api('list&id=' + l.id) });
+            let seed = null;
+            try { const r = await fetch('?action=local_seed', { cache: 'no-store' }); if (r.ok) seed = await r.json(); } catch (e) {}
+            try { self.kfLocal.fromAccount({ me: S.me, look, catalog: S.catalog, templates: S.templates, lists, seed, start: cur }); } catch (e) { throw lerr(e); }
+            if (pushCan()) await pushOff().catch(() => {});
+            try { await api('logout', {}); } catch (e) {}
+            LS.clear();
+            LS.set('mode', 'local');
+            await swLocal(true);
+            location.replace('./?local=1');
+        });
+}
+/** Lokalen Modus beenden: zur Anmeldung. Die lokalen Daten bleiben, nach dem Anmelden fragt Kaufen, ob sie ins Konto sollen. */
+function leaveLocal() {
+    confirmDlg(tr('Lokalen Modus beenden'), tr('Danach meldest du dich mit einem Konto an. Deine lokalen Listen bleiben auf diesem Gerät, nach dem Anmelden kannst du sie ins Konto übernehmen.'),
+        tr('Zur Anmeldung'), async () => {
+            LS.set('mode', '');
+            await swLocal(false);
+            location.replace('./');
+        });
+}
+/** Sicherung als Datei: im lokalen Modus die einzige Kopie außerhalb des Browsers */
+function showLocalBackup() {
+    const sh = sheet(tr('Sicherung als Datei'));
+    const file = h('input', { type: 'file', accept: '.json,application/json', hidden: true, onchange: async () => {
+        const f = file.files[0];
+        file.value = '';
+        if (!f) return;
+        const text = await f.text();
+        confirmDlg(tr('Sicherung einspielen'), tr('Alles, was jetzt auf diesem Gerät liegt, wird durch die Sicherung ersetzt.'), tr('Einspielen'), () => {
+            try { self.kfLocal.importAll(text); } catch (e) { throw lerr(e); }
+            LS.clear();
+            LS.set('mode', 'local');
+            location.reload();
+        });
+    } });
+    const d = new Date(), p = n => String(n).padStart(2, '0');
+    put(sh.body,
+        h('p', { class: 'info' }, tr('Im lokalen Modus liegt alles nur auf diesem Gerät. Wer die Browserdaten löscht oder das Handy wechselt, braucht eine Sicherung. Am besten ab und zu eine speichern, zum Beispiel in der Cloud oder per Mail an dich selbst.')),
+        h('button', { class: 'btn wide primary', type: 'button', onclick: () => {
+            try { download('Kaufen-' + tr('Sicherung') + ' ' + d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + '.json', self.kfLocal.exportAll(), 'application/json'); }
+            catch (e) { toast(lerr(e).message); }
+        } }, tr('Sicherung speichern')),
+        h('button', { class: 'btn wide', type: 'button', onclick: () => file.click() }, tr('Sicherung einspielen …')),
+        h('p', { class: 'info' }, tr('Eine Sicherung enthält alle Listen, den Katalog, die Vorlagen und dein Aussehen.')),
+        file);
+}
+/** Nach dem Anmelden: liegen noch Listen aus dem lokalen Modus auf dem Gerät, einmal pro Start fragen, ob sie ins Konto sollen.
+    Übernommen wird, was noch zu kaufen ist. Die Warengruppe geht über ihren Namen, der Korb und das Gekaufte bleiben zurück. */
+let importAsked = false;
+function offerImport() {
+    if (LOCAL || importAsked || !self.kfLocal || !self.kfLocal.has() || !S) return;
+    importAsked = true;
+    const db = self.kfLocal.peek();
+    const lists = (db.lists || []).filter(l => l.items.some(i => !i.got));
+    if (!lists.length) { self.kfLocal.drop(); return; }   // nichts mehr zu kaufen: nichts zu übernehmen
+    const sum = lists.map(l => l.n + ' (' + l.items.filter(i => !i.got).length + ')').join(', ');
+    ask(tr('Lokale Listen übernehmen?'), [{ type: 'info', text: tr('Auf diesem Gerät liegen noch Listen aus dem lokalen Modus: {0}. Sollen sie in dein Konto?', sum) }],
+        tr('Ins Konto übernehmen'), async () => {
+            const catName = id => { const c = (db.cats || []).find(x => x.id === id); return c ? c.n : ''; };
+            const catId = id => { const n = catName(id), c = n && S.catalog.cats.find(x => low(x.n) === low(n)); return c ? c.id : 0; };
+            let n = 0;
+            for (const l of lists) {
+                // Gibt es im Konto eine Liste mit diesem Namen (etwa die, aus der die lokale einmal kopiert wurde), kommt alles dorthin.
+                // Was dort schon steht, kommt nicht doppelt drauf.
+                let id = (S.lists.find(x => low(x.n) === low(l.n)) || {}).id;
+                if (!id) { const r = await api('list_create', { name: l.n }); applyState(r); id = r.created; }
+                const ops = l.items.filter(i => !i.got).map(i => ({ t: 'add', uid: newUid(), n: i.n, c: catId(i.c), note: i.note || '' }));
+                if (ops.length && id) await api('ops', { list: id, ops });
+                n++;
+            }
+            self.kfLocal.drop();
+            await loadState();
+            if (cur) loadList();
+            toast(n === 1 ? tr('1 Liste übernommen') : tr('{0} Listen übernommen', n));
+        },
+        [{ label: tr('Verwerfen'), danger: true, fn: () => {
+            confirmDlg(tr('Lokale Listen verwerfen'), tr('Die lokalen Listen werden von diesem Gerät gelöscht. Das lässt sich nicht rückgängig machen.'), tr('Löschen'), () => { self.kfLocal.drop(); toast(tr('Lokale Listen gelöscht')); });
+        } }]);
 }
 
 async function logout() {
@@ -2147,18 +2297,30 @@ function listText() {
     }
     return lines.join('\n');
 }
-/** Einkaufszettel als PDF: zwei Spalten, Kästchen zum Abhaken. Eine leere Liste ergibt einen leeren Zettel zum Selberschreiben. */
-function listPdf(extra) {
+/** Wie der Zettel aussieht, gemerkt pro Gerät: Schriftart, Schriftgröße und Zeilenabstand (Faktor, 1 = Standard), 2 oder 3 Spalten */
+const PDF_DEF = { font: 'helvetica', size: 1, space: 1, cols: 2 };
+const PDF_FONTS = [['helvetica', 'Klar', 'Helvetica, Arial, sans-serif'], ['times', 'Klassisch', '"Times New Roman", Times, serif'], ['courier', 'Schreibmaschine', '"Courier New", Courier, monospace']];
+function pdfOpt() {
+    const o = { ...PDF_DEF, ...(LS.get('pdfo', null) || {}) };
+    if (!PDF_FONTS.some(f => f[0] === o.font)) o.font = PDF_DEF.font;
+    o.size = +o.size >= .7 && +o.size <= 1.5 ? +o.size : 1;
+    o.space = +o.space >= .3 && +o.space <= 2 ? +o.space : 1;
+    o.cols = +o.cols === 3 ? 3 : 2;
+    return o;
+}
+/** Die Angaben für den Einkaufszettel (pdf.js). Eine leere Liste ergibt einen leeren Zettel zum Selberschreiben. */
+function listPdfData(extra, opt) {
     const n = openItems().length;
-    return self.kfPdf({
+    return {
         title: curList().n,
         date: new Date().toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
         count: n === 1 ? tr('1 Eintrag') : n ? tr('{0} Einträge', n) : '',
         sections: listGroups().map(([id, items]) => ({ name: catName(id), items: items.map(it => ({ n: dn(it.n), q: paperNote(it.note) })) })),
-        extra: !n ? { name: '', lines: 54 } : extra ? { name: tr('Noch dazu'), lines: 6 } : null,   // leere Liste: ganze Seite Schreiblinien
-        more: tr('Forts.'), brand: 'Kaufen', page: (i, k) => tr('Seite {0} von {1}', i, k),
-    });
+        extra: !n ? { name: '', lines: -1 } : extra ? { name: tr('Noch dazu'), lines: 6 } : null,   // leere Liste: ganze Seite Schreiblinien
+        more: tr('Forts.'), brand: 'Kaufen', page: (i, k) => tr('Seite {0} von {1}', i, k), opt: opt || pdfOpt(),
+    };
 }
+const listPdf = extra => self.kfPdf(listPdfData(extra));
 /** Kann das Gerät Dateien teilen (Handy: teilen, drucken, in Dateien sichern)? */
 function canShareFiles() {
     try { return !!(navigator.canShare && navigator.canShare({ files: [new File(['x'], 'x.pdf', { type: 'application/pdf' })] })); } catch (e) { return false; }
@@ -2167,7 +2329,50 @@ function canShareFiles() {
 function showExport() {
     if (!curList() || !L) return;
     const sh = sheet(tr('Drucken und Teilen'));
-    const ex = h('input', { type: 'checkbox', checked: LS.get('pdfx', true), onchange: () => LS.set('pdfx', ex.checked) });
+    let o = pdfOpt();
+    const ex = h('input', { type: 'checkbox', checked: LS.get('pdfx', true), onchange: () => { LS.set('pdfx', ex.checked); redraw(); } });
+    /* Vorschau: dasselbe Layout wie im PDF, auf Canvas gezeichnet. Bleibt beim Rollen oben stehen, Antippen macht sie groß. */
+    const prev = h('div', { class: 'pdfprev', role: 'img', 'aria-label': tr('Vorschau'), title: tr('Antippen zum Vergrößern'), onclick: () => { prev.parentNode.classList.toggle('big', prev.classList.toggle('big')); redraw(); } });
+    const pinfo = h('div', { class: 'pdfinfo' });
+    let raf = 0;
+    function redraw() {
+        cancelAnimationFrame(raf);
+        raf = requestAnimationFrame(() => {
+            if (typeof self.kfPdfLayout !== 'function') return;
+            const lay = self.kfPdfLayout(listPdfData(ex.checked, o));
+            const big = prev.classList.contains('big'), avail = prev.clientWidth || 300, dpr = Math.min(3, window.devicePixelRatio || 1);
+            const w = big ? Math.min(avail, 640) : Math.min(avail * (lay.pages > 1 ? .72 : 1), Math.min(innerHeight * .38, 340) * lay.width / lay.height);
+            const pages = [];
+            for (let i = 0; i < lay.pages; i++) {
+                const c = h('canvas', { class: 'pdfpage' });
+                c.width = Math.round(w * dpr);
+                c.height = Math.round(w * dpr * lay.height / lay.width);
+                c.style.width = Math.round(w) + 'px';
+                const ctx = c.getContext('2d');
+                ctx.scale(w * dpr / lay.width, w * dpr / lay.width);
+                lay.draw(ctx, i);
+                pages.push(c);
+            }
+            prev.replaceChildren(...pages);
+            pinfo.textContent = (lay.pages === 1 ? tr('1 Seite') : tr('{0} Seiten', lay.pages)) + ' · ' + tr(big ? 'Antippen zum Verkleinern' : 'Antippen zum Vergrößern');
+        });
+    }
+    const setO = patch => { o = { ...o, ...patch }; LS.set('pdfo', o); showO(); redraw(); };
+    const fontBtns = PDF_FONTS.map(([k, name, css]) => { const b = h('button', { class: 'chip', type: 'button', onclick: () => setO({ font: k }) }, tr(name)); b.style.fontFamily = css; return b; });   // style-Attribut verbietet die CSP
+    const colBtns = [2, 3].map(n => h('button', { class: 'chip', type: 'button', onclick: () => setO({ cols: n }) }, tr('{0} Spalten', n)));
+    const slider = (k, name, lo, hi, step) => {
+        const out = h('b');
+        const r = h('input', { type: 'range', min: String(lo), max: String(hi), step: String(step), 'aria-label': tr(name),
+            oninput: () => { out.textContent = r.value + ' %'; setO({ [k]: +r.value / 100 }); } });
+        return { k, r, out, node: h('label', { class: 'sl fs' }, h('span', { class: 'fsl' }, tr(name), out), r) };
+    };
+    const sliders = [slider('size', 'Schriftgröße', 70, 150, 5), slider('space', 'Zeilenabstand', 30, 200, 10)];
+    const showO = () => {
+        fontBtns.forEach((b, i) => b.classList.toggle('sel', PDF_FONTS[i][0] === o.font));
+        colBtns.forEach((b, i) => b.classList.toggle('sel', [2, 3][i] === o.cols));
+        for (const x of sliders) { x.r.value = String(Math.round(o[x.k] * 100)); x.out.textContent = x.r.value + ' %'; }
+    };
+    const resetBtn = h('button', { class: 'btn small', type: 'button', onclick: () => { o = { ...PDF_DEF }; LS.set('pdfo', null); showO(); redraw(); } }, tr('Zurücksetzen'));
     const pdf = async share => {
         if (typeof self.kfPdf !== 'function') return toast(tr('Das PDF lässt sich gerade nicht erstellen. Lade die Seite neu.'));
         const bytes = listPdf(ex.checked), name = exportName('pdf');
@@ -2179,17 +2384,26 @@ function showExport() {
     const btn = (label, fn, primary) => h('button', { class: 'btn' + (primary ? ' primary' : ''), type: 'button', onclick: fn }, label);
     const files = canShareFiles();
     put(sh.body,
+        h('div', { class: 'pdfwrap' }, prev, pinfo),
         h('h2', null, tr('Einkaufszettel')),
-        h('p', { class: 'info' }, tr('Zum Ausdrucken, falls das Handy mal zu Hause bleibt: zwei Spalten, nach Warengruppen in der Reihenfolge deines Ladens, mit Kästchen zum Abhaken. Ist die Liste leer, gibt es einen leeren Zettel zum Selberschreiben.')),
-        h('label', { class: 'check' }, ex, h('span', null, tr('Leere Zeilen „Noch dazu“ zum Dazuschreiben'))),
+        h('p', { class: 'info' }, tr('Zum Ausdrucken, falls das Handy mal zu Hause bleibt: nach Warengruppen in der Reihenfolge deines Ladens, mit Kästchen zum Abhaken. Die Vorschau oben zeigt genau, was aus dem Drucker kommt. Ist die Liste leer, gibt es einen leeren Zettel zum Selberschreiben.')),
         h('div', { class: 'btns' },
             files && btn(tr('PDF teilen oder drucken'), () => pdf(true), true),
             btn(tr('PDF speichern'), () => pdf(false), !files)),
+        h('div', { class: 'qlabel gap' }, tr('Schriftart')),
+        h('div', { class: 'chips pdfopt' }, fontBtns),
+        sliders.map(x => x.node),
+        h('div', { class: 'qlabel' }, tr('Spalten')),
+        h('div', { class: 'chips pdfopt' }, colBtns),
+        h('label', { class: 'check' }, ex, h('span', null, tr('Leere Zeilen „Noch dazu“ zum Dazuschreiben'))),
+        h('div', { class: 'btns pdfreset' }, resetBtn),
         h('h2', null, tr('Als Text')),
         h('p', { class: 'info' }, tr('Für WhatsApp, Mail und Co. oder als Datei zum Aufheben. Über „Aus Text einfügen“ kommt so ein Text wieder auf eine Liste.')),
         h('div', { class: 'btns' },
             btn(tr('Text teilen'), () => { if (!empty()) { sh.close(); shareText(); } }, true),
             btn(tr('Textdatei speichern'), () => { if (!empty()) download(exportName('txt'), '﻿' + listText().replace(/\n/g, '\r\n') + '\r\n', 'text/plain;charset=utf-8'); })));
+    showO();
+    redraw();
 }
 
 /** Die offene Liste als schlichten Text weitergeben (WhatsApp, Mail …), für Leute ohne Konto. Ohne Teilen-Funktion des Geräts wird kopiert. */
@@ -2298,10 +2512,11 @@ function showMenu() {
         L && btn(tr('Drucken und Teilen'), showExport),
         L && btn(tr('Aus Text einfügen'), showImport),
         btn(tr('Katalog verwalten'), showCatalog),
-        S.me.admin && btn(tr('Konten'), showUsers),
-        S.me.admin && btn([tr('Sicherung und Update'), S.upd && S.upd.v && h('span', { class: 'badge' }, tr('Neu: {0}', S.upd.v))], showMaint),
+        S.me.admin && !LOCAL && btn(tr('Konten'), showUsers),
+        S.me.admin && !LOCAL && btn([tr('Sicherung und Update'), S.upd && S.upd.v && h('span', { class: 'badge' }, tr('Neu: {0}', S.upd.v))], showMaint),
+        LOCAL && btn(tr('Sicherung als Datei'), showLocalBackup),
         btn(tr('Einstellungen'), showSettings),
-        btn(tr('Abmelden'), logout));
+        LOCAL ? btn(tr('Lokalen Modus beenden'), leaveLocal) : btn(tr('Abmelden'), logout));
 }
 
 /* ---------- Sicherung und Update (nur Administrator) ---------- */
@@ -2395,13 +2610,13 @@ applyTheme();
 applyFont();
 applyLang();
 render();
-tick();
+// „Ohne Konto nutzen“ auf der Anmeldeseite, oder lokal, aber die Daten sind weg (Browserdaten gelöscht): frisch anfangen
+const wantLocal = (!LOCAL && /[?&]local=1(&|$)/.test(location.search)) || (LOCAL && !self.kfLocal.has());
+if (wantLocal) localBegin(); else tick();
+if (LOCAL) { swLocal(true); askPersist(); }
 wake();
 
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || ['localhost', '127.0.0.1'].includes(location.hostname))) {
-    navigator.serviceWorker.register('./?action=sw', { scope: './' }).then(() => navigator.serviceWorker.ready).then(reg => {
-        const urls = ['./', ...[...document.querySelectorAll('link[rel=stylesheet], script[src]')].map(e => e.getAttribute('href') || e.getAttribute('src'))];
-        if (reg.active) reg.active.postMessage({ precache: urls });
-    }).catch(() => {});
+    navigator.serviceWorker.register('./?action=sw', { scope: './' }).then(precache).catch(() => {});
 }
 })();

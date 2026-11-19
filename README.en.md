@@ -16,11 +16,18 @@ Shared shopping lists you host yourself. The server side is PHP and SQLite, the 
 
 Upload `kaufen-install.php`, open it in the browser, create the first account. That is the whole installation.
 
+If you do not want anything on a server at all, tap **“Use without an account, on this device only”** on the sign-in page. All lists then stay on your own phone or computer, see [Local mode](#on-this-device-only-local-mode).
+
 <p align="center">
   <img src="docs/en/list.png" alt="The shopping list with quantities, notes, who added what, and “Due again soon” below" width="320">
 </p>
 
 <table>
+  <tr>
+    <td align="center" width="33%"><img src="docs/en/no-account.png" alt="The sign-in page with the link “Use without an account, on this device only”" width="250"><br><sub>No account, on this device only</sub></td>
+    <td align="center" width="33%"><img src="docs/en/local.png" alt="Settings in local mode: backup file and leave local mode" width="250"><br><sub>Local mode</sub></td>
+    <td align="center" width="33%"><img src="docs/en/print.png" alt="Print and share: preview of the sheet, below it font, text size, line spacing and columns" width="250"><br><sub>Adjust the sheet, with preview</sub></td>
+  </tr>
   <tr>
     <td align="center" width="33%"><img src="docs/en/cart.png" alt="Checked-off items sit ticked and crossed out in the cart, with the “Done shopping” button below" width="250"><br><sub>Cart: ticked and crossed out</sub></td>
     <td align="center" width="33%"><img src="docs/en/swipe.png" alt="An item in shopping mode being swiped to the left, with a red “Delete” behind it" width="250"><br><sub>Swipe: left deletes, right sets quantity</sub></td>
@@ -42,13 +49,13 @@ Upload `kaufen-install.php`, open it in the browser, create the first account. T
     <td align="center"><img src="docs/en/backup.png" alt="Backup and update for the administrator" width="250"><br><sub>Backup and update</sub></td>
   </tr>
   <tr>
-    <td align="center"><img src="docs/en/print.png" alt="Print and share: shopping list as PDF, list as text" width="250"><br><sub>Print and share</sub></td>
     <td align="center"><img src="docs/en/paste.png" alt="Paste from text, with a preview of what was recognized" width="250"><br><sub>Paste from text</sub></td>
     <td align="center"><img src="docs/en/shopping-list.png" alt="The shopping list as PDF: two columns, boxes to tick off" width="250"><br><sub>The PDF to print</sub></td>
+    <td align="center"><img src="docs/en/compact.png" alt="The same sheet compact: Classic font, three columns, tight line spacing" width="250"><br><sub>The same sheet, compact</sub></td>
   </tr>
 </table>
 
-<sub>Screenshots of versions 1.11.1, 1.13.0 and 1.14.0. Names and entries are made up.</sub>
+<sub>Screenshots of versions 1.11.1 to 1.15.0. Names and entries are made up.</sub>
 
 > 💜 **Using Kaufen and happy with it?** A ⭐ on GitHub is the easiest way to let me know, and it does more than you'd think: stars are the visible proof that a project does good work, and they are how small projects like this one get found by other people in the first place. Or [tell me what you use it for](https://github.com/burnersen/kaufen/issues/new), I read every message. Thanks for being here!
 
@@ -69,6 +76,8 @@ Upload `kaufen-install.php`, open it in the browser, create the first account. T
 | Swipe right | quantity and note | |
 | Hold | change the category (about one and a half seconds, a ring shows it) | quantity and note (half a second) |
 | On a computer | drag with the mouse instead of swiping, right-click instead of holding | right-click instead of holding |
+
+**Without a server:** in [local mode](#on-this-device-only-local-mode) everything works the same, except that the lists never leave the device.
 
 ## Features
 
@@ -101,11 +110,24 @@ Upload `kaufen-install.php`, open it in the browser, create the first account. T
 - **Multiple lists:** everyone can create lists and share them with any accounts. If you were invited, you can also leave a list again.
 - **Who added it:** in shared lists the product shows who put it there. Each account can hide this in the settings.
 - **Notifications on your phone:** if you like, you get a notification when someone puts something on a shared list. Each account turns this on or off per device in the settings. Bundled instead of one by one: three products make one notification, sent the moment the other person leaves Kaufen. Checking things off in the store does not notify anyone.
-- **Shopping list as PDF:** for the days the phone stays at home. Two columns to make full use of the page, sorted by category in the order of your own store, with a box in front of every item to tick off with a pen. Plain black and white, so it prints well on any printer. At the bottom, optional blank “Also get” lines to write on, and an empty list gives you a blank sheet. On a phone the PDF goes straight to the printer via sharing. It is created in the browser, without any third-party library and even offline.
+- **Shopping list as PDF:** for the days the phone stays at home. Sorted by category in the order of your own store, with a box in front of every item to tick off with a pen. Plain black and white, so it prints well on any printer. At the bottom, optional blank “Also get” lines to write on, and an empty list gives you a blank sheet. On a phone the PDF goes straight to the printer via sharing. It is created in the browser, without any third-party library and even offline.
+- **The sheet your way:** font (Clean, Classic or Typewriter), text size, line spacing from tight to wide, and 2 or 3 columns. A preview at the top of the window shows exactly what comes out of the printer and changes as you adjust. Tap it to enlarge. Tight with 3 columns, a big weekly shop fits on half a page. Remembered per device.
 - **List as text:** whatever is still to buy goes to your messenger, mail and so on as plain text, to the clipboard or into a text file, for people without an account. Both are under Menu → Print and share. Anything already in the cart is left off the sheet and the text.
 - **Paste from text:** paste text or open a text file, and everything lands on the open list. Kaufen understands its own export, lists with dashes, boxes or numbers, and free text like “milk, 2 kg apples and bread”. A preview shows what was recognized first. Anything already on the list is not added twice, ticked lines ([x]) are left out.
 - **Store layout:** the categories can be ordered per list to match the way your own store is laid out.
 - **Templates:** "BBQ" or "Breakfast" puts several products on the list with one tap. The current list can be saved as a template too.
+
+### On this device only (local mode)
+
+For everyone who does not want their lists on any server. It is the same app with all features and all future improvements, only a small “server” inside the browser does the work.
+
+- **Without an account:** tap “Use without an account, on this device only” on the sign-in page, then add it to your home screen (see [On your phone](#on-your-phone)). Done, no sign-in.
+- **Switch with an account:** Settings → “Switch to local mode”. Lists, catalog, templates and look are copied to the device, then the device signs out of the server.
+- **Everything stays on the device:** no syncing, no notifications, no list goes online. Kaufen starts from the device's storage, even in airplane mode. The only connection: now and then the browser checks whether there is a new version of Kaufen and fetches it. No data goes out with that.
+- **What is missing:** sharing lists with others, accounts and notifications. You can still pass a list on as PDF or text.
+- **Backup file:** in the menu. Saves all lists, the catalog, the templates and the look to one file and restores it. Important, because clearing the browser data would otherwise lose everything.
+- **Going back:** Menu → “Leave local mode” leads to the sign-in page. Afterwards Kaufen asks whether the local lists should move into the account. If there is a list with the same name, everything goes there, without duplicates.
+- **For the server owner:** if you do not want the link on your server, set `'local' => false` in `data/config.php`. People using it only get the program files and the default catalog from your server, never any data from you or others.
 
 ### Language and look
 
@@ -142,7 +164,7 @@ Upload `kaufen-install.php`, open it in the browser, create the first account. T
 
 ### On your phone
 
-Open the address in the browser, sign in, then choose "Add to Home screen" in the browser menu (iPhone: Share → "Add to Home Screen"). From then on Kaufen starts like an app.
+Open the address in the browser, sign in (or “Use without an account”), then choose "Add to Home screen" in the browser menu (iPhone: Share → "Add to Home Screen"). From then on Kaufen starts like an app. On a computer, Chrome and Edge offer “Install” in the address bar.
 
 ## Protecting your data
 
@@ -182,7 +204,7 @@ If the lock ever fails, the database still cannot simply be downloaded: it has a
 - **Updates:** asks GitHub for the latest version. Nothing personal is sent. If you do not want this at all, add `'update_url' => ''` to `data/config.php`.
 - **Notifications:** go from your own server to the notification service of the respective browser (Apple, Google, Mozilla, Microsoft). The content is encrypted for the device, the service itself cannot read it.
 
-**5. What is not encrypted.** The shopping lists are stored as plain text in the database. Anyone with access to the web space (including your host) can read them.
+**5. What is not encrypted.** The shopping lists are stored as plain text in the database. Anyone with access to the web space (including your host) can read them. If you do not want that, use [local mode](#on-this-device-only-local-mode): then the lists never end up on the server in the first place.
 
 ## Updating
 
@@ -216,7 +238,7 @@ index.php      entry point and settings (PHP)
 app/lib/       language, database, accounts and sign-in, lists and catalog, default catalog, notifications, backup and update (PHP)
 app/routes/    all JSON actions (PHP)
 app/views/     sign-in page and main page (PHP/HTML)
-app/assets/    the app in the browser (JavaScript, CSS), PDF shopping list, English translation, icons, service worker
+app/assets/    the app in the browser (JavaScript, CSS), PDF shopping list, local mode, English translation, icons, service worker
 data/          created on first start, holds the database and accounts
 tools/         builds the release files (php tools/build-release.php)
 ```
@@ -225,6 +247,7 @@ The files in `app/` do nothing when called directly, everything goes through `in
 
 ## Good to know
 
+- **Local mode on the iPhone:** be sure to install it via "Add to Home Screen". Otherwise Safari clears the data of websites that have not been used for a week. Installed apps are exempt. A backup file never hurts anyway.
 - **Notifications:** on the iPhone they only work when Kaufen is installed via "Add to Home Screen" (iOS 16.4 or later), on Android and on a computer they also work in the browser. When you turn them on, the server sends a test, so you see right away whether it can reach the notification service. If a device does not say goodbye when leaving (no signal), the notification goes out about three minutes after the last change, as soon as any device has Kaufen open again.
 - **Language:** the built-in catalog is stored in German in the database and is only translated for display on English accounts. Products, categories and templates you create yourself stay exactly as typed.
 - **Cart:** belongs to the list and applies to everyone sharing it. Ticking off counts as bought (for “Recently bought” and “Due again soon”), bringing an item back from the cart undoes that. Deleting by swiping does not count as bought.

@@ -3,7 +3,7 @@
 defined('KF_VERSION') || exit;
 $kfName = h(kfClean($_POST['name'] ?? '', 30));
 ?><!DOCTYPE html>
-<html lang="<?= kfLang() ?>">
+<html lang="<?= kfLang() ?>" data-page="login">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
@@ -34,6 +34,9 @@ $kfName = h(kfClean($_POST['name'] ?? '', 30));
     <label><?= h(kfT('Passwort wiederholen')) ?><input name="pass2" type="password" autocomplete="new-password" required minlength="8"></label>
 <?php endif; ?>
     <button class="btn primary" type="submit"><?= h($needSetup ? kfT('Konto anlegen') : kfT('Anmelden')) ?></button>
+<?php if (!$needSetup && !empty($localOk)): ?>
+    <p class="localsw"><a href="?local=1"><?= h(kfT('Ohne Konto nutzen, nur auf diesem Gerät')) ?></a></p>
+<?php endif; ?>
     <p class="langsw"><?php if (kfLang() === 'en'): ?><a href="?lang=de" lang="de" hreflang="de">Deutsch</a><?php else: ?><a href="?lang=en" lang="en" hreflang="en">English</a><?php endif; ?></p>
 </form>
 </body>

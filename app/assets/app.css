@@ -303,6 +303,9 @@ button.row { font-weight: 600; }
 .login input { margin-top: .3rem; background: var(--bg); color: var(--text); font-weight: 400; }
 .login .btn { width: 100%; margin-top: .4rem; }
 .login .langsw { margin: 1rem 0 0; font-size: .88rem; }
+/* „Ohne Konto nutzen“: lokaler Modus, alles bleibt auf dem Gerät */
+.login .localsw { margin: 1.1rem 0 0; font-size: .92rem; font-weight: 600; }
+.login .localsw a { color: var(--acc); }
 .login .langsw a { color: var(--mut); }
 .row.danger { color: var(--danger); }
 
@@ -339,3 +342,17 @@ button.row { font-weight: 600; }
 .shop .tile.got .tn::before { content: none; }
 .shop .swipebg { padding: 0 1.1rem; font-size: .95rem; }
 .shop .swipebg span { flex-direction: row; gap: .45rem; }
+
+/* Drucken und Teilen: Vorschau des Zettels. Bleibt beim Rollen oben stehen, damit man beim Einstellen sieht, was passiert. Antippen macht sie groß. */
+.pdfwrap { position: sticky; top: 0; z-index: 1; margin: 0 -1rem .4rem; padding: .3rem 1rem .5rem; background: var(--bg); border-bottom: 1px solid var(--line); }
+.pdfwrap.big { position: static; }
+.pdfprev { display: flex; gap: .6rem; overflow-x: auto; padding: .2rem .1rem .4rem; cursor: zoom-in; }
+.pdfprev.big { cursor: zoom-out; }
+.pdfprev canvas { flex: none; display: block; border-radius: .25rem; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .25), 0 4px 14px rgba(0, 0, 0, .12); }
+.pdfprev canvas:first-child { margin-left: auto; }
+.pdfprev canvas:last-child { margin-right: auto; }
+.pdfinfo { text-align: center; font-size: .78rem; color: var(--mut); }
+.pdfopt { margin-bottom: .9rem; }
+.pdfopt .chip { min-height: 2.4rem; padding: .4rem .85rem; touch-action: manipulation; }
+.pdfreset { margin-top: .2rem; }
+.pdfreset .btn { flex: 0 0 auto; }

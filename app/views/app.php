@@ -3,7 +3,7 @@
 defined('KF_VERSION') || exit;
 $kfV = function (string $f): string { return h('?action=asset&f=' . $f . '&v=' . KF_VERSION . '-' . (int)@filemtime(KF_APP . '/assets/' . $f)); };
 ?><!DOCTYPE html>
-<html lang="<?= kfLang() ?>">
+<html lang="<?= kfLang() ?>" data-v="<?= h(KF_VERSION) ?>">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
@@ -20,6 +20,7 @@ $kfV = function (string $f): string { return h('?action=asset&f=' . $f . '&v=' .
 <script src="<?= $kfV('boot.js') ?>"></script>
 <script defer src="<?= $kfV('i18n.js') ?>"></script>
 <script defer src="<?= $kfV('pdf.js') ?>"></script>
+<script defer src="<?= $kfV('local.js') ?>"></script>
 <script defer src="<?= $kfV('app.js') ?>"></script>
 </head>
 <body>
