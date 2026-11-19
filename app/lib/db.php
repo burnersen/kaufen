@@ -2,7 +2,7 @@
 /* Kaufen – Datenordner, Datenbank (SQLite), Einstellungen */
 defined('KF_VERSION') || exit;
 
-define('KF_SCHEMA', 6);
+define('KF_SCHEMA', 7);
 
 function kfFatal(string $msg): void {
     http_response_code(500);
@@ -120,6 +120,10 @@ function kfMigrate(PDO $pdo, int $from): void {
         $pdo->exec("ALTER TABLE usage ADD COLUMN gap INTEGER NOT NULL DEFAULT 0");
         $pdo->exec("ALTER TABLE usage ADD COLUMN gn INTEGER NOT NULL DEFAULT 0");
         $pdo->exec("ALTER TABLE usage ADD COLUMN prev TEXT NOT NULL DEFAULT ''");
+    }
+    if ($from < 7) {
+        // Einkaufskorb: abgehakt steht ein Eintrag mit Zeitpunkt im Korb (0 = noch zu kaufen), bis „Einkauf fertig“ den Korb leert
+        $pdo->exec("ALTER TABLE items ADD COLUMN got_at INTEGER NOT NULL DEFAULT 0");
     }
     $pdo->exec('PRAGMA user_version = ' . KF_SCHEMA);
     $pdo->commit();

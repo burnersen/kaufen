@@ -122,6 +122,32 @@ a.btn { color: inherit; text-decoration: none; }
 .tile.has { border-color: var(--acc); background: var(--acc-soft); }
 .tile.has .tn::before { content: "✓ "; color: var(--acc); font-weight: 700; }
 .tile.new { border-style: dashed; border-color: var(--acc); color: var(--acc); font-weight: 600; }
+/* Einkaufskorb: abgehakt, mit Haken und durchgestrichen wie auf dem Zettel */
+h2.basket { margin-top: 1.8rem; }
+.tile.got { background: var(--card); border-color: var(--line); color: var(--mut); box-shadow: none; }
+.tile.got .tn { text-decoration: line-through; text-decoration-thickness: 2px; text-decoration-color: var(--acc); }
+.tile.got .tn::before { content: "✓"; display: inline-block; margin-right: .25em; color: var(--acc); font-weight: 800; }
+.btn.finish { margin-top: .8rem; }
+/* Wischen auf Einträgen der Liste: dahinter ein Schild, rechts rot „Löschen“, links „Menge“. Kräftig, sobald Loslassen auslöst.
+   pan-y: hoch und runter rollt die Seite, zur Seite gehört der Finger dem Eintrag. */
+.grid.todo { position: relative; }
+.grid.todo .tile { touch-action: pan-y; }
+.tile.swiping { position: relative; z-index: 1; transition: none; }
+.swipebg { position: absolute; z-index: 0; display: flex; align-items: center; padding: 0 .75rem; border-radius: .9rem; pointer-events: none;
+           font-size: .72rem; line-height: 1.1; opacity: .55; transition: opacity .12s; }
+.swipebg.armed { opacity: 1; }
+.swipebg span { display: none; flex-direction: column; align-items: center; gap: .15rem; }
+.swipebg svg { transition: transform .12s; }
+.swipebg.armed svg { transform: scale(1.2); }
+.swipebg[data-dir="del"] { justify-content: flex-end; background: #d92d20; color: #fff; }
+.swipebg[data-dir="qty"] { justify-content: flex-start; background: var(--text); color: var(--bg); }
+.swipebg[data-dir="del"] .sw-del, .swipebg[data-dir="qty"] .sw-qty { display: flex; }
+/* Lange halten: um den Eintrag wächst ein Ring, voll ist er, wenn das Menü kommt */
+.tile.holding { animation: hold 1.25s linear forwards; }
+@keyframes hold { from { box-shadow: 0 0 0 0 var(--bg), 0 0 0 0 var(--acc); } to { box-shadow: 0 0 0 3px var(--bg), 0 0 0 6px var(--acc); } }
+/* Warengruppe wechseln: große Schildchen zum Antippen */
+.catpick { margin-bottom: 1rem; }
+.catpick .chip { min-height: 2.6rem; padding: .45rem .9rem; font-size: .95rem; touch-action: manipulation; }
 .cat { display: flex; align-items: center; gap: .5rem; width: 100%; margin-top: .4rem; padding: .8rem .85rem; border: 1px solid var(--line); border-radius: .9rem;
        background: var(--card); box-shadow: var(--shadow); text-align: left; font-weight: 600; }
 .cat small { margin-left: auto; color: var(--mut); font-weight: 500; }
@@ -291,6 +317,8 @@ button.row { font-weight: 600; }
 .compact .cat { padding: .55rem .85rem; margin-top: .3rem; }
 .compact .cat + .grid { margin: .35rem 0 .6rem; }
 .compact h2 { margin-top: 1rem; }
+.compact .swipebg { padding: 0 .6rem; }
+.compact .swipebg b { display: none; }
 
 /* Eingabefelder nie kleiner als 16px: darunter zoomt das iPhone beim Antippen in die Seite hinein */
 .field input, .field select, .field textarea, .login input, .pick .hex, .sheet select, .sheet textarea, #q, .csearch input { font-size: max(16px, 1rem); }
@@ -306,3 +334,8 @@ button.row { font-weight: 600; }
 .shop .todo .th { flex: 1 0 100%; padding-left: 1.95rem; font-size: calc(.9rem * var(--fs-hint, 1)); font-weight: 400; -webkit-line-clamp: unset; }
 .shop .todo .tb { flex: 1 0 100%; padding-left: 1.95rem; font-size: .78rem; font-weight: 400; }
 .shop .grp { margin: 1.1rem 0 .45rem; font-size: calc(.88rem * var(--fs-head, 1)); }
+.shop .todo .tile.got::before { content: "✓"; display: grid; place-items: center; border-color: var(--acc); background: var(--acc); color: var(--acc-text);
+                                font-size: .85rem; font-weight: 800; line-height: 1; opacity: 1; }
+.shop .tile.got .tn::before { content: none; }
+.shop .swipebg { padding: 0 1.1rem; font-size: .95rem; }
+.shop .swipebg span { flex-direction: row; gap: .45rem; }

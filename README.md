@@ -12,7 +12,7 @@
 
 Gemeinsame Einkaufslisten zum Selbsthosten. Auf dem Server laufen PHP und SQLite, im Browser schlichtes JavaScript und CSS. Keine Frameworks, keine Abhängigkeiten, kein Build-Schritt, kein MySQL. Läuft auf einfachem Webspace und wird mit einer einzigen Datei installiert.
 
-Produkte tippt man aus einem fertigen Katalog an, sortiert nach Warengruppen. Im Laden tippt man sie wieder an, dann sind sie weg, und zwar bei allen, die die Liste teilen.
+Produkte tippt man aus einem fertigen Katalog an, sortiert nach Warengruppen. Im Laden tippt man sie wieder an, dann wandern sie abgehakt in den Einkaufskorb, und zwar bei allen, die die Liste teilen.
 
 `kaufen-install.php` hochladen, im Browser öffnen, erstes Konto anlegen. Das ist die ganze Installation.
 
@@ -21,6 +21,11 @@ Produkte tippt man aus einem fertigen Katalog an, sortiert nach Warengruppen. Im
 </p>
 
 <table>
+  <tr>
+    <td align="center" width="33%"><img src="docs/de/korb.png" alt="Abgehaktes liegt mit Haken und durchgestrichen im Einkaufskorb, darunter der Knopf „Einkauf fertig“" width="250"><br><sub>Einkaufskorb: abgehakt und durchgestrichen</sub></td>
+    <td align="center" width="33%"><img src="docs/de/wischen.png" alt="Ein Eintrag im Laden-Modus wird nach links gewischt, dahinter erscheint rot „Löschen“" width="250"><br><sub>Wischen: links löschen, rechts Menge</sub></td>
+    <td align="center" width="33%"><img src="docs/de/warengruppe.png" alt="Nach langem Halten: Warengruppe wechseln oder neu anlegen" width="250"><br><sub>Halten: Warengruppe wechseln</sub></td>
+  </tr>
   <tr>
     <td align="center" width="33%"><img src="docs/de/laden.png" alt="Laden-Modus mit großen Zeilen zum Abhaken" width="250"><br><sub>Laden-Modus: große Zeilen zum Abhaken</sub></td>
     <td align="center" width="33%"><img src="docs/de/dunkel.png" alt="Dunkles Design in der kompakten Ansicht" width="250"><br><sub>Dunkel und kompakt</sub></td>
@@ -43,20 +48,37 @@ Produkte tippt man aus einem fertigen Katalog an, sortiert nach Warengruppen. Im
   </tr>
 </table>
 
-<sub>Screenshots von Version 1.11.1 und 1.13.0. Namen und Einträge sind erfunden.</sub>
+<sub>Screenshots von Version 1.11.1, 1.13.0 und 1.14.0. Namen und Einträge sind erfunden.</sub>
 
 > 💜 **Gefällt dir Kaufen?** Ein ⭐ auf GitHub ist die einfachste Art, mir das zu sagen, und es bringt mehr, als man denkt: Sterne sind der sichtbare Beweis, dass ein Projekt gute Arbeit leistet, und genau darüber finden andere kleine Projekte wie dieses überhaupt erst Leute. Oder [erzähl mir, wofür du es nutzt](https://github.com/burnersen/kaufen/issues/new), ich lese jede Nachricht. Danke, dass du da bist!
 
 ## Inhalt
 
-[Funktionen](#funktionen) · [Voraussetzungen](#voraussetzungen) · [Installation](#installation) · [Daten schützen](#daten-schützen) · [Aktualisieren](#aktualisieren) · [Sichern und Zurückholen](#sichern-und-zurückholen) · [Aufbau](#aufbau) · [Gut zu wissen](#gut-zu-wissen) · [Lizenz](#lizenz)
+[So funktioniert's](#so-funktionierts) · [Funktionen](#funktionen) · [Voraussetzungen](#voraussetzungen) · [Installation](#installation) · [Daten schützen](#daten-schützen) · [Aktualisieren](#aktualisieren) · [Sichern und Zurückholen](#sichern-und-zurückholen) · [Aufbau](#aufbau) · [Gut zu wissen](#gut-zu-wissen) · [Lizenz](#lizenz)
+
+## So funktioniert's
+
+1. **Auf die Liste:** Produkte im Katalog antippen oder oben eintippen, auch mehrere auf einmal („Milch, 2 kg Äpfel und Brot“). Alle, die die Liste teilen, sehen es nach ein paar Sekunden.
+2. **Im Laden abhaken:** Eintrag antippen, dann wandert er mit Haken in den Einkaufskorb unter der Liste. Vertippt? Im Korb nochmal antippen, dann ist er wieder oben.
+3. **Fertig:** „Einkauf fertig“ unter dem Korb leert ihn nach einer Sicherheitsfrage. Was noch fehlt, bleibt für den nächsten Laden auf der Liste.
+
+| Geste | Auf der Liste und im Korb | Im Katalog |
+|---|---|---|
+| Antippen | abhaken, ab in den Korb (im Korb: zurückholen) | auf die Liste setzen oder wieder runternehmen |
+| Nach links wischen | ganz löschen, ein paar Sekunden lang mit „Rückgängig“ | |
+| Nach rechts wischen | Menge und Hinweis | |
+| Halten | Warengruppe wechseln (etwa anderthalb Sekunden, ein Ring zeigt es an) | Menge und Hinweis (eine halbe Sekunde) |
+| Am Rechner | mit gedrückter Maus ziehen statt wischen, Rechtsklick statt halten | Rechtsklick statt halten |
 
 ## Funktionen
 
 ### Einkaufen
 
 - **Katalog** mit rund 810 Produkten in 16 Warengruppen, in der Reihenfolge eines typischen Supermarkts. Nur Text, keine Bilder.
-- **Antippen** setzt ein Produkt auf die Liste, Antippen in der Liste hakt es ab. Danach gibt es ein paar Sekunden lang „Rückgängig“.
+- **Antippen** setzt ein Produkt auf die Liste. Antippen in der Liste hakt es ab: es wandert mit Haken und durchgestrichen in den **Einkaufskorb** darunter, wie auf dem Zettel. Nochmal antippen holt es wieder hoch. Wer die Liste teilt, sieht sofort, was schon im Wagen liegt.
+- **Einkauf fertig:** der Knopf unter dem Korb leert ihn nach einer Sicherheitsfrage. Was noch zu kaufen ist, bleibt auf der Liste, etwa für einen anderen Laden. Von allein leert sich der Korb nie.
+- **Wischen wie bei Mails:** einen Eintrag nach links wischen löscht ihn ganz von der Liste (ein paar Sekunden lang mit „Rückgängig“), nach rechts wischen öffnet Menge und Hinweis. Klappt in allen drei Ansichten. Am Rechner geht es mit gedrückter Maus.
+- **Warengruppe mal eben ändern:** einen Eintrag der Liste etwa anderthalb Sekunden halten (am Rechner: Rechtsklick), um ihn wächst dabei ein Ring. Dann eine andere Warengruppe antippen, z. B. Pflaumen im Glas zu den Konserven statt zum Obst. Das gilt nur für diesen Eintrag, auf Wunsch auch dauerhaft im Katalog. Eine neue Warengruppe lässt sich gleich dort anlegen.
 - **Suche** über den ganzen Katalog, in beiden Sprachen: „milk“ findet auch Milch. Gibt es ein Produkt nicht, legt man es direkt aus der Suche an und ordnet es einer Warengruppe zu. Die passende Warengruppe schlägt Kaufen am Wortende vor: „Bergkäse“ landet bei Milch & Käse, „Hundefutter“ bei Tierbedarf.
 - **Mehrere auf einmal, auch per Sprache:** „Milch, 2 kg Äpfel und ein halbes Brot“ ins Suchfeld tippen oder diktieren, Enter, und alles steht auf der Liste. Getrennt wird an Komma, „und“ oder Zeilenende, ohne Kommas („Milch Brot Äpfel Sahne“) zerlegt der Katalog die Wörter. Mengen dürfen davor oder dahinter stehen, in Ziffern oder Worten. Schon beim Tippen zeigt eine Vorschau, was erkannt wurde.
 - **Zuletzt gekauft:** die jüngsten und häufigsten Produkte, zum Aufklappen wie die Warengruppen. Was in den letzten zwei Wochen gekauft wurde, sagt es an der Kachel dazu („vor 3 Tagen“), beim langen Drücken mit Datum und wie oft.
@@ -67,7 +89,7 @@ Produkte tippt man aus einem fertigen Katalog an, sortiert nach Warengruppen. Im
 
 ### Mengen und Hinweise
 
-- **Menge oder Hinweis:** lange drücken (am Rechner: Rechtsklick). Im Zähler steht erst einmal 1, ohne Einheit. Mit Plus und Minus einstellen, bei Bedarf eine Einheit antippen (Stück, Packung, Liter, kg …) und einen Hinweis dazuschreiben. Eine schlichte 1 wird an der Kachel nicht eigens angezeigt, eine Zahl ohne Einheit steht groß als „3×“ da. Halbe gehen auch: „2,5“ oder „2 1/2“ tippen oder den Knopf ½ drücken, angezeigt wird 2½.
+- **Menge oder Hinweis:** auf der Liste nach rechts wischen, im Katalog lange drücken (am Rechner: Rechtsklick). Im Zähler steht erst einmal 1, ohne Einheit. Mit Plus und Minus einstellen, bei Bedarf eine Einheit antippen (Stück, Packung, Liter, kg …) und einen Hinweis dazuschreiben. Eine schlichte 1 wird an der Kachel nicht eigens angezeigt, eine Zahl ohne Einheit steht groß als „3×“ da. Halbe gehen auch: „2,5“ oder „2 1/2“ tippen oder den Knopf ½ drücken, angezeigt wird 2½.
 - **Einzahl und Mehrzahl auf einem Knopf:** „Glas“ steht bei 1 da, ab 2 heißt derselbe Knopf „Gläser“. Diktieren und Tippen verstehen beide Formen, „eine Kiste Wasser“ genauso wie „zwei Kisten Wasser“.
 - **Mehr Einheiten:** neben Stück, Packung, Liter, kg und Co. gibt es Kiste, Kasten, Becher, Beutel, Tüte, Netz, Schale, Rolle, Tafel, Tube, Sack, Scheibe, Kopf, Zehe, Würfel, Stange und Portion. In den Einstellungen legst du fest, welche bei der Mengenauswahl immer dastehen, der Rest wartet unter „Weitere …“.
 - **Eigene Einheiten:** z. B. „Eimer“ legt jedes Konto selbst an, mit Einzahl und Mehrzahl, direkt in der Mengenauswahl oder in den Einstellungen. Die Mehrzahl wird vorgeschlagen (Kanne wird Kannen). Umbenennen und löschen geht an beiden Stellen. Schon gespeicherte Mengen bleiben dabei als Text stehen.
@@ -80,7 +102,7 @@ Produkte tippt man aus einem fertigen Katalog an, sortiert nach Warengruppen. Im
 - **Wer war's:** in geteilten Listen steht am Produkt, wer es draufgesetzt hat. Jedes Konto kann das in den Einstellungen ausblenden.
 - **Mitteilungen aufs Handy:** wer möchte, bekommt eine Mitteilung, wenn jemand etwas auf eine geteilte Liste setzt. Jedes Konto schaltet das pro Gerät in den Einstellungen ein oder aus. Gebündelt statt einzeln: drei Produkte ergeben eine Mitteilung, und zwar in dem Moment, in dem der andere Kaufen verlässt. Abhaken im Laden meldet nichts.
 - **Einkaufszettel als PDF:** für die Tage, an denen das Handy zu Hause bleibt. Zwei Spalten, damit das Blatt voll genutzt wird, nach Warengruppen in der Reihenfolge des eigenen Ladens, vor jedem Eintrag ein Kästchen zum Abhaken mit dem Kuli. Schlicht schwarzweiß, druckt also auf jedem Drucker gut. Unten auf Wunsch leere Zeilen „Noch dazu“ zum Dazuschreiben, eine leere Liste ergibt einen leeren Zettel. Am Handy geht das PDF übers Teilen direkt zum Drucker. Erstellt wird es im Browser, ohne fremde Bibliothek und auch ohne Netz.
-- **Liste als Text:** die offene Liste geht als schlichter Text an WhatsApp, Mail und Co., in die Zwischenablage oder als Textdatei, für Leute ohne Konto. Beides steht unter Menü → Drucken und Teilen.
+- **Liste als Text:** was noch zu kaufen ist, geht als schlichter Text an WhatsApp, Mail und Co., in die Zwischenablage oder als Textdatei, für Leute ohne Konto. Beides steht unter Menü → Drucken und Teilen. Was schon im Einkaufskorb liegt, bleibt bei Zettel und Text draußen.
 - **Aus Text einfügen:** Text reinkopieren oder eine Textdatei öffnen, und alles landet auf der offenen Liste. Kaufen versteht den eigenen Export, Listen mit Spiegelstrichen, Kästchen oder Nummern und freien Text wie „Milch, 2 kg Äpfel und Brot“. Vorher zeigt eine Vorschau, was erkannt wurde. Was schon auf der Liste steht, kommt nicht doppelt drauf, abgehakte Zeilen ([x]) bleiben weg.
 - **Reihenfolge im Laden:** die Warengruppen lassen sich pro Liste so sortieren, wie der eigene Laden aufgebaut ist.
 - **Vorlagen:** „Grillen“ oder „Frühstück“ setzt mit einem Tipp mehrere Produkte auf die Liste. Auch die aktuelle Liste lässt sich als Vorlage speichern.
@@ -205,6 +227,7 @@ Die Dateien in `app/` tun nichts, wenn man sie direkt aufruft, alles läuft übe
 
 - **Mitteilungen:** auf dem iPhone gehen sie nur, wenn Kaufen über „Zum Home-Bildschirm“ installiert ist (ab iOS 16.4), auf Android und am Rechner auch im Browser. Beim Einschalten schickt der Server eine Probe, so sieht man sofort, ob er den Mitteilungsdienst erreicht. Meldet sich ein Gerät beim Verlassen nicht ab (Funkloch), geht die Mitteilung rund drei Minuten nach der letzten Änderung raus, sobald irgendein Gerät Kaufen das nächste Mal offen hat.
 - **Sprache:** der mitgelieferte Katalog liegt deutsch in der Datenbank und wird für englische Konten nur bei der Anzeige übersetzt. Selbst angelegte Produkte, Warengruppen und Vorlagen bleiben so, wie sie getippt wurden.
+- **Einkaufskorb:** gehört zur Liste und gilt für alle, die sie teilen. Abhaken zählt als gekauft (für „Zuletzt gekauft“ und „Bald wieder fällig“), zurückholen aus dem Korb nimmt das wieder zurück. Löschen per Wischen zählt nicht als gekauft.
 - **Was wem gehört:** die gemerkten Mengen gehören zur Liste und gelten für alle, die sie teilen. Sprache, „Menge merken“, „Wer war's“, eigene Einheiten und das Aussehen gehören zum Konto. Ansicht und Schriftgrößen gelten nur für das jeweilige Gerät.
 - **Katalog und Vorlagen** gelten für alle Konten und alle Listen. Einzelne Produkte und Warengruppen darf jedes Konto ändern, „Alles löschen“, „Standard wiederherstellen“, Export und Import sowie die Sicherungen sind dem Administrator vorbehalten.
 - **Listen** sehen nur ihre Mitglieder. Teilen, umbenennen und löschen kann nur, wer die Liste angelegt hat. Wird ein Konto gelöscht, gehen seine Listen an den Administrator, damit nichts verloren geht.
