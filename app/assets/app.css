@@ -146,7 +146,7 @@ h2.basket { margin-top: 1.8rem; }
 .swipebg[data-dir="qty"] { justify-content: flex-start; background: var(--text); color: var(--bg); }
 .swipebg[data-dir="del"] .sw-del, .swipebg[data-dir="qty"] .sw-qty { display: flex; }
 /* Lange halten: um den Eintrag wächst ein Ring, voll ist er, wenn das Menü kommt */
-.tile.holding { animation: hold 1.25s linear forwards; }
+.tile.holding { animation: hold .75s linear forwards; }   /* fängt nach 250 ms an, voll bei LP_ITEM (1 s) */
 @keyframes hold { from { box-shadow: 0 0 0 0 var(--bg), 0 0 0 0 var(--acc); } to { box-shadow: 0 0 0 3px var(--bg), 0 0 0 6px var(--acc); } }
 /* Warengruppe wechseln: große Schildchen zum Antippen */
 .catpick { margin-bottom: 1rem; }
@@ -391,13 +391,29 @@ button.row { font-weight: 600; }
 .pdfreset { margin-top: .2rem; }
 .pdfreset .btn { flex: 0 0 auto; }
 
-/* Demo-Modus: Hinweis „Zum Home-Bildschirm“ oben auf der Liste, ganz unten klein, was die Demo ist */
+/* Demo-Modus: Hinweis „Zum Home-Bildschirm“ oben auf der Liste, ganz unten was die Demo ist und wo es mehr gibt */
 .a2hs { margin: .1rem 0 1rem; padding: .85rem 1rem .7rem; border: 1px solid var(--acc); border-radius: 1rem; background: var(--acc-soft); color: var(--text); }
 .a2hs b { display: block; margin-bottom: .25rem; font-size: 1.02rem; }
 .a2hs p { margin: 0 0 .5rem; font-size: .9rem; line-height: 1.4; }
 .a2hs .how { font-weight: 600; }
+.a2hs .self { padding-top: .5rem; border-top: 1px solid var(--line); }
+.a2hs .self a { color: inherit; font-weight: 700; white-space: nowrap; }
 .a2hs .btns { margin-top: .2rem; flex-wrap: wrap; }
 .a2hs .btn { min-height: 2.4rem; padding: .3rem .85rem; font-size: .9rem; }
-.demofoot { margin: 2rem 0 0; text-align: center; color: var(--mut); font-size: .78rem; line-height: 1.6; }
-.demofoot a { color: inherit; }
+.demofoot { margin: 2.2rem 0 .5rem; padding-top: 1.2rem; border-top: 1px solid var(--line); text-align: center; color: var(--mut); font-size: .88rem; line-height: 1.45; }
+.demofoot p { margin: 0 0 .8rem; }
+.demofoot .links { display: flex; flex-wrap: wrap; justify-content: center; gap: .6rem; margin-bottom: .8rem; }
+.demofoot .btn { flex: 1 1 12rem; max-width: 18rem; min-height: 3rem; border-color: var(--acc); color: var(--text); font-size: 1rem; font-weight: 700; }
+.demofoot .btn svg { color: var(--acc); }
+
+/* Hilfe: kurze Abschnitte, Gesten als zweispaltige Tabelle auf einer Karte */
+.help h2 { margin: 1.1rem 0 .45rem; font-size: 1.02rem; }
+.help h2:first-child { margin-top: .2rem; }
+.help p { margin: 0 0 .55rem; font-size: .92rem; line-height: 1.45; }
+.help p a { color: var(--acc); font-weight: 600; }
+.help dl { display: grid; grid-template-columns: fit-content(42%) 1fr; gap: .45rem .85rem; margin: 0 0 .55rem; padding: .65rem .85rem;
+           border: 1px solid var(--line); border-radius: .8rem; background: var(--card); font-size: .92rem; line-height: 1.4; }
+.help dt { font-weight: 700; }
+.help dt svg { width: 1.1rem; height: 1.1rem; margin-right: .3rem; vertical-align: -.2rem; }
+.help dd { margin: 0; }
 .info a { color: var(--acc); }

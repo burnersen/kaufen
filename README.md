@@ -79,8 +79,10 @@ Wer gar nichts auf einem Server haben will, tippt auf der Anmeldeseite auf **„
 | Antippen | abhaken, ab in den Korb oder durchgestrichen (im Korb: zurückholen, durchgestrichen: zweimal tippen) | auf die Liste setzen oder wieder runternehmen |
 | Nach links wischen | ganz löschen, ein paar Sekunden lang mit „Rückgängig“ | |
 | Nach rechts wischen | Menge und Hinweis | |
-| Halten | Warengruppe wechseln (etwa anderthalb Sekunden, ein Ring zeigt es an) | Menge und Hinweis (eine halbe Sekunde) |
+| Halten | Warengruppe wechseln (etwa eine Sekunde, ein Ring zeigt es an) | Menge und Hinweis (eine halbe Sekunde) |
 | Am Rechner | mit gedrückter Maus ziehen statt wischen, Rechtsklick statt halten | Rechtsklick statt halten |
+
+**Kurz erklärt in der App:** Menü → Hilfe zeigt die Bedienung auf einen Blick, mit allen Gesten.
 
 **Ohne Server:** Im [lokalen Modus](#nur-auf-diesem-gerät-lokaler-modus) funktioniert alles genauso, nur dass die Listen nie das Gerät verlassen.
 
@@ -92,7 +94,7 @@ Wer gar nichts auf einem Server haben will, tippt auf der Anmeldeseite auf **„
 - **Antippen** setzt ein Produkt auf die Liste. Antippen in der Liste hakt es ab: es wandert mit Haken und durchgestrichen in den **Einkaufskorb** darunter, wie auf dem Zettel. Nochmal antippen holt es wieder hoch. Wer die Liste teilt, sieht sofort, was schon im Wagen liegt.
 - **Einkauf fertig:** der Knopf unter dem Korb leert ihn nach einer Sicherheitsfrage. Was noch zu kaufen ist, bleibt auf der Liste, etwa für einen anderen Laden. Von allein leert sich der Korb nie.
 - **Wischen wie bei Mails:** einen Eintrag nach links wischen löscht ihn ganz von der Liste (ein paar Sekunden lang mit „Rückgängig“), nach rechts wischen öffnet Menge und Hinweis. Klappt in allen vier Ansichten. Am Rechner geht es mit gedrückter Maus.
-- **Warengruppe mal eben ändern:** einen Eintrag der Liste etwa anderthalb Sekunden halten (am Rechner: Rechtsklick), um ihn wächst dabei ein Ring. Dann eine andere Warengruppe antippen, z. B. Pflaumen im Glas zu den Konserven statt zum Obst. Das gilt nur für diesen Eintrag, auf Wunsch auch dauerhaft im Katalog. Eine neue Warengruppe lässt sich gleich dort anlegen.
+- **Warengruppe mal eben ändern:** einen Eintrag der Liste etwa eine Sekunde halten (am Rechner: Rechtsklick), um ihn wächst dabei ein Ring. Dann eine andere Warengruppe antippen, z. B. Pflaumen im Glas zu den Konserven statt zum Obst. Das gilt nur für diesen Eintrag, auf Wunsch auch dauerhaft im Katalog. Eine neue Warengruppe lässt sich gleich dort anlegen.
 - **Suche** über den ganzen Katalog, in beiden Sprachen: „milk“ findet auch Milch. Gibt es ein Produkt nicht, legt man es direkt aus der Suche an und ordnet es einer Warengruppe zu. Die passende Warengruppe schlägt Kaufen am Wortende vor: „Bergkäse“ landet bei Milch & Käse, „Hundefutter“ bei Tierbedarf.
 - **Mehrere auf einmal, auch per Sprache:** „Milch, 2 kg Äpfel und ein halbes Brot“ ins Suchfeld tippen oder diktieren, Enter, und alles steht auf der Liste. Getrennt wird an Komma, „und“ oder Zeilenende, ohne Kommas („Milch Brot Äpfel Sahne“) zerlegt der Katalog die Wörter. Mengen dürfen davor oder dahinter stehen, in Ziffern oder Worten. Schon beim Tippen zeigt eine Vorschau, was erkannt wurde.
 - **Zuletzt gekauft:** die jüngsten und häufigsten Produkte, zum Aufklappen wie die Warengruppen. Was in den letzten zwei Wochen gekauft wurde, sagt es an der Kachel dazu („vor 3 Tagen“), beim langen Drücken mit Datum und wie oft.
@@ -101,6 +103,7 @@ Wer gar nichts auf einem Server haben will, tippt auf der Anmeldeseite auf **„
 - **Durchstreichen statt Korb:** in den Einstellungen pro Gerät wählbar. Abgehaktes bleibt dann mit Haken und durchgestrichen an seinem Platz stehen, statt in den Einkaufskorb zu wandern. In der Listen-Ansicht ist das von Haus aus so, auf Wunsch in allen Ansichten oder nirgends. Zurück auf die Liste geht es mit zwei Tipps innerhalb von 2 Sekunden, ein einzelner Tipp aus Versehen holt nichts zurück. „Einkauf fertig“ nimmt danach alles Abgehakte von der Liste. Wer die Liste teilt und lieber den Korb mag, sieht dieselben Einträge bei sich im Korb.
 - **Ohne Netz weiter einkaufen:** die App startet auch ohne Empfang, Änderungen werden gesammelt und nachgereicht.
 - **Bildschirm bleibt an**, solange die App offen ist (abschaltbar).
+- **Hilfe in der App:** Menü → Hilfe erklärt kurz und knapp Tippen, Wischen und Halten, Mengen, den Einkauf im Laden und was oben und im Menü steckt. Die Hilfe passt sich an: wer durchstreicht statt Korb, liest es so.
 
 ### Mengen und Hinweise
 
@@ -141,7 +144,8 @@ Für alle, die Kaufen anderen zum Ausprobieren anbieten wollen, ohne dass sich j
 
 - **Einschalten:** frisch installieren, erstes Konto anlegen, dann Einstellungen → „Demo-Modus einschalten …“. Danach kommen zwei Warnungen und zum Schluss eine Rechenaufgabe. Erst die richtige Lösung schaltet ihn ein, bei einer falschen bleibt alles, wie es ist.
 - **Was dann passiert:** Alle werden abgemeldet. Anmeldeseite, Konten, geteilte Listen und Mitteilungen gibt es nicht mehr. Jeder, der die Seite öffnet, landet sofort im lokalen Modus, alles bleibt auf seinem Gerät.
-- **Home-Bildschirm:** Besucher sehen oben einen Hinweis, wie sie Kaufen auf den Home-Bildschirm legen (iPhone, Android und Rechner je passend erklärt), und dass dann alles nur lokal bleibt. Ganz unten steht klein, dass es eine Demo ist, mit Links zu GitHub und zu tech.burnersen.de.
+- **Home-Bildschirm:** Besucher sehen oben einen Hinweis, wie sie Kaufen auf den Home-Bildschirm legen (iPhone und iPad, Android, Safari am Mac und andere Rechner je passend erklärt), und dass dann alles nur lokal bleibt. Im selben Kasten steht, dass man Kaufen selbst hosten und dann auch Listen teilen kann, mit Link zur Anleitung.
+- **Unten:** ein kurzer Satz, dass es eine Demo ist, und zwei gut sichtbare Knöpfe zu tech.burnersen.de und zu Kaufen auf GitHub.
 - **Updates von allein:** Der Server schaut höchstens einmal pro Stunde nach einer neuen Version und spielt sie ohne Nachfrage ein, nachdem die Seite ausgeliefert ist. Die Geräte holen sie sich danach beim nächsten Öffnen.
 - **Kein Zurück in der App.** Wer sich vertan hat: per FTP in `data/config.php` die Zeile `'demo' => true` löschen. Konten und Listen liegen dann wieder so da wie vorher.
 

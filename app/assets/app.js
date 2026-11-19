@@ -42,6 +42,7 @@ const I = {
     trash: 'M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3',
     tiles: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z', compact: 'M3 6h8M14 6h7M3 12h5M11 12h10M3 18h9M15 18h6', shop: 'M3 4h18v6H3zM3 14h18v6H3z',
     list: 'M4 6h.01M4 12h.01M4 18h.01M9 6h11M9 12h11M9 18h11',
+    globe: 'M12 3a9 9 0 100 18 9 9 0 000-18zM3 12h18M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9s1.2-6.5 3.6-9z', code: 'M8 7l-5 5 5 5M16 7l5 5-5 5M14 4l-4 16',
 };
 
 const LS = {
@@ -1201,7 +1202,7 @@ function newProduct(name, catId) {
 /* Gesten. Auf Einträgen der Liste und im Korb: Finger drauf und nach links wischen löscht, nach rechts öffnet die Menge,
    still liegen lassen (LP_ITEM) öffnet das Menü für die Warengruppe. Auf Produkten im Katalog öffnet kurzes Halten (LP_PROD) die Menge.
    Am Rechner: mit der Maus ziehen geht genauso, Rechtsklick statt Halten. */
-const LP_ITEM = 1500, LP_PROD = 500;
+const LP_ITEM = 1000, LP_PROD = 500;
 let lpTimer = 0, holdTimer = 0, lpFired = false, gest = null, swipeG = null, swipeBusy = false, renderLater = false, ghostUntil = 0;
 /* Nach dem langen Halten kann beim Loslassen noch ein Tipp kommen. Der landet sonst im gerade geöffneten Menü und wählt dort etwas aus. */
 document.addEventListener('click', e => { if (Date.now() < ghostUntil) { e.stopPropagation(); e.preventDefault(); } }, true);
@@ -2590,15 +2591,22 @@ let installEvt = null, a2hsLater = false;
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; if (DEMO) render(); });
 const standalone = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 const isIOS = () => /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+/** Safari am Mac: kann kein „Installieren“, legt Seiten aber über Ablage → Zum Dock hinzufügen ab */
+const isMacSafari = () => { const ua = navigator.userAgent; return /Macintosh/.test(ua) && /Safari\//.test(ua) && !/Chrome|Chromium|Edg|Firefox|OPR/.test(ua); };
 function demoBanner() {
     if (!DEMO || standalone() || a2hsLater || LS.get('a2hsNo', false)) return null;
-    const how = installEvt ? null : isIOS() ? tr('So geht es: unten in Safari auf Teilen tippen (das Kästchen mit dem Pfeil nach oben), dann auf „Zum Home-Bildschirm“.')
+    // iPhone und iPad: Teilen sitzt je nach Gerät, Ansicht und Browser unten, oben oder hinter „…“
+    const how = installEvt ? null : isIOS() ? tr('So geht es: im Browser auf Teilen tippen (das Kästchen mit dem Pfeil nach oben, je nach Ansicht unten, oben oder hinter „…“), dann auf „Zum Home-Bildschirm“.')
         : /Android/i.test(navigator.userAgent) ? tr('So geht es: im Browsermenü (⋮) auf „App installieren“ oder „Zum Startbildschirm hinzufügen“ tippen.')
-        : tr('So geht es: im Browser über das Symbol in der Adresszeile oder im Menü „Installieren“ wählen.');
+        : isMacSafari() ? tr('So geht es: in Safari oben im Menü Ablage → „Zum Dock hinzufügen“ wählen.')
+        : tr('So geht es: im Browser über das Symbol in der Adresszeile oder im Menü „Installieren“ wählen. Nicht jeder Browser bietet das an, Chrome und Edge schon.');
     return h('div', { class: 'a2hs', role: 'region', 'aria-label': tr('Kaufen auf den Home-Bildschirm') },
         h('b', null, tr('Kaufen auf den Home-Bildschirm')),
         h('p', null, tr('Dann startet Kaufen wie eine App, auch ohne Netz, und bekommt neue Versionen von allein. Ohne Anmeldung: alle Listen bleiben nur auf diesem Gerät, Teilen mit anderen gibt es hier nicht.')),
         how && h('p', { class: 'how' }, how),
+        // Wer mehr will: selbst hosten, dann auch mit Teilen
+        h('p', { class: 'self' }, tr('Du willst Kaufen selbst hosten und deine Listen mit anderen teilen? Dann besuch das Projekt auf GitHub: eine Datei laut Anleitung auf deinen Webspace laden, fertig.'), ' ',
+            h('a', { href: ghDoc('installation'), target: '_blank', rel: 'noopener' }, tr('Zur Anleitung'))),
         h('div', { class: 'btns' },
             h('button', { class: 'btn', type: 'button', onclick: () => { LS.set('a2hsNo', true); render(); } }, tr('Nicht mehr zeigen')),
             h('button', { class: 'btn', type: 'button', onclick: () => { a2hsLater = true; render(); } }, tr('Später')),
@@ -2611,10 +2619,57 @@ function demoBanner() {
             } }, tr('Installieren'))));
 }
 window.addEventListener('appinstalled', () => { a2hsLater = true; if (DEMO) render(); });
-/** Ganz unten, klein: was die Demo ist und wo es mehr gibt */
-const demoFoot = () => DEMO && h('p', { class: 'demofoot' }, tr('Demo · alles bleibt auf diesem Gerät · '),
-    h('a', { href: GH, target: '_blank', rel: 'noopener' }, tr('Kaufen selbst hosten')), ' · ',
-    tr('Für weitere Informationen besuch bitte '), h('a', { href: SITE, target: '_blank', rel: 'noopener' }, 'tech.burnersen.de'));
+/** Die ausführliche Anleitung auf GitHub, auf Englisch die englische */
+const ghDoc = (sec = '') => (lang === 'en' ? GH + '/blob/main/README.en.md' : GH) + (sec ? '#' + sec : '');
+/** Ganz unten: was die Demo ist, dazu gut sichtbar die eigene Seite und Kaufen auf GitHub */
+const demoFoot = () => DEMO && h('footer', { class: 'demofoot' },
+    h('p', null, tr('Das ist die Demo von Kaufen, alles bleibt auf deinem Gerät.')),
+    h('div', { class: 'links' },
+        h('a', { class: 'btn', href: SITE, target: '_blank', rel: 'noopener' }, icon(I.globe), 'tech.burnersen.de'),
+        h('a', { class: 'btn', href: ghDoc(), target: '_blank', rel: 'noopener' }, icon(I.code), tr('Kaufen auf GitHub'))),
+    h('p', null, tr('Kaufen ist kostenlos. Selbst gehostet auf deinem Webspace kannst du deine Listen auch mit anderen teilen.')));
+
+/* ---------- Hilfe: kurz und knapp, wie Kaufen bedient wird. Die ausführliche Fassung steht auf GitHub. ---------- */
+function showHelp() {
+    const sh = sheet(tr('Hilfe'));
+    const strike = strikeOn(), solo = LOCAL || DEMO;
+    const sec = (title, ...kids) => [h('h2', null, title), ...kids];
+    const p = (...t) => h('p', null, ...t);
+    const dl = rows => h('dl', null, rows.map(([g, t]) => [h('dt', null, g), h('dd', null, t)]));
+    // Die Knöpfe oben genau so, wie sie aussehen
+    const svg = sel => { const s = $(sel + ' svg'); return s ? s.cloneNode(true) : null; };
+    put(sh.body, h('div', { class: 'help' },
+        sec(tr('Auf die Liste'),
+            p(tr('Ein Produkt im Katalog antippen oder oben ins Suchfeld tippen. Mehrere auf einmal gehen auch, sogar mit Menge: „Milch, 2 kg Äpfel und Brot“, dann Enter. Diktieren klappt genauso. Was es noch nicht gibt, legst du direkt aus der Suche an.'))),
+        sec(tr('Auf der Liste'),
+            dl([[tr('Antippen'), strike ? tr('Abhaken, es bleibt durchgestrichen stehen. Zweimal tippen holt es zurück.') : tr('Abhaken, ab in den Einkaufskorb. Im Korb antippen holt es zurück.')],
+                [tr('Nach links wischen'), tr('Löschen, ein paar Sekunden lang mit „Rückgängig“')],
+                [tr('Nach rechts wischen'), tr('Menge und Hinweis')],
+                [tr('1 Sekunde halten'), tr('Warengruppe wechseln. Ein Ring zeigt, wann es so weit ist.')]])),
+        sec(tr('Im Katalog'),
+            dl([[tr('Antippen'), tr('Auf die Liste oder wieder runter')],
+                [tr('Kurz halten'), tr('Erst Menge und Hinweis wählen, dann auf die Liste')],
+                [tr('Warengruppe antippen'), tr('Auf- und zuklappen. „+ Neu“ legt dort ein Produkt an.')]])),
+        sec(tr('Menge'),
+            p(tr('Plus und Minus zählen, gedrückt halten zählt schneller, ½ gibt Halbe. Dazu eine Einheit antippen, mehr gibt es unter „Weitere …“, eigene mit „+ Einheit“.'),
+                look.keep ? ' ' + tr('Beim Abhaken merkt sich Kaufen die Menge fürs nächste Mal.') : '')),
+        sec(tr('Im Laden'),
+            p(strike ? tr('Abhaken, was im Wagen liegt. „Einkauf fertig“ unten nimmt alles Abgehakte von der Liste, der Rest bleibt für den nächsten Laden.')
+                : tr('Abhaken, was im Wagen liegt. „Einkauf fertig“ unter dem Korb leert ihn, der Rest bleibt für den nächsten Laden.'),
+                ' ' + tr('Ob Abgehaktes in den Korb wandert oder durchgestrichen stehen bleibt, stellst du in den Einstellungen ein.')),
+            p(tr('Unter der Liste schlägt „Bald wieder fällig“ vor, was du regelmäßig kaufst, „Zuletzt gekauft“ hat deine Klassiker.'))),
+        sec(tr('Oben'),
+            dl([[tr('Listenname'), tr('Liste wechseln oder eine neue anlegen')],
+                [[svg('#viewBtn'), tr('Ansicht')], tr('Kacheln, kompakt, Laden-Modus oder Liste')],
+                [[svg('#menuBtn'), tr('Menü')], tr('Vorlagen, Reihenfolge im Laden, Drucken und Teilen, Aus Text einfügen, Katalog verwalten, Einstellungen für Aussehen, Schrift und Einheiten')]])),
+        sec(tr('Am Rechner'),
+            p(tr('Mit gedrückter Maus ziehen statt wischen, Rechtsklick statt halten. Enter im Suchfeld nimmt den ersten Treffer, Esc schließt ein Fenster.'))),
+        sec(tr('Gut zu wissen'),
+            p(solo ? tr('Alles bleibt auf diesem Gerät, auch ohne Netz geht alles. Mach ab und zu eine Sicherung als Datei (im Menü), sonst ist alles weg, wenn die Browserdaten gelöscht werden.')
+                : tr('Geteilte Listen gleichen sich nach ein paar Sekunden ab. Ohne Netz geht alles weiter, Änderungen werden nachgereicht.'))),
+        p(h('a', { href: ghDoc(), target: '_blank', rel: 'noopener' }, tr('Ausführliche Anleitung auf GitHub')))),
+        h('div', { class: 'btns' }, h('button', { class: 'btn primary', type: 'button', onclick: () => sh.close() }, tr('Alles klar'))));
+}
 
 function showMenu() {
     const sh = sheet(tr('Menü'));
@@ -2629,6 +2684,7 @@ function showMenu() {
         S.me.admin && !LOCAL && btn(tr('Konten'), showUsers),
         S.me.admin && !LOCAL && btn([tr('Sicherung und Update'), S.upd && S.upd.v && h('span', { class: 'badge' }, tr('Neu: {0}', S.upd.v))], showMaint),
         LOCAL && btn(tr('Sicherung als Datei'), showLocalBackup),
+        btn(tr('Hilfe'), showHelp),
         btn(tr('Einstellungen'), showSettings),
         LOCAL ? !DEMO && btn(tr('Lokalen Modus beenden'), leaveLocal) : btn(tr('Abmelden'), logout));
 }
