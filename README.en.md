@@ -135,6 +135,16 @@ For everyone who does not want their lists on any server. It is the same app wit
 - **Going back:** Menu → “Leave local mode” leads to the sign-in page. Afterwards Kaufen asks whether the local lists should move into the account. If there is a list with the same name, everything goes there, without duplicates.
 - **For the server owner:** if you do not want the link on your server, set `'local' => false` in `data/config.php`. People using it only get the program files and the default catalog from your server, never any data from you or others.
 
+### Demo mode (for a public server to try Kaufen out)
+
+For anyone who wants to let others try Kaufen without signing up. **Not for your own installation.**
+
+- **Turning it on:** install fresh, create the first account, then Settings → “Turn on demo mode …”. Two warnings follow and finally an arithmetic task. Only the right answer turns it on; a wrong one leaves everything as it is.
+- **What happens then:** everyone is signed out. The sign-in page, accounts, shared lists and notifications are gone. Everyone who opens the page goes straight into local mode, everything stays on their device.
+- **Home screen:** visitors see a note at the top on how to put Kaufen on their home screen (explained for iPhone, Android and computers), and that everything then stays local. At the very bottom, in small print, it says this is a demo, with links to GitHub and tech.burnersen.de.
+- **Updates by themselves:** the server checks for a new version at most once an hour and installs it without asking, after the page has been delivered. Devices pick it up the next time they open Kaufen.
+- **No way back in the app.** If you made a mistake: delete the line `'demo' => true` from `data/config.php` via FTP. Accounts and lists are then back as before.
+
 ### Language and look
 
 - **German and English:** each account picks its language in the settings. A German device starts in German, all others in English. Everything is translated, including the catalog. In a shared list one person sees "Milch" and the other sees "Milk", and it is still the same entry.

@@ -3,7 +3,7 @@
 defined('KF_VERSION') || exit;
 $kfV = function (string $f): string { return h('?action=asset&f=' . $f . '&v=' . KF_VERSION . '-' . (int)@filemtime(KF_APP . '/assets/' . $f)); };
 ?><!DOCTYPE html>
-<html lang="<?= kfLang() ?>" data-v="<?= h(KF_VERSION) ?>">
+<html lang="<?= kfLang() ?>" data-v="<?= h(KF_VERSION) ?>"<?= !empty(kfConfig()['demo']) ? ' data-demo="1"' : '' ?>>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">

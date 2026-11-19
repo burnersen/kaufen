@@ -20,7 +20,7 @@ error_reporting(E_ALL);
 ini_set('display_errors', '0');
 date_default_timezone_set('Europe/Berlin');
 
-define('KF_VERSION', '1.16.0');
+define('KF_VERSION', '1.17.0');
 define('KF_ROOT', __DIR__);
 define('KF_APP', KF_ROOT . '/app');
 define('KF_DATA_DIR', KF_ROOT . '/data');
@@ -81,7 +81,8 @@ if ($action === 'manifest') {
 
 /* ---------- Lokaler Modus: ohne Konto, alles bleibt auf dem Gerät (app/assets/local.js). Der Server liefert dafür nur die App
    und einmal den mitgelieferten Katalog samt Vorlagen. Abschalten mit 'local' => false in data/config.php. ---------- */
-$localOk = (kfConfig()['local'] ?? true) !== false;
+$demo = !empty(kfConfig()['demo']);   // Demo-Modus, siehe unten
+$localOk = $demo || (kfConfig()['local'] ?? true) !== false;
 if ($action === 'local_seed') {
     kfHeaders();
     header('Content-Type: application/json; charset=utf-8');
@@ -98,6 +99,32 @@ if ($action === '' && isset($_GET['lang']) && in_array($_GET['lang'], ['de', 'en
     kfLangCookie($_GET['lang']);
     header('Cache-Control: no-store');
     header('Location: ./');
+    exit;
+}
+
+/* ---------- Demo-Modus: ein öffentlicher Server zum Ausprobieren. Es gibt keine Konten mehr, jeder Besucher bekommt die App im lokalen Modus,
+   alles bleibt auf seinem Gerät. Eingeschaltet vom Administrator unter Einstellungen (mit mehreren Sicherheitsfragen), danach steht
+   'demo' => true in data/config.php. In der App gibt es kein Zurück, nur von Hand: die Zeile dort löschen.
+   Der Server holt sich neue Versionen selbst, höchstens einmal pro Stunde und erst, nachdem die Seite ausgeliefert ist. ---------- */
+if ($demo) {
+    if ($action !== '') {
+        kfHeaders();
+        header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: no-store');
+        http_response_code(403);
+        echo json_encode(['error' => kfT('Das ist eine Demo: Kaufen läuft hier nur auf deinem Gerät.')], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+    kfHeaders(true);
+    header('Content-Type: text/html; charset=utf-8');
+    header('Cache-Control: no-store');
+    header('X-KF-Page: app');
+    ob_start();
+    require KF_APP . '/views/app.php';
+    $html = (string)ob_get_clean();
+    if (!filter_var(ini_get('zlib.output_compression'), FILTER_VALIDATE_BOOLEAN)) header('Content-Length: ' . strlen($html));
+    echo $html;
+    kfDemoUpdate();
     exit;
 }
 

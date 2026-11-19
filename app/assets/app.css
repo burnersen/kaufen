@@ -390,3 +390,14 @@ button.row { font-weight: 600; }
 .pdfopt .chip { min-height: 2.4rem; padding: .4rem .85rem; touch-action: manipulation; }
 .pdfreset { margin-top: .2rem; }
 .pdfreset .btn { flex: 0 0 auto; }
+
+/* Demo-Modus: Hinweis „Zum Home-Bildschirm“ oben auf der Liste, ganz unten klein, was die Demo ist */
+.a2hs { margin: .1rem 0 1rem; padding: .85rem 1rem .7rem; border: 1px solid var(--acc); border-radius: 1rem; background: var(--acc-soft); color: var(--text); }
+.a2hs b { display: block; margin-bottom: .25rem; font-size: 1.02rem; }
+.a2hs p { margin: 0 0 .5rem; font-size: .9rem; line-height: 1.4; }
+.a2hs .how { font-weight: 600; }
+.a2hs .btns { margin-top: .2rem; flex-wrap: wrap; }
+.a2hs .btn { min-height: 2.4rem; padding: .3rem .85rem; font-size: .9rem; }
+.demofoot { margin: 2rem 0 0; text-align: center; color: var(--mut); font-size: .78rem; line-height: 1.6; }
+.demofoot a { color: inherit; }
+.info a { color: var(--acc); }
