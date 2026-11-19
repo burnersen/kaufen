@@ -20,7 +20,7 @@ error_reporting(E_ALL);
 ini_set('display_errors', '0');
 date_default_timezone_set('Europe/Berlin');
 
-define('KF_VERSION', '1.14.0');
+define('KF_VERSION', '1.15.0');
 define('KF_ROOT', __DIR__);
 define('KF_APP', KF_ROOT . '/app');
 define('KF_DATA_DIR', KF_ROOT . '/data');
@@ -41,7 +41,7 @@ $action = isset($_GET['action']) && is_string($_GET['action']) ? $_GET['action']
 /* ---------- Dateien ohne Anmeldung: CSS, JavaScript, Symbole, Manifest, Service Worker ---------- */
 if ($action === 'asset') {
     $types = [
-        'app.css' => 'text/css; charset=utf-8', 'app.js' => 'text/javascript; charset=utf-8', 'i18n.js' => 'text/javascript; charset=utf-8', 'boot.js' => 'text/javascript; charset=utf-8', 'pdf.js' => 'text/javascript; charset=utf-8',
+        'app.css' => 'text/css; charset=utf-8', 'app.js' => 'text/javascript; charset=utf-8', 'i18n.js' => 'text/javascript; charset=utf-8', 'boot.js' => 'text/javascript; charset=utf-8', 'pdf.js' => 'text/javascript; charset=utf-8', 'local.js' => 'text/javascript; charset=utf-8',
         'icon.svg' => 'image/svg+xml', 'icon-192.png' => 'image/png', 'icon-512.png' => 'image/png',
     ];
     $f = isset($_GET['f']) && is_string($_GET['f']) ? $_GET['f'] : '';
@@ -79,6 +79,19 @@ if ($action === 'manifest') {
     exit;
 }
 
+/* ---------- Lokaler Modus: ohne Konto, alles bleibt auf dem Gerät (app/assets/local.js). Der Server liefert dafür nur die App
+   und einmal den mitgelieferten Katalog samt Vorlagen. Abschalten mit 'local' => false in data/config.php. ---------- */
+$localOk = (kfConfig()['local'] ?? true) !== false;
+if ($action === 'local_seed') {
+    kfHeaders();
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store');
+    if (!$localOk) { http_response_code(403); echo json_encode(['error' => kfT('Der lokale Modus ist auf diesem Server abgeschaltet.')], JSON_UNESCAPED_UNICODE); exit; }
+    require_once KF_APP . '/lib/catalog.php';
+    echo json_encode(['catalog' => kfDefaultCatalog(), 'templates' => kfDefaultTemplates()], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
 /* ---------- Sprache umschalten (Anmeldeseite): im Cookie merken und zurück zur Seite ---------- */
 if ($action === '' && isset($_GET['lang']) && in_array($_GET['lang'], ['de', 'en'], true)) {
     kfHeaders();
@@ -108,10 +121,12 @@ if ($action !== '' && !in_array($action, ['setup', 'login'], true)) {
     exit;
 }
 
+$localPage = $action === '' && isset($_GET['local']) && $localOk;
+if ($localPage && $me) { header('Location: ./'); exit; }   // mit Konto angemeldet: kein Grund für den lokalen Modus
 kfHeaders(true);
 header('Content-Type: text/html; charset=utf-8');
 header('Cache-Control: no-store');
-if ($me) {
+if ($me || $localPage) {
     header('X-KF-Page: app');
     require KF_APP . '/views/app.php';
 } else {

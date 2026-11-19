@@ -33,6 +33,9 @@ function kfT(string $s, ...$args): string {
 
 function kfEnglish(): array {
     return [
+        // Lokaler Modus
+        'Ohne Konto nutzen, nur auf diesem Gerät' => 'Use without an account, on this device only',
+        'Der lokale Modus ist auf diesem Server abgeschaltet.' => 'Local mode is switched off on this server.',
         // Start und Datenbank
         'Der Ordner data/ konnte nicht angelegt werden. PHP braucht Schreibrechte im Verzeichnis von Kaufen.' => 'The folder data/ could not be created. PHP needs write access to the Kaufen directory.',
         'In den Ordner data/ kann nicht geschrieben werden. Bitte die Schreibrechte prüfen.' => 'The folder data/ is not writable. Please check the permissions.',

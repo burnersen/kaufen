@@ -16,11 +16,18 @@ Produkte tippt man aus einem fertigen Katalog an, sortiert nach Warengruppen. Im
 
 `kaufen-install.php` hochladen, im Browser öffnen, erstes Konto anlegen. Das ist die ganze Installation.
 
+Wer gar nichts auf einem Server haben will, tippt auf der Anmeldeseite auf **„Ohne Konto nutzen, nur auf diesem Gerät“**. Dann bleiben alle Listen auf dem eigenen Handy oder Rechner, siehe [Lokaler Modus](#nur-auf-diesem-gerät-lokaler-modus).
+
 <p align="center">
   <img src="docs/de/liste.png" alt="Die Einkaufsliste mit Mengen, Hinweisen, wer was draufgesetzt hat, und darunter „Bald wieder fällig“" width="320">
 </p>
 
 <table>
+  <tr>
+    <td align="center" width="33%"><img src="docs/de/ohne-konto.png" alt="Die Anmeldeseite mit dem Link „Ohne Konto nutzen, nur auf diesem Gerät“" width="250"><br><sub>Ohne Konto, nur auf dem Gerät</sub></td>
+    <td align="center" width="33%"><img src="docs/de/lokal.png" alt="Einstellungen im lokalen Modus: Sicherung als Datei und Lokalen Modus beenden" width="250"><br><sub>Lokaler Modus</sub></td>
+    <td align="center" width="33%"><img src="docs/de/drucken.png" alt="Drucken und Teilen: Vorschau des Zettels, darunter Schriftart, Schriftgröße, Zeilenabstand und Spalten" width="250"><br><sub>Zettel einstellen, mit Vorschau</sub></td>
+  </tr>
   <tr>
     <td align="center" width="33%"><img src="docs/de/korb.png" alt="Abgehaktes liegt mit Haken und durchgestrichen im Einkaufskorb, darunter der Knopf „Einkauf fertig“" width="250"><br><sub>Einkaufskorb: abgehakt und durchgestrichen</sub></td>
     <td align="center" width="33%"><img src="docs/de/wischen.png" alt="Ein Eintrag im Laden-Modus wird nach links gewischt, dahinter erscheint rot „Löschen“" width="250"><br><sub>Wischen: links löschen, rechts Menge</sub></td>
@@ -42,13 +49,13 @@ Produkte tippt man aus einem fertigen Katalog an, sortiert nach Warengruppen. Im
     <td align="center"><img src="docs/de/sicherung.png" alt="Sicherung und Update für den Administrator" width="250"><br><sub>Sicherung und Update</sub></td>
   </tr>
   <tr>
-    <td align="center"><img src="docs/de/drucken.png" alt="Drucken und Teilen: Einkaufszettel als PDF, Liste als Text" width="250"><br><sub>Drucken und Teilen</sub></td>
     <td align="center"><img src="docs/de/einfuegen.png" alt="Aus Text einfügen, mit Vorschau, was erkannt wurde" width="250"><br><sub>Aus Text einfügen</sub></td>
     <td align="center"><img src="docs/de/zettel.png" alt="Der Einkaufszettel als PDF: zwei Spalten, Kästchen zum Abhaken" width="250"><br><sub>Der Zettel zum Ausdrucken</sub></td>
+    <td align="center"><img src="docs/de/kompakt.png" alt="Derselbe Zettel kompakt: Schrift Klassisch, drei Spalten, enger Zeilenabstand" width="250"><br><sub>Derselbe Zettel kompakt</sub></td>
   </tr>
 </table>
 
-<sub>Screenshots von Version 1.11.1, 1.13.0 und 1.14.0. Namen und Einträge sind erfunden.</sub>
+<sub>Screenshots von Version 1.11.1 bis 1.15.0. Namen und Einträge sind erfunden.</sub>
 
 > 💜 **Gefällt dir Kaufen?** Ein ⭐ auf GitHub ist die einfachste Art, mir das zu sagen, und es bringt mehr, als man denkt: Sterne sind der sichtbare Beweis, dass ein Projekt gute Arbeit leistet, und genau darüber finden andere kleine Projekte wie dieses überhaupt erst Leute. Oder [erzähl mir, wofür du es nutzt](https://github.com/burnersen/kaufen/issues/new), ich lese jede Nachricht. Danke, dass du da bist!
 
@@ -69,6 +76,8 @@ Produkte tippt man aus einem fertigen Katalog an, sortiert nach Warengruppen. Im
 | Nach rechts wischen | Menge und Hinweis | |
 | Halten | Warengruppe wechseln (etwa anderthalb Sekunden, ein Ring zeigt es an) | Menge und Hinweis (eine halbe Sekunde) |
 | Am Rechner | mit gedrückter Maus ziehen statt wischen, Rechtsklick statt halten | Rechtsklick statt halten |
+
+**Ohne Server:** Im [lokalen Modus](#nur-auf-diesem-gerät-lokaler-modus) funktioniert alles genauso, nur dass die Listen nie das Gerät verlassen.
 
 ## Funktionen
 
@@ -101,11 +110,24 @@ Produkte tippt man aus einem fertigen Katalog an, sortiert nach Warengruppen. Im
 - **Mehrere Listen:** jeder kann eigene Listen anlegen und mit beliebigen Konten teilen. Wer eingeladen wurde, kann eine Liste auch wieder verlassen.
 - **Wer war's:** in geteilten Listen steht am Produkt, wer es draufgesetzt hat. Jedes Konto kann das in den Einstellungen ausblenden.
 - **Mitteilungen aufs Handy:** wer möchte, bekommt eine Mitteilung, wenn jemand etwas auf eine geteilte Liste setzt. Jedes Konto schaltet das pro Gerät in den Einstellungen ein oder aus. Gebündelt statt einzeln: drei Produkte ergeben eine Mitteilung, und zwar in dem Moment, in dem der andere Kaufen verlässt. Abhaken im Laden meldet nichts.
-- **Einkaufszettel als PDF:** für die Tage, an denen das Handy zu Hause bleibt. Zwei Spalten, damit das Blatt voll genutzt wird, nach Warengruppen in der Reihenfolge des eigenen Ladens, vor jedem Eintrag ein Kästchen zum Abhaken mit dem Kuli. Schlicht schwarzweiß, druckt also auf jedem Drucker gut. Unten auf Wunsch leere Zeilen „Noch dazu“ zum Dazuschreiben, eine leere Liste ergibt einen leeren Zettel. Am Handy geht das PDF übers Teilen direkt zum Drucker. Erstellt wird es im Browser, ohne fremde Bibliothek und auch ohne Netz.
+- **Einkaufszettel als PDF:** für die Tage, an denen das Handy zu Hause bleibt. Nach Warengruppen in der Reihenfolge des eigenen Ladens, vor jedem Eintrag ein Kästchen zum Abhaken mit dem Kuli. Schlicht schwarzweiß, druckt also auf jedem Drucker gut. Unten auf Wunsch leere Zeilen „Noch dazu“ zum Dazuschreiben, eine leere Liste ergibt einen leeren Zettel. Am Handy geht das PDF übers Teilen direkt zum Drucker. Erstellt wird es im Browser, ohne fremde Bibliothek und auch ohne Netz.
+- **Zettel nach Wunsch:** Schriftart (Klar, Klassisch oder Schreibmaschine), Schriftgröße, Zeilenabstand von eng bis weit und 2 oder 3 Spalten. Oben im Fenster zeigt eine Vorschau genau, was aus dem Drucker kommt, und ändert sich beim Einstellen sofort mit. Antippen macht sie groß. Eng und mit 3 Spalten passt ein großer Wocheneinkauf auf eine halbe Seite. Gemerkt wird das pro Gerät.
 - **Liste als Text:** was noch zu kaufen ist, geht als schlichter Text an WhatsApp, Mail und Co., in die Zwischenablage oder als Textdatei, für Leute ohne Konto. Beides steht unter Menü → Drucken und Teilen. Was schon im Einkaufskorb liegt, bleibt bei Zettel und Text draußen.
 - **Aus Text einfügen:** Text reinkopieren oder eine Textdatei öffnen, und alles landet auf der offenen Liste. Kaufen versteht den eigenen Export, Listen mit Spiegelstrichen, Kästchen oder Nummern und freien Text wie „Milch, 2 kg Äpfel und Brot“. Vorher zeigt eine Vorschau, was erkannt wurde. Was schon auf der Liste steht, kommt nicht doppelt drauf, abgehakte Zeilen ([x]) bleiben weg.
 - **Reihenfolge im Laden:** die Warengruppen lassen sich pro Liste so sortieren, wie der eigene Laden aufgebaut ist.
 - **Vorlagen:** „Grillen“ oder „Frühstück“ setzt mit einem Tipp mehrere Produkte auf die Liste. Auch die aktuelle Liste lässt sich als Vorlage speichern.
+
+### Nur auf diesem Gerät (lokaler Modus)
+
+Für alle, die ihre Listen auf keinem Server haben wollen. Es ist dieselbe App mit allen Funktionen und allen künftigen Verbesserungen, nur dass ein kleiner „Server“ im Browser die Arbeit macht.
+
+- **Ohne Konto:** auf der Anmeldeseite „Ohne Konto nutzen, nur auf diesem Gerät“ antippen, dann aufs Handy legen (siehe [Aufs Handy](#aufs-handy)). Fertig, ohne Anmeldung.
+- **Mit Konto umschalten:** Einstellungen → „Lokalen Modus einschalten“. Listen, Katalog, Vorlagen und Aussehen werden aufs Gerät kopiert, danach meldet sich das Gerät vom Server ab.
+- **Alles bleibt auf dem Gerät:** kein Abgleich, keine Mitteilungen, keine Liste geht ins Netz. Kaufen startet aus dem Speicher des Geräts, auch im Flugmodus. Die einzige Verbindung: ab und zu schaut der Browser nach, ob es eine neue Version von Kaufen gibt, und holt sie sich. Dabei gehen keine Daten raus.
+- **Was fehlt:** Listen mit anderen teilen, Konten und Mitteilungen. Weitergeben geht per PDF oder Text.
+- **Sicherung als Datei:** im Menü. Speichert alle Listen, den Katalog, die Vorlagen und das Aussehen in einer Datei und spielt sie wieder ein. Wichtig, denn wer die Browserdaten löscht, ist sonst alles los.
+- **Zurück:** Menü → „Lokalen Modus beenden“ führt zur Anmeldung. Danach fragt Kaufen, ob die lokalen Listen ins Konto sollen. Gibt es dort eine Liste mit gleichem Namen, kommt alles dorthin, ohne Doppelte.
+- **Für den Betreiber:** wer den Link auf seinem Server nicht will, trägt in `data/config.php` den Eintrag `'local' => false` ein. Wer ihn nutzt, bekommt von deinem Server nur die Programmdateien und den mitgelieferten Katalog, nie Daten von dir oder anderen.
 
 ### Sprache und Aussehen
 
@@ -142,7 +164,7 @@ Produkte tippt man aus einem fertigen Katalog an, sortiert nach Warengruppen. Im
 
 ### Aufs Handy
 
-Die Adresse im Browser öffnen, anmelden, dann im Browser-Menü „Zum Startbildschirm hinzufügen“ (iPhone: Teilen → „Zum Home-Bildschirm“). Danach startet Kaufen wie eine App.
+Die Adresse im Browser öffnen, anmelden (oder „Ohne Konto nutzen“), dann im Browser-Menü „Zum Startbildschirm hinzufügen“ (iPhone: Teilen → „Zum Home-Bildschirm“). Danach startet Kaufen wie eine App. Am Rechner bieten Chrome und Edge in der Adresszeile „Installieren“ an.
 
 ## Daten schützen
 
@@ -182,7 +204,7 @@ Greift die Sperre einmal nicht, ist die Datenbank trotzdem nicht einfach abrufba
 - **Updates:** fragt bei GitHub nach der neuesten Version. Persönliches geht dabei nicht raus. Wer das gar nicht will, trägt in `data/config.php` den Eintrag `'update_url' => ''` ein.
 - **Mitteilungen:** gehen vom eigenen Server an den Mitteilungsdienst des jeweiligen Browsers (Apple, Google, Mozilla, Microsoft). Der Inhalt ist für das Gerät verschlüsselt, der Dienst selbst kann ihn nicht lesen.
 
-**5. Was nicht verschlüsselt ist.** Die Einkaufslisten liegen im Klartext in der Datenbank. Wer Zugriff auf den Webspace hat (also auch der Hoster), kann sie lesen.
+**5. Was nicht verschlüsselt ist.** Die Einkaufslisten liegen im Klartext in der Datenbank. Wer Zugriff auf den Webspace hat (also auch der Hoster), kann sie lesen. Wer das nicht will, nimmt den [lokalen Modus](#nur-auf-diesem-gerät-lokaler-modus): dann liegen die Listen gar nicht erst auf dem Server.
 
 ## Aktualisieren
 
@@ -216,7 +238,7 @@ index.php      Einstieg und Einstellungen (PHP)
 app/lib/       Sprache, Datenbank, Konten und Anmeldung, Listen und Katalog, Standardkatalog, Mitteilungen, Sicherung und Update (PHP)
 app/routes/    alle JSON-Aktionen (PHP)
 app/views/     Anmeldeseite und Hauptseite (PHP/HTML)
-app/assets/    die App im Browser (JavaScript, CSS), PDF-Einkaufszettel, englische Übersetzung, Symbole, Service Worker
+app/assets/    die App im Browser (JavaScript, CSS), PDF-Einkaufszettel, lokaler Modus, englische Übersetzung, Symbole, Service Worker
 data/          entsteht beim ersten Start, hier liegen Datenbank und Konten
 tools/         baut die Release-Dateien (php tools/build-release.php)
 ```
@@ -225,6 +247,7 @@ Die Dateien in `app/` tun nichts, wenn man sie direkt aufruft, alles läuft übe
 
 ## Gut zu wissen
 
+- **Lokaler Modus am iPhone:** unbedingt über „Zum Home-Bildschirm“ installieren. Safari räumt die Daten von Webseiten, die eine Woche nicht benutzt wurden, sonst von selbst weg. Installierte Apps sind davon ausgenommen. Eine Sicherung als Datei schadet trotzdem nie.
 - **Mitteilungen:** auf dem iPhone gehen sie nur, wenn Kaufen über „Zum Home-Bildschirm“ installiert ist (ab iOS 16.4), auf Android und am Rechner auch im Browser. Beim Einschalten schickt der Server eine Probe, so sieht man sofort, ob er den Mitteilungsdienst erreicht. Meldet sich ein Gerät beim Verlassen nicht ab (Funkloch), geht die Mitteilung rund drei Minuten nach der letzten Änderung raus, sobald irgendein Gerät Kaufen das nächste Mal offen hat.
 - **Sprache:** der mitgelieferte Katalog liegt deutsch in der Datenbank und wird für englische Konten nur bei der Anzeige übersetzt. Selbst angelegte Produkte, Warengruppen und Vorlagen bleiben so, wie sie getippt wurden.
 - **Einkaufskorb:** gehört zur Liste und gilt für alle, die sie teilen. Abhaken zählt als gekauft (für „Zuletzt gekauft“ und „Bald wieder fällig“), zurückholen aus dem Korb nimmt das wieder zurück. Löschen per Wischen zählt nicht als gekauft.

@@ -1,6 +1,9 @@
 /* Kaufen – Service Worker: hält Seite, CSS und JavaScript vor, damit die App im Laden auch ohne Netz startet.
-   Daten werden hier nie zwischengespeichert, die merkt sich app.js selbst. KF_V setzt index.php davor. */
+   Daten werden hier nie zwischengespeichert, die merkt sich app.js selbst. KF_V setzt index.php davor.
+   Im lokalen Modus (app.js meldet ihn per Nachricht) kommt alles zuerst aus dem Vorrat, das Netz nur für eine neue Version. */
 const CACHE = 'kaufen-' + KF_V;
+const FLAGS = 'kf-flags', LOCAL = './__kf_local';   // eigener Vorrat, den eine neue Version nicht wegräumt
+const isLocal = () => caches.open(FLAGS).then(c => c.match(LOCAL)).then(r => !!r).catch(() => false);
 
 // Englische Produktnamen für Mitteilungen. Klappt das Laden nicht, bleiben die Namen eben deutsch.
 try { importScripts('./?action=asset&f=i18n.js&v=' + KF_V); } catch (e) {}
@@ -21,9 +24,15 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('message', e => {
-    const urls = e.data && e.data.precache;
+    const d = e.data || {};
+    if (typeof d.local === 'boolean') {   // lokaler Modus an oder aus, Antwort über den mitgegebenen Kanal
+        e.waitUntil(caches.open(FLAGS).then(c => d.local ? c.put(LOCAL, new Response('1')) : c.delete(LOCAL))
+            .catch(() => {}).then(() => { if (e.ports[0]) e.ports[0].postMessage('ok'); }));
+        return;
+    }
+    const urls = d.precache;
     if (!Array.isArray(urls)) return;
-    urls.forEach(u => fetch(u, { credentials: 'same-origin' }).then(res => keep(u, res, u === './')).catch(() => {}));
+    urls.forEach(u => { const page = u === './' || u === './?local=1'; fetch(u, { credentials: 'same-origin' }).then(res => keep(page ? './' : u, res, page)).catch(() => {}); });
 });
 
 /* ---------- Mitteilungen: der Server schickt nur die Angaben, der Text entsteht hier in der Sprache des Geräts ---------- */
@@ -69,6 +78,9 @@ self.addEventListener('fetch', e => {
     const isPage = req.mode === 'navigate' && !action;
     const isAsset = action === 'asset' || action === 'manifest';
     if (!isPage && !isAsset) return;
-    e.respondWith(fetch(req).then(res => { keep(req, res, isPage); return res; })
-        .catch(() => caches.match(isPage ? './' : req).then(r => r || Response.error())));
+    const net = () => fetch(req).then(res => { keep(req, res, isPage); return res; });
+    e.respondWith(isLocal().then(local => local
+        // lokal: aus dem Vorrat, sonst einmal holen (die Seite als ./?local=1, ohne Anmeldung)
+        ? caches.match(isPage ? './' : req).then(r => r || (isPage ? fetch('./?local=1', { credentials: 'same-origin' }).then(res => { keep(req, res, true); return res; }) : net()))
+        : net().catch(() => caches.match(isPage ? './' : req).then(r => r || Response.error()))));
 });
