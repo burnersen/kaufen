@@ -79,8 +79,10 @@ If you do not want anything on a server at all, tap **“Use without an account,
 | Tap | tick off, into the cart or struck through (in the cart: bring back, struck through: tap twice) | put on the list or take it off again |
 | Swipe left | delete completely, with “Undo” for a few seconds | |
 | Swipe right | quantity and note | |
-| Hold | change the category (about one and a half seconds, a ring shows it) | quantity and note (half a second) |
+| Hold | change the category (about one second, a ring shows it) | quantity and note (half a second) |
 | On a computer | drag with the mouse instead of swiping, right-click instead of holding | right-click instead of holding |
+
+**Explained briefly in the app:** Menu → Help shows how to use it at a glance, with all gestures.
 
 **Without a server:** in [local mode](#on-this-device-only-local-mode) everything works the same, except that the lists never leave the device.
 
@@ -92,7 +94,7 @@ If you do not want anything on a server at all, tap **“Use without an account,
 - **Tap** to put a product on the list. Tap it in the list to check it off: it moves, ticked and crossed out, into the **cart** below, just like on paper. Tap it again to bring it back up. Everyone who shares the list sees right away what is already in the cart.
 - **Done shopping:** the button below the cart empties it after asking once more. Anything still to buy stays on the list, for example for another store. The cart never empties by itself.
 - **Swipe like in your mail app:** swipe an item to the left to delete it from the list completely (with “Undo” for a few seconds), swipe it to the right to open quantity and note. Works in all four views. On a computer, drag with the mouse.
-- **Change the category on the spot:** hold an item on the list for about one and a half seconds (on a computer: right-click), a ring grows around it meanwhile. Then tap another category, for example jarred plums to canned goods instead of fruit. This only applies to that item, or permanently in the catalog if you like. You can create a new category right there too.
+- **Change the category on the spot:** hold an item on the list for about one second (on a computer: right-click), a ring grows around it meanwhile. Then tap another category, for example jarred plums to canned goods instead of fruit. This only applies to that item, or permanently in the catalog if you like. You can create a new category right there too.
 - **Search** across the whole catalog, in both languages: "milch" finds Milk as well. If a product does not exist, you create it right from the search and assign it to a category. Kaufen suggests the category from the end of the word: German compounds like “Bergkäse” land in dairy, “Hundefutter” in pet supplies.
 - **Several at once, also by voice:** type or dictate “milk, 2 kg apples and half a bread” into the search field, press Enter, and everything is on the list. Items are split at commas, “and” or line breaks; without commas (“milk bread apples cream”) the catalog splits the words. Quantities may come before or after, in digits or words. While you type, a preview shows what was recognized.
 - **Recently bought:** the latest and most frequent products, collapsible like the categories. What was bought in the last two weeks says so on the tile (“3 days ago”), a long-press shows the date and how often.
@@ -101,6 +103,7 @@ If you do not want anything on a server at all, tap **“Use without an account,
 - **Strike through instead of the cart:** a per-device choice in the settings. Ticked items then stay where they are, checked and struck through, instead of moving into the cart. That is the default in the list view, and can be turned on for every view or for none. Two taps within 2 seconds put an item back on the list, so a single accidental tap brings nothing back. “Done shopping” then takes everything ticked off the list. Others sharing the list who prefer the cart see the same items in their cart.
 - **Keep shopping without a signal:** the app starts without reception, changes are collected and sent later.
 - **Screen stays on** while the app is open (can be turned off).
+- **Help in the app:** Menu → Help briefly explains tapping, swiping and holding, quantities, shopping in the store and what is at the top and in the menu. The help adapts: if you strike through instead of using the cart, that is what it says.
 
 ### Quantities and notes
 
@@ -141,7 +144,8 @@ For anyone who wants to let others try Kaufen without signing up. **Not for your
 
 - **Turning it on:** install fresh, create the first account, then Settings → “Turn on demo mode …”. Two warnings follow and finally an arithmetic task. Only the right answer turns it on; a wrong one leaves everything as it is.
 - **What happens then:** everyone is signed out. The sign-in page, accounts, shared lists and notifications are gone. Everyone who opens the page goes straight into local mode, everything stays on their device.
-- **Home screen:** visitors see a note at the top on how to put Kaufen on their home screen (explained for iPhone, Android and computers), and that everything then stays local. At the very bottom, in small print, it says this is a demo, with links to GitHub and tech.burnersen.de.
+- **Home screen:** visitors see a note at the top on how to put Kaufen on their home screen (explained for iPhone and iPad, Android, Safari on the Mac and other computers), and that everything then stays local. The same box says you can host Kaufen yourself and then share lists too, with a link to the guide.
+- **At the bottom:** a short line saying this is a demo, and two clearly visible buttons to tech.burnersen.de and to Kaufen on GitHub.
 - **Updates by themselves:** the server checks for a new version at most once an hour and installs it without asking, after the page has been delivered. Devices pick it up the next time they open Kaufen.
 - **No way back in the app.** If you made a mistake: delete the line `'demo' => true` from `data/config.php` via FTP. Accounts and lists are then back as before.
 
