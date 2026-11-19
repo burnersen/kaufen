@@ -24,6 +24,11 @@ If you do not want anything on a server at all, tap **“Use without an account,
 
 <table>
   <tr>
+    <td align="center" width="33%"><img src="docs/en/list-view.png" alt="The list view: categories on one card, circles for ticking off, ticked items stay struck through in place" width="250"><br><sub>List: ticked items stay struck through</sub></td>
+    <td align="center" width="33%"><img src="docs/en/size.png" alt="Text, size and spacing: preview, below it entry height and space between" width="250"><br><sub>Set entry height and spacing</sub></td>
+    <td align="center" width="33%"></td>
+  </tr>
+  <tr>
     <td align="center" width="33%"><img src="docs/en/no-account.png" alt="The sign-in page with the link “Use without an account, on this device only”" width="250"><br><sub>No account, on this device only</sub></td>
     <td align="center" width="33%"><img src="docs/en/local.png" alt="Settings in local mode: backup file and leave local mode" width="250"><br><sub>Local mode</sub></td>
     <td align="center" width="33%"><img src="docs/en/print.png" alt="Print and share: preview of the sheet, below it font, text size, line spacing and columns" width="250"><br><sub>Adjust the sheet, with preview</sub></td>
@@ -55,7 +60,7 @@ If you do not want anything on a server at all, tap **“Use without an account,
   </tr>
 </table>
 
-<sub>Screenshots of versions 1.11.1 to 1.15.0. Names and entries are made up.</sub>
+<sub>Screenshots of versions 1.11.1 to 1.16.0. Names and entries are made up.</sub>
 
 > 💜 **Using Kaufen and happy with it?** A ⭐ on GitHub is the easiest way to let me know, and it does more than you'd think: stars are the visible proof that a project does good work, and they are how small projects like this one get found by other people in the first place. Or [tell me what you use it for](https://github.com/burnersen/kaufen/issues/new), I read every message. Thanks for being here!
 
@@ -66,12 +71,12 @@ If you do not want anything on a server at all, tap **“Use without an account,
 ## How it works
 
 1. **Onto the list:** tap products in the catalog or type them at the top, several at once if you like (“milk, 2 kg apples and bread”). Everyone who shares the list sees them within a few seconds.
-2. **Tick off in the store:** tap an item and it moves, ticked, into the cart below the list. Tapped the wrong one? Tap it in the cart and it is back up.
+2. **Tick off in the store:** tap an item and it moves, ticked, into the cart below the list. Tapped the wrong one? Tap it in the cart and it is back up. If you prefer, ticked items can stay struck through where they are instead (the default in the list view); then two taps within 2 seconds bring one back.
 3. **Done:** “Done shopping” below the cart empties it after asking once more. Whatever is still missing stays on the list for the next store.
 
 | Gesture | On the list and in the cart | In the catalog |
 |---|---|---|
-| Tap | tick off, into the cart (in the cart: bring back) | put on the list or take it off again |
+| Tap | tick off, into the cart or struck through (in the cart: bring back, struck through: tap twice) | put on the list or take it off again |
 | Swipe left | delete completely, with “Undo” for a few seconds | |
 | Swipe right | quantity and note | |
 | Hold | change the category (about one and a half seconds, a ring shows it) | quantity and note (half a second) |
@@ -86,13 +91,14 @@ If you do not want anything on a server at all, tap **“Use without an account,
 - **Catalog** with about 810 products in 16 categories, in the order of a typical supermarket. Text only, no images.
 - **Tap** to put a product on the list. Tap it in the list to check it off: it moves, ticked and crossed out, into the **cart** below, just like on paper. Tap it again to bring it back up. Everyone who shares the list sees right away what is already in the cart.
 - **Done shopping:** the button below the cart empties it after asking once more. Anything still to buy stays on the list, for example for another store. The cart never empties by itself.
-- **Swipe like in your mail app:** swipe an item to the left to delete it from the list completely (with “Undo” for a few seconds), swipe it to the right to open quantity and note. Works in all three views. On a computer, drag with the mouse.
+- **Swipe like in your mail app:** swipe an item to the left to delete it from the list completely (with “Undo” for a few seconds), swipe it to the right to open quantity and note. Works in all four views. On a computer, drag with the mouse.
 - **Change the category on the spot:** hold an item on the list for about one and a half seconds (on a computer: right-click), a ring grows around it meanwhile. Then tap another category, for example jarred plums to canned goods instead of fruit. This only applies to that item, or permanently in the catalog if you like. You can create a new category right there too.
 - **Search** across the whole catalog, in both languages: "milch" finds Milk as well. If a product does not exist, you create it right from the search and assign it to a category. Kaufen suggests the category from the end of the word: German compounds like “Bergkäse” land in dairy, “Hundefutter” in pet supplies.
 - **Several at once, also by voice:** type or dictate “milk, 2 kg apples and half a bread” into the search field, press Enter, and everything is on the list. Items are split at commas, “and” or line breaks; without commas (“milk bread apples cream”) the catalog splits the words. Quantities may come before or after, in digits or words. While you type, a preview shows what was recognized.
 - **Recently bought:** the latest and most frequent products, collapsible like the categories. What was bought in the last two weeks says so on the tile (“3 days ago”), a long-press shows the date and how often.
 - **Due again soon:** when you tick things off, Kaufen learns how often you buy them (milk about every 5 days). When it is time again, it waits below the list, ready to tap. A product needs a few purchases for this. Everything stays on your own server, can be switched off per account or per product.
-- **Three views:** small tiles, compact or shopping mode (large rows for ticking off in the store), switched with the button at the top right, remembered per device.
+- **Four views:** small tiles, compact, shopping mode (large rows for ticking off in the store) or list (plain rows on one card, a heading per category, a circle for ticking off on the left, the quantity as a pill on the right). Switched with the button at the top right, remembered per device. Colors come from the chosen theme, as everywhere.
+- **Strike through instead of the cart:** a per-device choice in the settings. Ticked items then stay where they are, checked and struck through, instead of moving into the cart. That is the default in the list view, and can be turned on for every view or for none. Two taps within 2 seconds put an item back on the list, so a single accidental tap brings nothing back. “Done shopping” then takes everything ticked off the list. Others sharing the list who prefer the cart see the same items in their cart.
 - **Keep shopping without a signal:** the app starts without reception, changes are collected and sent later.
 - **Screen stays on** while the app is open (can be turned off).
 
@@ -133,7 +139,7 @@ For everyone who does not want their lists on any server. It is the same app wit
 
 - **German and English:** each account picks its language in the settings. A German device starts in German, all others in English. Everything is translated, including the catalog. In a shared list one person sees "Milch" and the other sees "Milk", and it is still the same entry.
 - **Ten themes and your own colors:** five light and five dark color schemes, plus one custom theme each from the color mixer (sliders or color picker, with preview). There you can also pick the text colors for headings, secondary text, list text and quantity. One button matches them to the accent color automatically: easy-to-read list text and a quantity color from the color wheel that stands out from it. If you like, dragging a slider shows your real list instead of the preview. With "Same as device" Kaufen switches automatically between your light and your dark favorite. The look belongs to the account and applies on all devices.
-- **Text sizes:** set per device in the settings, for everything at once or separately for headings, product names, quantity, count and note, plus how bold the count is. With a preview in the chosen view, or right on the real list while dragging if you like.
+- **Text, size and spacing:** set per device in the settings: text sizes for everything at once or separately for headings, product names, quantity, count and note, plus how bold the count is. Also the entry height (tiles, labels and rows, 60 to 180 %) and the space between them (0 to 300 %), in every view. With a preview in the chosen view, or right on the real list while dragging if you like.
 - **Installable as an app** (PWA), with its own icon on the home screen.
 
 ### Managing
@@ -251,7 +257,7 @@ The files in `app/` do nothing when called directly, everything goes through `in
 - **Notifications:** on the iPhone they only work when Kaufen is installed via "Add to Home Screen" (iOS 16.4 or later), on Android and on a computer they also work in the browser. When you turn them on, the server sends a test, so you see right away whether it can reach the notification service. If a device does not say goodbye when leaving (no signal), the notification goes out about three minutes after the last change, as soon as any device has Kaufen open again.
 - **Language:** the built-in catalog is stored in German in the database and is only translated for display on English accounts. Products, categories and templates you create yourself stay exactly as typed.
 - **Cart:** belongs to the list and applies to everyone sharing it. Ticking off counts as bought (for “Recently bought” and “Due again soon”), bringing an item back from the cart undoes that. Deleting by swiping does not count as bought.
-- **What belongs to whom:** remembered quantities belong to the list and apply to everyone sharing it. Language, "remember quantity", "who added it", custom units and the look belong to the account. View and text sizes only apply to the device.
+- **What belongs to whom:** remembered quantities belong to the list and apply to everyone sharing it. Language, "remember quantity", "who added it", custom units and the look belong to the account. View, ticking off (cart or strike through), text sizes and spacing only apply to the device.
 - **Catalog and templates** apply to all accounts and all lists. Any account may change individual products and categories. "Delete everything", "Restore default", export and import and the backups are reserved for the administrator.
 - **Lists** are only visible to their members. Only the person who created a list can share, rename and delete it. When an account is deleted, its lists go to the administrator so nothing is lost.
 - **Signing in:** a device stays signed in for 180 days as long as it is used. Changing your password signs out all your other devices. When the administrator sets a new password for an account, all devices of that account are signed out. Renaming keeps them signed in.
