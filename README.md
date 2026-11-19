@@ -135,6 +135,16 @@ Für alle, die ihre Listen auf keinem Server haben wollen. Es ist dieselbe App m
 - **Zurück:** Menü → „Lokalen Modus beenden“ führt zur Anmeldung. Danach fragt Kaufen, ob die lokalen Listen ins Konto sollen. Gibt es dort eine Liste mit gleichem Namen, kommt alles dorthin, ohne Doppelte.
 - **Für den Betreiber:** wer den Link auf seinem Server nicht will, trägt in `data/config.php` den Eintrag `'local' => false` ein. Wer ihn nutzt, bekommt von deinem Server nur die Programmdateien und den mitgelieferten Katalog, nie Daten von dir oder anderen.
 
+### Demo-Modus (für einen öffentlichen Server zum Ausprobieren)
+
+Für alle, die Kaufen anderen zum Ausprobieren anbieten wollen, ohne dass sich jemand anmelden muss. **Für die eigene Installation ist das nichts.**
+
+- **Einschalten:** frisch installieren, erstes Konto anlegen, dann Einstellungen → „Demo-Modus einschalten …“. Danach kommen zwei Warnungen und zum Schluss eine Rechenaufgabe. Erst die richtige Lösung schaltet ihn ein, bei einer falschen bleibt alles, wie es ist.
+- **Was dann passiert:** Alle werden abgemeldet. Anmeldeseite, Konten, geteilte Listen und Mitteilungen gibt es nicht mehr. Jeder, der die Seite öffnet, landet sofort im lokalen Modus, alles bleibt auf seinem Gerät.
+- **Home-Bildschirm:** Besucher sehen oben einen Hinweis, wie sie Kaufen auf den Home-Bildschirm legen (iPhone, Android und Rechner je passend erklärt), und dass dann alles nur lokal bleibt. Ganz unten steht klein, dass es eine Demo ist, mit Links zu GitHub und zu tech.burnersen.de.
+- **Updates von allein:** Der Server schaut höchstens einmal pro Stunde nach einer neuen Version und spielt sie ohne Nachfrage ein, nachdem die Seite ausgeliefert ist. Die Geräte holen sie sich danach beim nächsten Öffnen.
+- **Kein Zurück in der App.** Wer sich vertan hat: per FTP in `data/config.php` die Zeile `'demo' => true` löschen. Konten und Listen liegen dann wieder so da wie vorher.
+
 ### Sprache und Aussehen
 
 - **Deutsch und Englisch:** jedes Konto wählt seine Sprache in den Einstellungen, ein deutsches Gerät startet deutsch, alle anderen englisch. Übersetzt ist alles, auch der Katalog. In einer geteilten Liste sieht die eine „Milch“ und der andere „Milk“, es bleibt derselbe Eintrag.

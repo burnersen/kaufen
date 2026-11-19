@@ -241,6 +241,35 @@ function kfUpdInstall(): string {
     return $info['v'];
 }
 
+/** Demo-Modus: höchstens einmal pro Stunde nachsehen und eine neue Version gleich einspielen, ohne Nachfrage.
+    Läuft nach der ausgelieferten Seite, damit niemand darauf wartet. Eine Sperrdatei sorgt dafür, dass es nur einmal gleichzeitig passiert. */
+function kfDemoUpdate(): void {
+    if (time() - (int)kfGet('upd_at', '0') < 3600 || kfUpdUrl() === '') return;
+    $lock = @fopen(KF_DATA_DIR . '/update.lock', 'c');
+    if (!$lock) return;
+    if (!flock($lock, LOCK_EX | LOCK_NB)) { fclose($lock); return; }
+    try {
+        ignore_user_abort(true);
+        if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
+        else { while (ob_get_level() > 0) @ob_end_flush(); @flush(); }
+        if (time() - (int)kfGet('upd_at', '0') < 3600) return;   // ein anderer Aufruf war schneller
+        @set_time_limit(150);
+        if (kfUpdNewer(kfUpdCheck())) kfUpdInstall();
+    } catch (Throwable $e) {
+        error_log('Kaufen Demo-Update: ' . $e->getMessage());
+    } finally {
+        flock($lock, LOCK_UN);
+        fclose($lock);
+    }
+}
+
+/** Demo-Modus einschalten: in data/config.php vermerken und alle abmelden. Konten und Listen bleiben in der Datenbank liegen,
+    sind über die App aber nicht mehr zu erreichen. */
+function kfDemoOn(): void {
+    kfConfigWrite(['demo' => true] + kfConfig());
+    kfQ('DELETE FROM sessions');
+}
+
 /** Version, zu der man zurückkann ('' = keine) */
 function kfUpdPrev(): string {
     $f = KF_DATA_DIR . '/update-prev.txt';

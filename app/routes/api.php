@@ -458,6 +458,24 @@ try {
                 'off' => kfUpdUrl() === '', 'prev' => kfUpdPrev(), 'locked' => kfUpdWritable(), 'restoreAt' => kfBackupPrevAt(), 'error' => $err,
                 'maxUp' => (string)ini_get('post_max_size')]);
 
+    /* ---------- Demo-Modus (siehe index.php): erst eine Rechenaufgabe holen, die richtige Lösung schaltet ihn ein ---------- */
+    case 'demo_task':
+        $admin();
+        $a = random_int(13, 29); $b = random_int(6, 9); $c = random_int(11, 59);
+        kfSet('demo_task', json_encode(['r' => $a * $b - $c, 'until' => time() + 600]));
+        kfJson(['a' => $a, 'b' => $b, 'c' => $c]);
+
+    case 'demo_on':
+        $admin();
+        $t = json_decode(kfGet('demo_task'), true);
+        kfSet('demo_task', '');   // jede Aufgabe gilt nur für einen Versuch
+        if (($in['sure'] ?? '') !== 'DEMO' || !is_array($t) || time() > (int)($t['until'] ?? 0)) kfFail(kfT('Die Aufgabe ist abgelaufen. Bitte noch einmal von vorn.'));
+        if ((string)(int)trim((string)($in['answer'] ?? '')) !== trim((string)($in['answer'] ?? '')) || (int)$in['answer'] !== (int)$t['r']) {
+            kfFail(kfT('Das stimmt nicht. Der Demo-Modus bleibt aus.'));
+        }
+        try { kfDemoOn(); } catch (RuntimeException $e) { kfFail($e->getMessage()); }
+        kfJson(['ok' => true]);
+
     case 'upd_install':
     case 'upd_rollback':
         $admin();

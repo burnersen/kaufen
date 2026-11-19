@@ -47,7 +47,7 @@ const I = {
 const LS = {
     get(k, d) { try { const v = localStorage.getItem('kf_' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
     set(k, v) { try { localStorage.setItem('kf_' + k, JSON.stringify(v)); } catch (e) {} },
-    clear() { try { Object.keys(localStorage).filter(k => k.startsWith('kf_') && !['kf_theme', 'kf_view', 'kf_tick', 'kf_palL', 'kf_palD', 'kf_look', 'kf_paint', 'kf_font', 'kf_mode', 'kf_ldb', 'kf_pdfo', 'kf_pdfx'].includes(k)).forEach(k => localStorage.removeItem(k)); } catch (e) {} },
+    clear() { try { Object.keys(localStorage).filter(k => k.startsWith('kf_') && !['kf_theme', 'kf_view', 'kf_tick', 'kf_palL', 'kf_palD', 'kf_look', 'kf_paint', 'kf_font', 'kf_mode', 'kf_ldb', 'kf_a2hsNo', 'kf_pdfo', 'kf_pdfx'].includes(k)).forEach(k => localStorage.removeItem(k)); } catch (e) {} },
 };
 
 const low = s => String(s).toLocaleLowerCase('de');
@@ -106,6 +106,8 @@ let csrf = '';                            // kommt erst mit der ersten Antwort d
 let online = true, flushing = false, timer = 0, iv = S ? S.interval : 5;
 /** Lokaler Modus: alles bleibt auf diesem Gerät, local.js spielt den Server. Umschalten lädt die Seite neu. */
 let LOCAL = LS.get('mode', '') === 'local';
+/** Demo-Server (index.php): keine Konten, jeder Besucher nutzt Kaufen lokal. Dazu der Hinweis „Zum Home-Bildschirm“ und ein dezenter Hinweis unten. */
+const DEMO = document.documentElement.dataset.demo === '1';
 const stateListeners = new Set();         // offene Fenster, die bei neuem Stand neu zeichnen
 const main = $('#main'), qInput = $('#q');
 
@@ -803,7 +805,7 @@ function render() {
     renderLater = false;
     if (gest) { stopHold(); gest = null; }   // die Kachel unter dem Finger wird gleich ersetzt: Halten gilt nicht mehr
     const q = norm(qInput.value.trim());
-    main.replaceChildren(...(q ? viewSearch(q) : viewHome(l)));
+    main.replaceChildren(...(q ? viewSearch(q) : [demoBanner(), ...viewHome(l), demoFoot()].filter(Boolean)));
 }
 
 function viewHome(l) {
@@ -2169,6 +2171,13 @@ function showSettings() {
             catch (e) { toast(e.message); }
         } }, tr('Speichern'))),
         // Lokaler Modus: einschalten (mit Konto) oder Bescheid wissen und wieder beenden
+        S.me.admin && !LOCAL && h('h2', null, tr('Demo-Modus')),
+        S.me.admin && !LOCAL && h('p', { class: 'info' }, tr('Nur für einen öffentlichen Server zum Ausprobieren, nicht für deine eigene Installation! Danach gibt es hier keine Konten mehr und jeder nutzt Kaufen nur auf seinem Gerät. Ein Zurück gibt es in der App nicht.')),
+        S.me.admin && !LOCAL && h('div', { class: 'btns' }, h('button', { class: 'btn danger', type: 'button', onclick: () => { sh.close(); demoOn(); } }, tr('Demo-Modus einschalten …'))),
+        DEMO ? [h('h2', null, tr('Demo')), h('p', { class: 'info' }, tr('Das ist die Demo von Kaufen. Alles bleibt nur auf diesem Gerät, Teilen mit anderen gibt es hier nicht. Neue Versionen kommen von allein.')),
+            h('div', { class: 'btns' }, h('button', { class: 'btn', type: 'button', onclick: () => { sh.close(); showLocalBackup(); } }, tr('Sicherung als Datei'))),
+            h('p', { class: 'info' }, tr('Kaufen ist frei und lässt sich auf eigenem Webspace installieren, dann auch zum Teilen mit anderen: '), h('a', { href: GH, target: '_blank', rel: 'noopener' }, 'GitHub'), '. ',
+                tr('Für weitere Informationen besuch bitte '), h('a', { href: SITE, target: '_blank', rel: 'noopener' }, 'tech.burnersen.de'), '.')] : [
         h('h2', null, tr(LOCAL ? 'Lokaler Modus' : 'Nur auf diesem Gerät')),
         h('p', { class: 'info' }, LOCAL
             ? tr('Alles liegt nur auf diesem Gerät, Kaufen schickt keine Listen ins Netz. Es schaut nur ab und zu nach einer neuen Version von Kaufen. Denk an eine Sicherung als Datei, falls die Browserdaten einmal gelöscht werden.')
@@ -2176,7 +2185,7 @@ function showSettings() {
         h('div', { class: 'btns' }, LOCAL
             ? [h('button', { class: 'btn', type: 'button', onclick: () => { sh.close(); showLocalBackup(); } }, tr('Sicherung als Datei')),
                h('button', { class: 'btn', type: 'button', onclick: () => { sh.close(); leaveLocal(); } }, tr('Lokalen Modus beenden'))]
-            : h('button', { class: 'btn', type: 'button', onclick: () => { sh.close(); goLocal(); } }, tr('Lokalen Modus einschalten'))),
+            : h('button', { class: 'btn', type: 'button', onclick: () => { sh.close(); goLocal(); } }, tr('Lokalen Modus einschalten')))],
         h('p', { class: 'info' }, LOCAL ? tr('Lokaler Modus · Kaufen {0}', S.version) : tr('Angemeldet als {0} · Kaufen {1}', S.me.n, S.version)));
 }
 
@@ -2553,6 +2562,60 @@ function showImport() {
     if (!('ontouchstart' in window)) box.focus();
 }
 
+/* ---------- Demo ---------- */
+const GH = 'https://github.com/burnersen/kaufen', SITE = 'https://tech.burnersen.de/';
+/** Demo-Modus einschalten (Administrator): zwei Warnungen, dann eine Rechenaufgabe vom Server. Erst die richtige Lösung schaltet ihn ein. */
+function demoOn() {
+    confirmDlg(tr('Demo-Modus einschalten?'), tr('Achtung: Der Demo-Modus ist nur für einen öffentlichen Server gedacht, auf dem andere Kaufen ausprobieren. Für deine eigene Installation willst du ihn nicht! Danach gibt es auf diesem Server keine Konten und keine gemeinsamen Listen mehr.'),
+        tr('Ich weiß, was ich tue'), () => {
+            confirmDlg(tr('Wirklich sicher?'), tr('Das passiert: Alle werden abgemeldet, auch du. Anmelden, Konten, geteilte Listen und Mitteilungen gibt es nicht mehr, deine Listen auf dem Server sind nicht mehr zu erreichen. Jeder, der die Seite öffnet, nutzt Kaufen nur auf seinem Gerät. Kaufen holt sich neue Versionen ab dann von allein. Ein Zurück gibt es in der App nicht.'),
+                tr('Ja, einschalten'), async () => {
+                    let t;
+                    try { t = await api('demo_task', {}); } catch (e) { toast(e.message); return; }
+                    ask(tr('Letzte Sicherheitsfrage'), [
+                        { type: 'info', text: tr('Rechne ohne Taschenrechner. Bei einem Fehler bleibt alles, wie es ist.') },
+                        { k: 'answer', label: t.a + ' × ' + t.b + ' − ' + t.c + ' = ?', type: 'number' },
+                    ], tr('Demo-Modus einschalten'), async v => {
+                        try { await api('demo_on', { sure: 'DEMO', answer: String(v.answer).trim() }); }
+                        catch (e) { toast(e.message, null, null, 6000); return; }   // falsch: Fenster zu, beim nächsten Versuch gibt es eine neue Aufgabe
+                        LS.clear();
+                        LS.set('mode', '');
+                        location.replace('./');
+                    });
+                });
+        });
+}
+/** „Zum Home-Bildschirm“: nur im Demo-Modus und nur im Browser (nicht in der installierten App). „Später“ gilt bis zum nächsten Start, „Nicht mehr zeigen“ für immer. */
+let installEvt = null, a2hsLater = false;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; if (DEMO) render(); });
+const standalone = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const isIOS = () => /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+function demoBanner() {
+    if (!DEMO || standalone() || a2hsLater || LS.get('a2hsNo', false)) return null;
+    const how = installEvt ? null : isIOS() ? tr('So geht es: unten in Safari auf Teilen tippen (das Kästchen mit dem Pfeil nach oben), dann auf „Zum Home-Bildschirm“.')
+        : /Android/i.test(navigator.userAgent) ? tr('So geht es: im Browsermenü (⋮) auf „App installieren“ oder „Zum Startbildschirm hinzufügen“ tippen.')
+        : tr('So geht es: im Browser über das Symbol in der Adresszeile oder im Menü „Installieren“ wählen.');
+    return h('div', { class: 'a2hs', role: 'region', 'aria-label': tr('Kaufen auf den Home-Bildschirm') },
+        h('b', null, tr('Kaufen auf den Home-Bildschirm')),
+        h('p', null, tr('Dann startet Kaufen wie eine App, auch ohne Netz, und bekommt neue Versionen von allein. Ohne Anmeldung: alle Listen bleiben nur auf diesem Gerät, Teilen mit anderen gibt es hier nicht.')),
+        how && h('p', { class: 'how' }, how),
+        h('div', { class: 'btns' },
+            h('button', { class: 'btn', type: 'button', onclick: () => { LS.set('a2hsNo', true); render(); } }, tr('Nicht mehr zeigen')),
+            h('button', { class: 'btn', type: 'button', onclick: () => { a2hsLater = true; render(); } }, tr('Später')),
+            installEvt && h('button', { class: 'btn primary', type: 'button', onclick: async () => {
+                const e = installEvt;
+                installEvt = null;
+                e.prompt();
+                try { if ((await e.userChoice).outcome === 'accepted') a2hsLater = true; } catch (x) {}
+                render();
+            } }, tr('Installieren'))));
+}
+window.addEventListener('appinstalled', () => { a2hsLater = true; if (DEMO) render(); });
+/** Ganz unten, klein: was die Demo ist und wo es mehr gibt */
+const demoFoot = () => DEMO && h('p', { class: 'demofoot' }, tr('Demo · alles bleibt auf diesem Gerät · '),
+    h('a', { href: GH, target: '_blank', rel: 'noopener' }, tr('Kaufen selbst hosten')), ' · ',
+    tr('Für weitere Informationen besuch bitte '), h('a', { href: SITE, target: '_blank', rel: 'noopener' }, 'tech.burnersen.de'));
+
 function showMenu() {
     const sh = sheet(tr('Menü'));
     const btn = (label, fn) => h('button', { class: 'row', type: 'button', onclick: () => { sh.close(); fn(); } }, label);
@@ -2567,7 +2630,7 @@ function showMenu() {
         S.me.admin && !LOCAL && btn([tr('Sicherung und Update'), S.upd && S.upd.v && h('span', { class: 'badge' }, tr('Neu: {0}', S.upd.v))], showMaint),
         LOCAL && btn(tr('Sicherung als Datei'), showLocalBackup),
         btn(tr('Einstellungen'), showSettings),
-        LOCAL ? btn(tr('Lokalen Modus beenden'), leaveLocal) : btn(tr('Abmelden'), logout));
+        LOCAL ? !DEMO && btn(tr('Lokalen Modus beenden'), leaveLocal) : btn(tr('Abmelden'), logout));
 }
 
 /* ---------- Sicherung und Update (nur Administrator) ---------- */
@@ -2652,7 +2715,23 @@ async function updAuto() {
 $('#menuBtn').addEventListener('click', () => { if (S) showMenu(); });
 $('#viewBtn').addEventListener('click', () => setView(VIEWS[(VIEWS.indexOf(curView()) + 1) % VIEWS.length]));
 $('#listBtn').addEventListener('click', () => { if (S) showLists(); });
-document.addEventListener('visibilitychange', () => { wake(); if (document.hidden) { clearTimeout(timer); pushDone(); } else tick(); });
+/* Neue Version im lokalen Modus (und in der Demo): höchstens einmal pro Stunde beim Server nach einem neuen Service Worker fragen.
+   Ist einer übernommen, lädt Kaufen beim nächsten Zurückkommen neu, sofern gerade kein Fenster offen ist. Die Daten bleiben dabei, wie sie sind. */
+let swNew = false, swAt = 0;
+const swHad = 'serviceWorker' in navigator && !!navigator.serviceWorker.controller;
+if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('controllerchange', () => { if (swHad) swNew = true; });
+function swCheck() {
+    if (!LOCAL || !('serviceWorker' in navigator) || Date.now() - swAt < 3600e3) return;
+    swAt = Date.now();
+    navigator.serviceWorker.getRegistration().then(r => r && r.update()).catch(() => {});
+}
+document.addEventListener('visibilitychange', () => {
+    wake();
+    if (document.hidden) { clearTimeout(timer); pushDone(); return; }
+    if (swNew && LOCAL && !sheets.length) { location.reload(); return; }
+    tick();
+    swCheck();
+});
 window.addEventListener('pagehide', pushDone);
 window.addEventListener('online', tick);
 window.addEventListener('offline', () => setOnline(false));
@@ -2662,9 +2741,9 @@ applyFont();
 applyLang();
 render();
 // „Ohne Konto nutzen“ auf der Anmeldeseite, oder lokal, aber die Daten sind weg (Browserdaten gelöscht): frisch anfangen
-const wantLocal = (!LOCAL && /[?&]local=1(&|$)/.test(location.search)) || (LOCAL && !self.kfLocal.has());
+const wantLocal = (!LOCAL && (DEMO || /[?&]local=1(&|$)/.test(location.search))) || (LOCAL && !self.kfLocal.has());
 if (wantLocal) localBegin(); else tick();
-if (LOCAL) { swLocal(true); askPersist(); }
+if (LOCAL) { swLocal(true); askPersist(); setTimeout(swCheck, 5000); }
 wake();
 
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || ['localhost', '127.0.0.1'].includes(location.hostname))) {
