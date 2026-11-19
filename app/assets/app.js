@@ -39,6 +39,7 @@ function icon(path) {
 const I = {
     x: 'M6 6l12 12M18 6L6 18', down: 'M6 9l6 6 6-6', up: 'M6 15l6-6 6 6', more: 'M5 12h.01M12 12h.01M19 12h.01',
     edit: 'M4 20h4L19 9l-4-4L4 16v4zM14 6l4 4', grip: 'M5 9h14M5 15h14',
+    trash: 'M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3',
     tiles: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z', compact: 'M3 6h8M14 6h7M3 12h5M11 12h10M3 18h9M15 18h6', shop: 'M3 4h18v6H3zM3 14h18v6H3z',
 };
 
@@ -110,7 +111,14 @@ const curList = () => S && S.lists.find(l => l.id === cur) || null;
 const userName = id => { const u = S && S.users.find(u => u.id === id); return u ? u.n : ''; };
 const catName = id => { const c = S && S.catalog.cats.find(c => c.id === id); return c ? dc(c.n) : tr('Sonstiges'); };
 const hasCat = id => !!(S && S.catalog.cats.some(c => c.id === id));
-const itemByName = n => L ? L.items.find(i => low(i.n) === low(n)) : null;
+/** Was noch zu kaufen ist, unter diesem Namen. Im Einkaufskorb Liegendes (got = seit wann) zählt hier nicht. */
+const itemByName = n => L ? L.items.find(i => !i.got && low(i.n) === low(n)) : null;
+const inBasket = n => !!L && L.items.some(i => i.got && low(i.n) === low(n));
+const openItems = () => L.items.filter(i => !i.got);
+/** Der Einkaufskorb, zuletzt Abgehaktes zuerst */
+const basketItems = () => L.items.filter(i => i.got).sort((a, b) => b.got - a.got);
+/** Die Zahl an der Liste („3 offen“): nur was noch zu kaufen ist */
+const countOpen = () => { const l = curList(); if (l && L) l.count = openItems().length; };
 /** Die Menge, die beim letzten Abhaken an diesem Produkt stand (pro Liste). Leer, wenn das Konto das Merken abgeschaltet hat. */
 const memMaps = new WeakMap();
 function memOf(n, always) {
@@ -192,8 +200,7 @@ function setList(data) {
     if (data.id !== cur) return;
     L = data;
     LS.set('list_' + cur, L);
-    const l = curList();
-    if (l) l.count = L.items.length;
+    countOpen();
     render();
 }
 
@@ -219,28 +226,50 @@ function openList(id) {
 }
 
 /* ---------- Änderungen an der Liste: sofort anzeigen, merken, im Hintergrund abliefern ---------- */
+/** Gekauft: zählt in „Zuletzt gekauft“ und merkt sich die Menge. Den Kaufrhythmus rechnet der Server. */
+function usageBought(it, now) {
+    const u = L.usage.find(u => low(u.n) === low(it.n));
+    L.usage = L.usage.filter(x => x !== u);
+    L.usage.unshift({ n: it.n, c: it.c, cnt: (u ? u.cnt : 0) + 1, last: now, g: u ? u.g : 0, gn: u ? u.gn : 0, prev: u ? { ...u, prev: null } : null });
+    setMem(it.n, it.note);
+}
+/** Abhaken rückgängig: der Stand von vorher, sonst nur einen weniger */
+function usageUndo(n) {
+    const u = L.usage.find(u => low(u.n) === low(n));
+    if (u && u.prev) L.usage = L.usage.map(x => x === u ? u.prev : x);
+    else if (u && --u.cnt <= 0) L.usage = L.usage.filter(x => x !== u);
+}
+/** Liegt es schon im Korb und kommt wieder auf die Liste, wird es eben noch einmal gebraucht: das im Korb ist gekauft und fällt weg */
+const dropBasket = n => { L.items = L.items.filter(i => !(i.got && low(i.n) === low(n))); };
+
 function applyLocal(o) {
     const now = Math.floor(Date.now() / 1000);
     if (o.t === 'add' || o.t === 'restore') {
         if (L.items.some(i => i.uid === o.uid)) return;
         const same = itemByName(o.n);
         if (same) { if (o.note) same.note = o.note; }
-        else L.items.push({ uid: o.uid, n: o.n, c: o.c || 0, note: o.note || '', by: o.by || S.me.id, at: now });
-        if (o.t === 'restore') {   // Abhaken rückgängig: der Stand von vorher, sonst nur einen weniger
-            const u = L.usage.find(u => low(u.n) === low(o.n));
-            if (u && u.prev) L.usage = L.usage.map(x => x === u ? u.prev : x);
-            else if (u && --u.cnt <= 0) L.usage = L.usage.filter(x => x !== u);
-        }
+        else { dropBasket(o.n); L.items.push({ uid: o.uid, n: o.n, c: o.c || 0, note: o.note || '', by: o.by || S.me.id, at: now, got: 0 }); }
+        if (o.t === 'restore') usageUndo(o.n);
+    } else if (o.t === 'got') {   // abgehakt: ab in den Korb
+        const it = L.items.find(i => i.uid === o.uid && !i.got);
+        if (!it) return;
+        it.got = now;
+        usageBought(it, now);
+    } else if (o.t === 'ungot') {   // aus dem Korb zurück auf die Liste
+        const it = L.items.find(i => i.uid === o.uid && i.got);
+        if (!it) return;
+        it.got = 0;
+        usageUndo(it.n);
+    } else if (o.t === 'back') {   // Löschen rückgängig: genau so wieder hin
+        if (L.items.some(i => i.uid === o.uid) || itemByName(o.n)) return;
+        if (!o.got) dropBasket(o.n);
+        else if (inBasket(o.n)) return;
+        L.items.push({ uid: o.uid, n: o.n, c: o.c || 0, note: o.note || '', by: o.by || S.me.id, at: o.at || now, got: o.got || 0 });
     } else if (o.t === 'done' || o.t === 'remove') {
         const it = L.items.find(i => i.uid === o.uid);
         if (!it) return;
         L.items = L.items.filter(i => i !== it);
-        if (o.t === 'done') {
-            const u = L.usage.find(u => low(u.n) === low(it.n));
-            L.usage = L.usage.filter(x => x !== u);
-            L.usage.unshift({ n: it.n, c: it.c, cnt: (u ? u.cnt : 0) + 1, last: now, g: u ? u.g : 0, gn: u ? u.gn : 0, prev: u ? { ...u, prev: null } : null });
-            setMem(it.n, it.note);
-        }
+        if (o.t === 'done' && !it.got) usageBought(it, now);
     } else if (o.t === 'edit') {
         const it = L.items.find(i => i.uid === o.uid);
         if (it) { it.note = o.note || ''; it.c = o.c || 0; }
@@ -264,8 +293,7 @@ function op(...ops) {
     }
     saveQueue();
     LS.set('list_' + cur, L);
-    const l = curList();
-    if (l) l.count = L.items.length;
+    countOpen();
     render();
     rest();
     flush();
@@ -721,10 +749,12 @@ function tile(cls, data, name, note, by, ago) {
         p.q && h('span', { class: p.cnt ? 'tt cnt' : 'tt' }, p.q), p.hint && h('span', { class: 'th' }, p.hint), by && h('span', { class: 'tb' }, by),
         ago && h('span', { class: 'ta' }, ago));
 }
-/** Produkt aus Katalog, Suche oder „Zuletzt gekauft“. Was in den letzten zwei Wochen gekauft wurde, sagt es dazu (always: egal wie lange her). */
+/** Produkt aus Katalog, Suche oder „Zuletzt gekauft“. Was in den letzten zwei Wochen gekauft wurde, sagt es dazu (always: egal wie lange her),
+    was gerade im Einkaufskorb liegt, sagt „im Korb“. */
 const prodTile = (n, c, src, always) => {
     const it = itemByName(n), u = !it && usageOf(n), d = u ? daysAgo(u.last) : 99;
-    return tile(it ? 'has' : '', { k: 'prod', n, c, src: src || '' }, dn(n), it ? it.note : memOf(n), '', u && (always || d < 14) ? agoText(d, true) : '');
+    return tile(it ? 'has' : '', { k: 'prod', n, c, src: src || '' }, dn(n), it ? it.note : memOf(n), '',
+        !it && inBasket(n) ? tr('im Korb') : u && (always || d < 14) ? agoText(d, true) : '');
 };
 
 /* ---------- Gekauft: wann zuletzt, und was bald wieder fällig ist ---------- */
@@ -760,6 +790,9 @@ function render() {
         return;
     }
     if (!L) { main.replaceChildren(h('p', { class: 'hint' }, tr('Lade …'))); return; }
+    if (swipeBusy) { renderLater = true; return; }   // nicht unter dem Finger wegziehen, kommt nach dem Wischen
+    renderLater = false;
+    if (gest) { stopHold(); gest = null; }   // die Kachel unter dem Finger wird gleich ersetzt: Halten gilt nicht mehr
     const q = norm(qInput.value.trim());
     main.replaceChildren(...(q ? viewSearch(q) : viewHome(l)));
 }
@@ -768,14 +801,22 @@ function viewHome(l) {
     const out = [];
     const order = catOrder();
     const shared = l.members.length > 1;
-    out.push(h('h2', null, tr('Noch zu kaufen'), h('small', null, L.items.length ? String(L.items.length) : '')));
-    if (!L.items.length) out.push(h('p', { class: 'hint' }, tr('Alles erledigt. Tippe unten auf ein Produkt oder such oben danach, dann landet es hier.')));
+    const todo = openItems(), bask = basketItems();
+    out.push(h('h2', null, tr('Noch zu kaufen'), h('small', null, todo.length ? String(todo.length) : '')));
+    if (!todo.length) out.push(h('p', { class: 'hint' }, bask.length ? tr('Alles im Korb. Wenn du fertig bist, tippe unten auf „Einkauf fertig“.')
+        : tr('Alles erledigt. Tippe unten auf ein Produkt oder such oben danach, dann landet es hier.')));
     const groups = new Map(order.map(id => [id, []]));
-    for (const it of L.items) groups.get(hasCat(it.c) ? it.c : 0).push(it);
+    for (const it of todo) groups.get(hasCat(it.c) ? it.c : 0).push(it);
     for (const [id, items] of groups) {
         if (!items.length) continue;
         out.push(h('div', { class: 'grp' }, catName(id)));
         out.push(h('div', { class: 'grid todo' }, items.map(it => tile('on', { k: 'item', uid: it.uid }, dn(it.n), it.note, shared && look.who && it.by !== S.me.id && userName(it.by)))));
+    }
+    // Einkaufskorb: Abgehaktes, durchgestrichen wie auf dem Zettel. Antippen holt es zurück, „Einkauf fertig“ leert den Korb.
+    if (bask.length) {
+        out.push(h('h2', { class: 'basket' }, tr('Im Einkaufskorb'), h('small', null, String(bask.length))));
+        out.push(h('div', { class: 'grid todo' }, bask.map(it => tile('got', { k: 'got', uid: it.uid }, dn(it.n), it.note))));
+        out.push(h('button', { class: 'btn wide finish' + (todo.length ? '' : ' primary'), type: 'button', onclick: finishShopping }, tr('Einkauf fertig')));
     }
 
     const open = LS.get('open', {});
@@ -1016,12 +1057,24 @@ function guessCat(name) {
     return 0;
 }
 
-/* ---------- Tippen und lange drücken ---------- */
-function tapItem(uid) {
-    const it = L.items.find(i => i.uid === uid);
-    if (!it) return;
-    op({ t: 'done', uid });
-    toast(tr('{0} erledigt', dn(it.n)), tr('Rückgängig'), () => op({ t: 'restore', uid: it.uid, n: it.n, c: it.c, note: it.note, by: it.by }));
+/* ---------- Tippen, wischen und lange halten ---------- */
+/** Antippen in der Liste: abgehakt, ab in den Korb. Im Korb antippen: zurück auf die Liste. */
+function tapItem(uid) { if (L.items.some(i => i.uid === uid && !i.got)) op({ t: 'got', uid }); }
+function tapGot(uid) { if (L.items.some(i => i.uid === uid && i.got)) op({ t: 'ungot', uid }); }
+/** Ganz von der Liste löschen, ein paar Sekunden lang mit „Rückgängig“ */
+function delItem(it) {
+    op({ t: 'remove', uid: it.uid });
+    toast(tr('{0} gelöscht', dn(it.n)), tr('Rückgängig'), () => op({ t: 'back', uid: it.uid, n: it.n, c: it.c, note: it.note, by: it.by, at: it.at, got: it.got || 0 }));
+}
+/** „Einkauf fertig“: nach einer Sicherheitsfrage den Korb leeren. Was noch zu kaufen ist, bleibt auf der Liste. */
+function finishShopping() {
+    const left = openItems().length;
+    confirmDlg(tr('Einkauf fertig?'), tr('Ist alles im Korb wirklich gekauft? Dann wird der Korb geleert und alles darin von der Liste genommen.')
+        + (left === 1 ? ' ' + tr('Das eine, was noch zu kaufen ist, bleibt drauf.') : left ? ' ' + tr('Die {0} Sachen, die noch zu kaufen sind, bleiben drauf.', left) : ''),
+        tr('Ja, Korb leeren'), () => {
+            const bask = basketItems();
+            if (bask.length) { op(bask.map(it => ({ t: 'remove', uid: it.uid }))); toast(tr('Korb geleert')); }
+        });
 }
 function tapProd(n, c) {
     const it = itemByName(n);
@@ -1039,7 +1092,36 @@ function itemDialog(it) {
         { type: 'info', text: who ? tr('Auf die Liste gesetzt von {0}, {1}.', who, fmtTime(it.at)) : tr('Auf die Liste gesetzt, {0}.', fmtTime(it.at)) },
     ], tr('Speichern'), v => op({ t: 'edit', uid: it.uid, note: v.note.trim(), c: +v.c }),
     [(it.note || memOf(it.n, true)) && { label: tr('Menge zurücksetzen'), fn: () => op({ t: 'edit', uid: it.uid, note: '', c: it.c }, { t: 'unmem', n: it.n }) },
-     { label: tr('Von der Liste nehmen'), danger: true, fn: () => op({ t: 'remove', uid: it.uid }) }]);
+     { label: tr('Von der Liste nehmen'), danger: true, fn: () => delItem(it) }]);
+}
+/** Lange halten auf einem Eintrag: schnell die Warengruppe wechseln, nur für diesen Eintrag (Pflaumen im Glas zu den Konserven)
+    oder auf Wunsch auch im Katalog. Eine neue Warengruppe lässt sich gleich hier anlegen. Dazu Menge und Löschen für alle ohne Wischen. */
+function catMenu(it) {
+    const cur = hasCat(it.c) ? it.c : 0;
+    const prod = S.catalog.products.find(p => low(p.n) === low(it.n));
+    const keep = prod && h('input', { type: 'checkbox' });
+    const sh = sheet(dn(it.n));
+    const move = c => {
+        sh.close();
+        if (c !== cur) op({ t: 'edit', uid: it.uid, note: it.note, c });
+        if (keep && keep.checked && c && c !== prod.c) act('prod_edit', { id: prod.id, name: prod.n, cat: c }).catch(e => toast(e.message));
+    };
+    const newCat = () => ask(tr('Neue Warengruppe'), [{ k: 'name', label: tr('Name'), max: 60 }], tr('Anlegen'), async v => {
+        const name = canonC(v.name.trim().replace(/\s+/g, ' '));
+        if (!name) throw new Error(tr('Bitte einen Namen eingeben.'));
+        const old = S.catalog.cats.find(x => low(x.n) === low(name));
+        if (!old) await act('cat_add', { name });
+        const c = old || S.catalog.cats.find(x => low(x.n) === low(name));
+        if (c) move(c.id);
+    });
+    put(sh.body,
+        h('div', { class: 'qlabel' }, tr('Warengruppe')),
+        h('div', { class: 'chips catpick' }, catOrder().map(id => h('button', { class: 'chip' + (id === cur ? ' sel' : ''), type: 'button', onclick: () => move(id) }, catName(id))),
+            h('button', { class: 'chip add', type: 'button', onclick: newCat }, tr('+ Neue Warengruppe'))),
+        keep && h('label', { class: 'check' }, keep, h('span', null, tr('Auch im Katalog ändern, dann gilt es immer'))),
+        h('div', { class: 'btns' },
+            h('button', { class: 'btn', type: 'button', onclick: () => { sh.close(); itemDialog(it); } }, tr('Menge …')),
+            h('button', { class: 'btn danger', type: 'button', onclick: () => { sh.close(); delItem(it); } }, tr('Löschen'))));
 }
 function prodDialog(n, c, src) {
     const it = itemByName(n);
@@ -1074,29 +1156,129 @@ function newProduct(name, catId) {
     });
 }
 
-let lpTimer = 0, lpFired = false, lpXY = null;
+/* Gesten. Auf Einträgen der Liste und im Korb: Finger drauf und nach links wischen löscht, nach rechts öffnet die Menge,
+   still liegen lassen (LP_ITEM) öffnet das Menü für die Warengruppe. Auf Produkten im Katalog öffnet kurzes Halten (LP_PROD) die Menge.
+   Am Rechner: mit der Maus ziehen geht genauso, Rechtsklick statt Halten. */
+const LP_ITEM = 1500, LP_PROD = 500;
+let lpTimer = 0, holdTimer = 0, lpFired = false, gest = null, swipeG = null, swipeBusy = false, renderLater = false, ghostUntil = 0;
+/* Nach dem langen Halten kann beim Loslassen noch ein Tipp kommen. Der landet sonst im gerade geöffneten Menü und wählt dort etwas aus. */
+document.addEventListener('click', e => { if (Date.now() < ghostUntil) { e.stopPropagation(); e.preventDefault(); } }, true);
+for (const ev of ['pointerup', 'pointercancel']) document.addEventListener(ev, () => { if (ghostUntil > Date.now()) ghostUntil = Date.now() + 350; }, true);
 function detail(t) {
     const d = t.dataset;
-    if (d.k === 'item') { const it = L.items.find(i => i.uid === d.uid); if (it) itemDialog(it); }
+    if (d.k === 'item' || d.k === 'got') { const it = L.items.find(i => i.uid === d.uid); if (it) catMenu(it); }
     else if (d.k === 'prod') prodDialog(d.n, +d.c, d.src);
 }
-main.addEventListener('pointerdown', e => {
-    lpFired = false;
+/** Halten abbrechen, auch den Ring, der beim Halten um den Eintrag wächst */
+function stopHold() {
     clearTimeout(lpTimer);
+    clearTimeout(holdTimer);
+    for (const t of main.querySelectorAll('.tile.holding')) t.classList.remove('holding');
+}
+/** Wischen beginnt: hinter dem Eintrag liegt ein Schild, links „Menge“, rechts rot „Löschen“. Ausgelöst wird ab gut einem Drittel der Breite. */
+function swipeStart(g) {
+    const t = g.t;
+    g.swipe = true;
+    lpFired = true;   // der Klick nach dem Loslassen zählt nicht als Antippen
+    swipeBusy = true;
+    swipeG = g;
+    g.w = t.offsetWidth;
+    g.th = Math.min(120, Math.max(56, g.w * .35));
+    g.bg = h('div', { class: 'swipebg', 'aria-hidden': 'true' },
+        h('span', { class: 'sw-qty' }, icon(I.edit), h('b', null, tr('Menge'))),
+        h('span', { class: 'sw-del' }, icon(I.trash), h('b', null, tr('Löschen'))));
+    Object.assign(g.bg.style, { left: t.offsetLeft + 'px', top: t.offsetTop + 'px', width: g.w + 'px', height: t.offsetHeight + 'px', borderRadius: getComputedStyle(t).borderRadius });
+    t.parentElement.append(g.bg);
+    t.classList.add('swiping');
+    try { t.setPointerCapture(g.id); } catch (e) {}
+}
+function swipeMove(g, dx) {
+    const x = Math.max(-g.w, Math.min(g.w, dx)), armed = Math.abs(x) >= g.th;
+    g.dx = x;
+    g.t.style.transform = 'translateX(' + x + 'px)';
+    g.bg.dataset.dir = x < 0 ? 'del' : 'qty';
+    if (armed !== !!g.armed) {
+        g.armed = armed;
+        g.bg.classList.toggle('armed', armed);
+        if (armed && navigator.vibrate) navigator.vibrate(10);
+    }
+}
+/** Loslassen: weit genug gewischt, dann löschen (der Eintrag fliegt raus) oder die Menge öffnen, sonst federt er zurück */
+function swipeEnd(g, commit) {
+    if (g.ending) return;
+    g.ending = true;
+    const t = g.t, it = L && L.items.find(i => i.uid === t.dataset.uid);
+    const what = commit && g.armed && it ? (g.dx < 0 ? 'del' : 'qty') : '';
+    t.style.transition = 'transform .18s ease-out, opacity .18s';
+    t.style.transform = what === 'del' ? 'translateX(' + -g.w + 'px)' : '';
+    if (what === 'del') t.style.opacity = '0';
+    setTimeout(() => {
+        g.bg.remove();
+        t.classList.remove('swiping');
+        t.style.transition = t.style.transform = t.style.opacity = '';
+        swipeBusy = false;
+        swipeG = null;
+        if (what === 'del') delItem(it);
+        else {
+            if (renderLater) render();
+            if (what === 'qty') itemDialog(it);
+        }
+    }, 190);
+}
+/** Ein Wischen, dessen Loslassen nie ankam (App im Hintergrund o. ä.), federt zurück, statt hängen zu bleiben */
+const swipeAbort = () => { if (swipeG) swipeEnd(swipeG, false); };
+document.addEventListener('visibilitychange', swipeAbort);
+main.addEventListener('pointerdown', e => {
+    if (swipeG && swipeG.id !== e.pointerId) swipeAbort();
+    lpFired = false;
+    stopHold();
+    gest = null;
     const t = e.target.closest('.tile');
-    if (!t || e.button > 0) return;
-    lpXY = [e.clientX, e.clientY];
-    lpTimer = setTimeout(() => { lpFired = true; if (navigator.vibrate) navigator.vibrate(15); detail(t); }, 500);
+    if (!t || e.button > 0 || swipeBusy) return;
+    const k = t.dataset.k, item = k === 'item' || k === 'got';
+    gest = { t, id: e.pointerId, x: e.clientX, y: e.clientY, item, swipe: false, touch: e.pointerType !== 'mouse' };
+    if (item) holdTimer = setTimeout(() => t.classList.add('holding'), 250);
+    lpTimer = setTimeout(() => {
+        lpFired = true;
+        ghostUntil = Date.now() + 2500;   // bis der Finger losgelassen hat, siehe oben
+        stopHold();
+        gest = null;
+        if (navigator.vibrate) navigator.vibrate(15);
+        detail(t);
+    }, item ? LP_ITEM : LP_PROD);
 });
 main.addEventListener('pointermove', e => {
-    if (lpXY && Math.hypot(e.clientX - lpXY[0], e.clientY - lpXY[1]) > 10) clearTimeout(lpTimer);
+    const g = gest;
+    if (!g || e.pointerId !== g.id) return;
+    const dx = e.clientX - g.x, dy = e.clientY - g.y;
+    if (!g.swipe) {
+        if (Math.hypot(dx, dy) <= 10) return;
+        stopHold();
+        if (!g.item || Math.abs(dx) < Math.abs(dy) * 1.3) { gest = null; return; }   // eher hoch oder runter: das ist Rollen
+        swipeStart(g);
+    }
+    swipeMove(g, dx);
 });
-for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) main.addEventListener(ev, () => clearTimeout(lpTimer));
+main.addEventListener('pointerup', e => {
+    stopHold();
+    const g = gest;
+    gest = null;
+    if (g && g.swipe) swipeEnd(g, e.pointerId === g.id);
+});
+main.addEventListener('pointercancel', () => {
+    stopHold();
+    const g = gest;
+    gest = null;
+    if (g && g.swipe) swipeEnd(g, false);
+});
+main.addEventListener('pointerleave', () => { if (!gest || !gest.swipe) stopHold(); });
 main.addEventListener('contextmenu', e => {
     const t = e.target.closest('.tile');
     if (!t) return;
     e.preventDefault();
-    clearTimeout(lpTimer);
+    if (gest && (gest.touch || gest.swipe)) return;   // am Handy zählt das eigene Halten, Android meldet sich schon nach einer halben Sekunde
+    stopHold();
+    gest = null;
     if (!lpFired) { lpFired = true; detail(t); }
 });
 main.addEventListener('click', e => {
@@ -1105,6 +1287,7 @@ main.addEventListener('click', e => {
     if (!t || !L) return;
     const d = t.dataset;
     if (d.k === 'item') tapItem(d.uid);
+    else if (d.k === 'got') tapGot(d.uid);
     else if (d.k === 'prod') tapProd(d.n, +d.c);
     else if (d.k === 'new') newProduct(d.n, 0);
     else if (d.k === 'newin') newProduct('', +d.id);
@@ -1941,10 +2124,10 @@ async function logout() {
 }
 
 /* ---------- Drucken und Teilen: Einkaufszettel als PDF (pdf.js), Liste als Text. Und der Weg zurück: aus Text einfügen. ---------- */
-/** Die offene Liste nach Warengruppen, in der Reihenfolge des Ladens: [[Warengruppe, [Einträge]]] */
+/** Was noch zu kaufen ist, nach Warengruppen in der Reihenfolge des Ladens: [[Warengruppe, [Einträge]]]. Der Einkaufskorb bleibt draußen. */
 function listGroups() {
     const groups = new Map(catOrder().map(id => [id, []]));
-    for (const it of L.items) groups.get(hasCat(it.c) ? it.c : 0).push(it);
+    for (const it of openItems()) groups.get(hasCat(it.c) ? it.c : 0).push(it);
     return [...groups].filter(g => g[1].length);
 }
 const locale = () => lang === 'en' ? 'en-US' : 'de-DE';
@@ -1966,7 +2149,7 @@ function listText() {
 }
 /** Einkaufszettel als PDF: zwei Spalten, Kästchen zum Abhaken. Eine leere Liste ergibt einen leeren Zettel zum Selberschreiben. */
 function listPdf(extra) {
-    const n = L.items.length;
+    const n = openItems().length;
     return self.kfPdf({
         title: curList().n,
         date: new Date().toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
@@ -1992,7 +2175,7 @@ function showExport() {
         try { await navigator.share({ files: [new File([bytes], name, { type: 'application/pdf' })], title: curList().n }); }
         catch (e) { if (!e || e.name !== 'AbortError') download(name, bytes, 'application/pdf'); }
     };
-    const empty = () => !L.items.length && (toast(tr('Die Liste ist leer, es gibt nichts zu teilen.')), true);
+    const empty = () => !openItems().length && (toast(tr('Die Liste ist leer, es gibt nichts zu teilen.')), true);
     const btn = (label, fn, primary) => h('button', { class: 'btn' + (primary ? ' primary' : ''), type: 'button', onclick: fn }, label);
     const files = canShareFiles();
     put(sh.body,
@@ -2013,7 +2196,7 @@ function showExport() {
 async function shareText() {
     const l = curList();
     if (!l || !L) return;
-    if (!L.items.length) return toast(tr('Die Liste ist leer, es gibt nichts zu teilen.'));
+    if (!openItems().length) return toast(tr('Die Liste ist leer, es gibt nichts zu teilen.'));
     const text = listText();
     try {
         if (navigator.share) return await navigator.share({ title: l.n, text });

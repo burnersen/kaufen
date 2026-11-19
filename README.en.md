@@ -12,7 +12,7 @@
 
 Shared shopping lists you host yourself. The server side is PHP and SQLite, the browser side plain JavaScript and CSS. No frameworks, no dependencies, no build step, no MySQL. Runs on basic web hosting and is installed with a single file.
 
-*Kaufen* is German for "to buy". You tap products from a ready-made catalog, sorted by category. In the store you tap them again and they are gone, for everyone who shares the list.
+*Kaufen* is German for "to buy". You tap products from a ready-made catalog, sorted by category. In the store you tap them again and they move, checked off, into the cart, for everyone who shares the list.
 
 Upload `kaufen-install.php`, open it in the browser, create the first account. That is the whole installation.
 
@@ -56,7 +56,10 @@ Upload `kaufen-install.php`, open it in the browser, create the first account. T
 ### Shopping
 
 - **Catalog** with about 810 products in 16 categories, in the order of a typical supermarket. Text only, no images.
-- **Tap** to put a product on the list, tap it in the list to check it off. For a few seconds afterwards you can undo.
+- **Tap** to put a product on the list. Tap it in the list to check it off: it moves, ticked and crossed out, into the **cart** below, just like on paper. Tap it again to bring it back up. Everyone who shares the list sees right away what is already in the cart.
+- **Done shopping:** the button below the cart empties it after asking once more. Anything still to buy stays on the list, for example for another store. The cart never empties by itself.
+- **Swipe like in your mail app:** swipe an item to the left to delete it from the list completely (with “Undo” for a few seconds), swipe it to the right to open quantity and note. Works in all three views. On a computer, drag with the mouse.
+- **Change the category on the spot:** hold an item on the list for about one and a half seconds (on a computer: right-click), a ring grows around it meanwhile. Then tap another category, for example jarred plums to canned goods instead of fruit. This only applies to that item, or permanently in the catalog if you like. You can create a new category right there too.
 - **Search** across the whole catalog, in both languages: "milch" finds Milk as well. If a product does not exist, you create it right from the search and assign it to a category. Kaufen suggests the category from the end of the word: German compounds like “Bergkäse” land in dairy, “Hundefutter” in pet supplies.
 - **Several at once, also by voice:** type or dictate “milk, 2 kg apples and half a bread” into the search field, press Enter, and everything is on the list. Items are split at commas, “and” or line breaks; without commas (“milk bread apples cream”) the catalog splits the words. Quantities may come before or after, in digits or words. While you type, a preview shows what was recognized.
 - **Recently bought:** the latest and most frequent products, collapsible like the categories. What was bought in the last two weeks says so on the tile (“3 days ago”), a long-press shows the date and how often.
@@ -67,7 +70,7 @@ Upload `kaufen-install.php`, open it in the browser, create the first account. T
 
 ### Quantities and notes
 
-- **Quantity or note:** long-press (on a computer: right-click). The counter starts at 1 with no unit. Adjust it with plus and minus, tap a unit if you want one (piece, pack, liter, kg …) and add a note. A plain 1 is not shown on the tile, a number without a unit is shown large as “3×”. Halves work too: type “2.5” or “2 1/2” or tap the ½ button, it shows as 2½.
+- **Quantity or note:** swipe right on the list, long-press in the catalog (on a computer: right-click). The counter starts at 1 with no unit. Adjust it with plus and minus, tap a unit if you want one (piece, pack, liter, kg …) and add a note. A plain 1 is not shown on the tile, a number without a unit is shown large as “3×”. Halves work too: type “2.5” or “2 1/2” or tap the ½ button, it shows as 2½.
 - **Singular and plural on one button:** the same button reads “jar” for 1 and “jars” from 2 on. Dictating and typing understand both forms.
 - **More units:** besides piece, pack, liter, kg and so on there are crate, case, tub, bag, net, tray, roll, bar, tube, sack, slice, head, clove, cube, stick and portion. The settings decide which ones are always shown in the quantity picker, the rest waits under “More …”.
 - **Custom units:** each account can add its own, such as “bucket”, with singular and plural, right in the quantity picker or in the settings. They can be renamed and deleted in both places. Quantities already saved stay as text.
@@ -80,7 +83,7 @@ Upload `kaufen-install.php`, open it in the browser, create the first account. T
 - **Who added it:** in shared lists the product shows who put it there. Each account can hide this in the settings.
 - **Notifications on your phone:** if you like, you get a notification when someone puts something on a shared list. Each account turns this on or off per device in the settings. Bundled instead of one by one: three products make one notification, sent the moment the other person leaves Kaufen. Checking things off in the store does not notify anyone.
 - **Shopping list as PDF:** for the days the phone stays at home. Two columns to make full use of the page, sorted by category in the order of your own store, with a box in front of every item to tick off with a pen. Plain black and white, so it prints well on any printer. At the bottom, optional blank “Also get” lines to write on, and an empty list gives you a blank sheet. On a phone the PDF goes straight to the printer via sharing. It is created in the browser, without any third-party library and even offline.
-- **List as text:** the open list goes to your messenger, mail and so on as plain text, to the clipboard or into a text file, for people without an account. Both are under Menu → Print and share.
+- **List as text:** whatever is still to buy goes to your messenger, mail and so on as plain text, to the clipboard or into a text file, for people without an account. Both are under Menu → Print and share. Anything already in the cart is left off the sheet and the text.
 - **Paste from text:** paste text or open a text file, and everything lands on the open list. Kaufen understands its own export, lists with dashes, boxes or numbers, and free text like “milk, 2 kg apples and bread”. A preview shows what was recognized first. Anything already on the list is not added twice, ticked lines ([x]) are left out.
 - **Store layout:** the categories can be ordered per list to match the way your own store is laid out.
 - **Templates:** "BBQ" or "Breakfast" puts several products on the list with one tap. The current list can be saved as a template too.

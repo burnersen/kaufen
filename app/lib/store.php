@@ -136,8 +136,10 @@ function kfTouchList(int $lid): void {
 
 function kfListData(int $lid): array {
     $items = [];
-    foreach (kfQ('SELECT uid, name, cat_id, note, added_by, added_at FROM items WHERE list_id = ? ORDER BY added_at, uid', [$lid]) as $r) {
-        $items[] = ['uid' => $r['uid'], 'n' => $r['name'], 'c' => (int)$r['cat_id'], 'note' => $r['note'], 'by' => (int)$r['added_by'], 'at' => (int)$r['added_at']];
+    // got: seit wann im Einkaufskorb, 0 = noch zu kaufen
+    foreach (kfQ('SELECT uid, name, cat_id, note, added_by, added_at, got_at FROM items WHERE list_id = ? ORDER BY added_at, uid', [$lid]) as $r) {
+        $items[] = ['uid' => $r['uid'], 'n' => $r['name'], 'c' => (int)$r['cat_id'], 'note' => $r['note'], 'by' => (int)$r['added_by'], 'at' => (int)$r['added_at'],
+                    'got' => (int)$r['got_at']];
     }
     // Gekauftes: die 80 jüngsten immer, dazu alles aus den letzten 120 Tagen (für „vor 3 Tagen“ und „Bald wieder fällig“).
     // g = mittlerer Abstand zwischen zwei Käufen in Sekunden, gn = wie viele Abstände eingeflossen sind (-1 = nicht vorschlagen)
@@ -159,7 +161,7 @@ function kfListData(int $lid): array {
 function kfState(array $me): array {
     $lists = [];
     $idx = [];
-    foreach (kfQ('SELECT l.id, l.name, l.owner_id, (SELECT COUNT(*) FROM items i WHERE i.list_id = l.id) AS cnt
+    foreach (kfQ('SELECT l.id, l.name, l.owner_id, (SELECT COUNT(*) FROM items i WHERE i.list_id = l.id AND i.got_at = 0) AS cnt
                   FROM lists l JOIN members m ON m.list_id = l.id WHERE m.user_id = ? ORDER BY l.id', [$me['id']]) as $r) {
         $idx[(int)$r['id']] = count($lists);
         $lists[] = ['id' => (int)$r['id'], 'n' => $r['name'], 'owner' => (int)$r['owner_id'], 'count' => (int)$r['cnt'], 'members' => []];
@@ -188,6 +190,36 @@ function kfState(array $me): array {
 }
 
 /**
+ * Gekauft: Zähler und Kaufrhythmus lernen. Abstand zum letzten Kauf, geglättet. Unter 12 Stunden ist es derselbe Einkauf,
+ * ein Ausreißer (Urlaub) zählt höchstens dreimal so viel wie der bisherige Abstand. Der Stand davor kommt nach prev,
+ * damit Rückgängig (kfUsageUndo) ihn zurückholen kann. Die Menge am Eintrag wird fürs nächste Mal gemerkt.
+ */
+function kfUsageBought(int $lid, array $row, int $now): void {
+    $u = kfQ('SELECT last_at, gap, gn FROM usage WHERE list_id = ? AND name = ?', [$lid, $row['name']])->fetch();
+    $gap = $u ? (int)$u['gap'] : 0;
+    $gn = $u ? (int)$u['gn'] : 0;
+    $d = $u ? $now - (int)$u['last_at'] : 0;
+    if ($u && $d >= 43200) {
+        if ($gap > 0) $d = min($d, 3 * $gap);
+        $gap = $gap > 0 ? (int)round($gap * .6 + $d * .4) : $d;
+        if ($gn >= 0) $gn++;
+    }
+    kfQ('INSERT INTO usage (list_id, name, cat_id, cnt, last_at, note, gap, gn, prev) VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?)
+         ON CONFLICT(list_id, name) DO UPDATE SET cnt = cnt + 1, last_at = excluded.last_at, cat_id = excluded.cat_id, note = excluded.note,
+         gap = excluded.gap, gn = excluded.gn, prev = excluded.prev',
+        [$lid, $row['name'], (int)$row['cat_id'], $now, (string)$row['note'], $gap, $gn, $u ? $u['last_at'] . ',' . $u['gap'] . ',' . $u['gn'] : '']);
+}
+
+/** Abhaken rückgängig: Zähler und Kaufrhythmus wie vorher, ohne gemerkten Stand nur einen weniger */
+function kfUsageUndo(int $lid, string $name): void {
+    $u = kfQ('SELECT prev FROM usage WHERE list_id = ? AND name = ?', [$lid, $name])->fetch();
+    $p = $u ? explode(',', (string)$u['prev']) : [];
+    if (count($p) === 3) kfQ("UPDATE usage SET cnt = cnt - 1, last_at = ?, gap = ?, gn = ?, prev = '' WHERE list_id = ? AND name = ?", [(int)$p[0], (int)$p[1], (int)$p[2], $lid, $name]);
+    else kfQ('UPDATE usage SET cnt = cnt - 1 WHERE list_id = ? AND name = ?', [$lid, $name]);
+    kfQ('DELETE FROM usage WHERE list_id = ? AND name = ? AND cnt <= 0', [$lid, $name]);
+}
+
+/**
  * Änderungen an einer Liste. Jede ist so gebaut, dass sie ohne Schaden doppelt ankommen darf,
  * denn ein Handy ohne Netz schickt seine gesammelten Änderungen später nach.
  */
@@ -207,44 +239,47 @@ function kfApplyOps(array $me, int $lid, array $ops): void {
 
         if (($t === 'add' || $t === 'restore') && $uidOk && $name !== '') {
             if (kfQ('SELECT 1 FROM items WHERE uid = ?', [$uid])->fetchColumn()) continue;
-            $same = kfQ('SELECT uid FROM items WHERE list_id = ? AND name = ?', [$lid, $name])->fetchColumn();
+            $same = kfQ('SELECT uid FROM items WHERE list_id = ? AND name = ? AND got_at = 0', [$lid, $name])->fetchColumn();
             if ($same !== false) {
                 if ($note !== '') { kfQ('UPDATE items SET note = ? WHERE uid = ?', [$note, $same]); $changed = true; }
             } else {
+                // Liegt es schon im Korb, wird es eben noch einmal gebraucht: das im Korb ist gekauft und fällt weg, die Liste bekommt es neu
+                kfQ('DELETE FROM items WHERE list_id = ? AND name = ? AND got_at > 0', [$lid, $name]);
                 kfQ('INSERT INTO items (uid, list_id, name, cat_id, note, added_by, added_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
                     [$uid, $lid, $name, $cat, $note, (int)($t === 'restore' && !empty($op['by']) ? $op['by'] : $me['id']), $now]);
                 $changed = true;
                 if ($t === 'add') kfPushQueue($lid, $me['id'], $name);   // die anderen erfahren es gebündelt, siehe push.php
             }
-            if ($t === 'restore') {   // Abhaken rückgängig: Zähler und Kaufrhythmus wie vorher
-                $u = kfQ('SELECT prev FROM usage WHERE list_id = ? AND name = ?', [$lid, $name])->fetch();
-                $p = $u ? explode(',', (string)$u['prev']) : [];
-                if (count($p) === 3) kfQ("UPDATE usage SET cnt = cnt - 1, last_at = ?, gap = ?, gn = ?, prev = '' WHERE list_id = ? AND name = ?", [(int)$p[0], (int)$p[1], (int)$p[2], $lid, $name]);
-                else kfQ('UPDATE usage SET cnt = cnt - 1 WHERE list_id = ? AND name = ?', [$lid, $name]);
-                kfQ('DELETE FROM usage WHERE list_id = ? AND name = ? AND cnt <= 0', [$lid, $name]);
-            }
-        } elseif (($t === 'done' || $t === 'remove') && $uidOk) {
-            $row = kfQ('SELECT name, cat_id, note FROM items WHERE uid = ? AND list_id = ?', [$uid, $lid])->fetch();
+            if ($t === 'restore') kfUsageUndo($lid, $name);   // altes Abhaken (done) rückgängig
+        } elseif ($t === 'got' && $uidOk) {   // abgehakt: in den Korb, zählt als gekauft
+            $row = kfQ('SELECT name, cat_id, note FROM items WHERE uid = ? AND list_id = ? AND got_at = 0', [$uid, $lid])->fetch();
+            if (!$row) continue;
+            kfQ('UPDATE items SET got_at = ? WHERE uid = ?', [$now, $uid]);
+            kfPushUnqueue($lid, $row['name']);
+            kfUsageBought($lid, $row, $now);
+            $changed = true;
+        } elseif ($t === 'ungot' && $uidOk) {   // aus dem Korb zurück auf die Liste
+            $row = kfQ('SELECT name FROM items WHERE uid = ? AND list_id = ? AND got_at > 0', [$uid, $lid])->fetch();
+            if (!$row) continue;
+            kfQ('UPDATE items SET got_at = 0 WHERE uid = ?', [$uid]);
+            kfUsageUndo($lid, $row['name']);
+            $changed = true;
+        } elseif ($t === 'back' && $uidOk && $name !== '') {   // Löschen rückgängig: genau so wieder hin, ohne Mitteilung und ohne Zählerei
+            if (kfQ('SELECT 1 FROM items WHERE uid = ?', [$uid])->fetchColumn()) continue;
+            if (kfQ('SELECT 1 FROM items WHERE list_id = ? AND name = ? AND got_at = 0', [$lid, $name])->fetchColumn()) continue;   // steht schon wieder drauf
+            $got = max(0, min($now, (int)($op['got'] ?? 0)));
+            if (!$got) kfQ('DELETE FROM items WHERE list_id = ? AND name = ? AND got_at > 0', [$lid, $name]);
+            elseif (kfQ('SELECT 1 FROM items WHERE list_id = ? AND name = ?', [$lid, $name])->fetchColumn()) continue;
+            $at = (int)($op['at'] ?? 0);
+            kfQ('INSERT INTO items (uid, list_id, name, cat_id, note, added_by, added_at, got_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                [$uid, $lid, $name, $cat, $note, max(0, (int)($op['by'] ?? 0)) ?: $me['id'], $at > 0 && $at <= $now ? $at : $now, $got]);
+            $changed = true;
+        } elseif (($t === 'done' || $t === 'remove') && $uidOk) {   // done: Abhaken ohne Korb (ältere App-Versionen), remove: löschen
+            $row = kfQ('SELECT name, cat_id, note, got_at FROM items WHERE uid = ? AND list_id = ?', [$uid, $lid])->fetch();
             if (!$row) continue;
             kfQ('DELETE FROM items WHERE uid = ?', [$uid]);
             kfPushUnqueue($lid, $row['name']);
-            if ($t === 'done') {
-                // Kaufrhythmus lernen: Abstand zum letzten Kauf, geglättet. Unter 12 Stunden ist es derselbe Einkauf,
-                // ein Ausreißer (Urlaub) zählt höchstens dreimal so viel wie der bisherige Abstand.
-                $u = kfQ('SELECT last_at, gap, gn FROM usage WHERE list_id = ? AND name = ?', [$lid, $row['name']])->fetch();
-                $gap = $u ? (int)$u['gap'] : 0;
-                $gn = $u ? (int)$u['gn'] : 0;
-                $d = $u ? $now - (int)$u['last_at'] : 0;
-                if ($u && $d >= 43200) {
-                    if ($gap > 0) $d = min($d, 3 * $gap);
-                    $gap = $gap > 0 ? (int)round($gap * .6 + $d * .4) : $d;
-                    if ($gn >= 0) $gn++;
-                }
-                kfQ('INSERT INTO usage (list_id, name, cat_id, cnt, last_at, note, gap, gn, prev) VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?)
-                     ON CONFLICT(list_id, name) DO UPDATE SET cnt = cnt + 1, last_at = excluded.last_at, cat_id = excluded.cat_id, note = excluded.note,
-                     gap = excluded.gap, gn = excluded.gn, prev = excluded.prev',
-                    [$lid, $row['name'], (int)$row['cat_id'], $now, (string)$row['note'], $gap, $gn, $u ? $u['last_at'] . ',' . $u['gap'] . ',' . $u['gn'] : '']);
-            }
+            if ($t === 'done' && !(int)$row['got_at']) kfUsageBought($lid, $row, $now);
             $changed = true;
         } elseif ($t === 'edit' && $uidOk) {
             $st = kfQ('UPDATE items SET note = ?, cat_id = ? WHERE uid = ? AND list_id = ?', [$note, $cat, $uid, $lid]);

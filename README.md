@@ -12,7 +12,7 @@
 
 Gemeinsame Einkaufslisten zum Selbsthosten. Auf dem Server laufen PHP und SQLite, im Browser schlichtes JavaScript und CSS. Keine Frameworks, keine Abhängigkeiten, kein Build-Schritt, kein MySQL. Läuft auf einfachem Webspace und wird mit einer einzigen Datei installiert.
 
-Produkte tippt man aus einem fertigen Katalog an, sortiert nach Warengruppen. Im Laden tippt man sie wieder an, dann sind sie weg, und zwar bei allen, die die Liste teilen.
+Produkte tippt man aus einem fertigen Katalog an, sortiert nach Warengruppen. Im Laden tippt man sie wieder an, dann wandern sie abgehakt in den Einkaufskorb, und zwar bei allen, die die Liste teilen.
 
 `kaufen-install.php` hochladen, im Browser öffnen, erstes Konto anlegen. Das ist die ganze Installation.
 
@@ -56,7 +56,10 @@ Produkte tippt man aus einem fertigen Katalog an, sortiert nach Warengruppen. Im
 ### Einkaufen
 
 - **Katalog** mit rund 810 Produkten in 16 Warengruppen, in der Reihenfolge eines typischen Supermarkts. Nur Text, keine Bilder.
-- **Antippen** setzt ein Produkt auf die Liste, Antippen in der Liste hakt es ab. Danach gibt es ein paar Sekunden lang „Rückgängig“.
+- **Antippen** setzt ein Produkt auf die Liste. Antippen in der Liste hakt es ab: es wandert mit Haken und durchgestrichen in den **Einkaufskorb** darunter, wie auf dem Zettel. Nochmal antippen holt es wieder hoch. Wer die Liste teilt, sieht sofort, was schon im Wagen liegt.
+- **Einkauf fertig:** der Knopf unter dem Korb leert ihn nach einer Sicherheitsfrage. Was noch zu kaufen ist, bleibt auf der Liste, etwa für einen anderen Laden. Von allein leert sich der Korb nie.
+- **Wischen wie bei Mails:** einen Eintrag nach links wischen löscht ihn ganz von der Liste (ein paar Sekunden lang mit „Rückgängig“), nach rechts wischen öffnet Menge und Hinweis. Klappt in allen drei Ansichten. Am Rechner geht es mit gedrückter Maus.
+- **Warengruppe mal eben ändern:** einen Eintrag der Liste etwa anderthalb Sekunden halten (am Rechner: Rechtsklick), um ihn wächst dabei ein Ring. Dann eine andere Warengruppe antippen, z. B. Pflaumen im Glas zu den Konserven statt zum Obst. Das gilt nur für diesen Eintrag, auf Wunsch auch dauerhaft im Katalog. Eine neue Warengruppe lässt sich gleich dort anlegen.
 - **Suche** über den ganzen Katalog, in beiden Sprachen: „milk“ findet auch Milch. Gibt es ein Produkt nicht, legt man es direkt aus der Suche an und ordnet es einer Warengruppe zu. Die passende Warengruppe schlägt Kaufen am Wortende vor: „Bergkäse“ landet bei Milch & Käse, „Hundefutter“ bei Tierbedarf.
 - **Mehrere auf einmal, auch per Sprache:** „Milch, 2 kg Äpfel und ein halbes Brot“ ins Suchfeld tippen oder diktieren, Enter, und alles steht auf der Liste. Getrennt wird an Komma, „und“ oder Zeilenende, ohne Kommas („Milch Brot Äpfel Sahne“) zerlegt der Katalog die Wörter. Mengen dürfen davor oder dahinter stehen, in Ziffern oder Worten. Schon beim Tippen zeigt eine Vorschau, was erkannt wurde.
 - **Zuletzt gekauft:** die jüngsten und häufigsten Produkte, zum Aufklappen wie die Warengruppen. Was in den letzten zwei Wochen gekauft wurde, sagt es an der Kachel dazu („vor 3 Tagen“), beim langen Drücken mit Datum und wie oft.
@@ -67,7 +70,7 @@ Produkte tippt man aus einem fertigen Katalog an, sortiert nach Warengruppen. Im
 
 ### Mengen und Hinweise
 
-- **Menge oder Hinweis:** lange drücken (am Rechner: Rechtsklick). Im Zähler steht erst einmal 1, ohne Einheit. Mit Plus und Minus einstellen, bei Bedarf eine Einheit antippen (Stück, Packung, Liter, kg …) und einen Hinweis dazuschreiben. Eine schlichte 1 wird an der Kachel nicht eigens angezeigt, eine Zahl ohne Einheit steht groß als „3×“ da. Halbe gehen auch: „2,5“ oder „2 1/2“ tippen oder den Knopf ½ drücken, angezeigt wird 2½.
+- **Menge oder Hinweis:** auf der Liste nach rechts wischen, im Katalog lange drücken (am Rechner: Rechtsklick). Im Zähler steht erst einmal 1, ohne Einheit. Mit Plus und Minus einstellen, bei Bedarf eine Einheit antippen (Stück, Packung, Liter, kg …) und einen Hinweis dazuschreiben. Eine schlichte 1 wird an der Kachel nicht eigens angezeigt, eine Zahl ohne Einheit steht groß als „3×“ da. Halbe gehen auch: „2,5“ oder „2 1/2“ tippen oder den Knopf ½ drücken, angezeigt wird 2½.
 - **Einzahl und Mehrzahl auf einem Knopf:** „Glas“ steht bei 1 da, ab 2 heißt derselbe Knopf „Gläser“. Diktieren und Tippen verstehen beide Formen, „eine Kiste Wasser“ genauso wie „zwei Kisten Wasser“.
 - **Mehr Einheiten:** neben Stück, Packung, Liter, kg und Co. gibt es Kiste, Kasten, Becher, Beutel, Tüte, Netz, Schale, Rolle, Tafel, Tube, Sack, Scheibe, Kopf, Zehe, Würfel, Stange und Portion. In den Einstellungen legst du fest, welche bei der Mengenauswahl immer dastehen, der Rest wartet unter „Weitere …“.
 - **Eigene Einheiten:** z. B. „Eimer“ legt jedes Konto selbst an, mit Einzahl und Mehrzahl, direkt in der Mengenauswahl oder in den Einstellungen. Die Mehrzahl wird vorgeschlagen (Kanne wird Kannen). Umbenennen und löschen geht an beiden Stellen. Schon gespeicherte Mengen bleiben dabei als Text stehen.
@@ -80,7 +83,7 @@ Produkte tippt man aus einem fertigen Katalog an, sortiert nach Warengruppen. Im
 - **Wer war's:** in geteilten Listen steht am Produkt, wer es draufgesetzt hat. Jedes Konto kann das in den Einstellungen ausblenden.
 - **Mitteilungen aufs Handy:** wer möchte, bekommt eine Mitteilung, wenn jemand etwas auf eine geteilte Liste setzt. Jedes Konto schaltet das pro Gerät in den Einstellungen ein oder aus. Gebündelt statt einzeln: drei Produkte ergeben eine Mitteilung, und zwar in dem Moment, in dem der andere Kaufen verlässt. Abhaken im Laden meldet nichts.
 - **Einkaufszettel als PDF:** für die Tage, an denen das Handy zu Hause bleibt. Zwei Spalten, damit das Blatt voll genutzt wird, nach Warengruppen in der Reihenfolge des eigenen Ladens, vor jedem Eintrag ein Kästchen zum Abhaken mit dem Kuli. Schlicht schwarzweiß, druckt also auf jedem Drucker gut. Unten auf Wunsch leere Zeilen „Noch dazu“ zum Dazuschreiben, eine leere Liste ergibt einen leeren Zettel. Am Handy geht das PDF übers Teilen direkt zum Drucker. Erstellt wird es im Browser, ohne fremde Bibliothek und auch ohne Netz.
-- **Liste als Text:** die offene Liste geht als schlichter Text an WhatsApp, Mail und Co., in die Zwischenablage oder als Textdatei, für Leute ohne Konto. Beides steht unter Menü → Drucken und Teilen.
+- **Liste als Text:** was noch zu kaufen ist, geht als schlichter Text an WhatsApp, Mail und Co., in die Zwischenablage oder als Textdatei, für Leute ohne Konto. Beides steht unter Menü → Drucken und Teilen. Was schon im Einkaufskorb liegt, bleibt bei Zettel und Text draußen.
 - **Aus Text einfügen:** Text reinkopieren oder eine Textdatei öffnen, und alles landet auf der offenen Liste. Kaufen versteht den eigenen Export, Listen mit Spiegelstrichen, Kästchen oder Nummern und freien Text wie „Milch, 2 kg Äpfel und Brot“. Vorher zeigt eine Vorschau, was erkannt wurde. Was schon auf der Liste steht, kommt nicht doppelt drauf, abgehakte Zeilen ([x]) bleiben weg.
 - **Reihenfolge im Laden:** die Warengruppen lassen sich pro Liste so sortieren, wie der eigene Laden aufgebaut ist.
 - **Vorlagen:** „Grillen“ oder „Frühstück“ setzt mit einem Tipp mehrere Produkte auf die Liste. Auch die aktuelle Liste lässt sich als Vorlage speichern.
