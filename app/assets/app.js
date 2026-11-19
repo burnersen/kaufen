@@ -41,12 +41,13 @@ const I = {
     edit: 'M4 20h4L19 9l-4-4L4 16v4zM14 6l4 4', grip: 'M5 9h14M5 15h14',
     trash: 'M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3',
     tiles: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z', compact: 'M3 6h8M14 6h7M3 12h5M11 12h10M3 18h9M15 18h6', shop: 'M3 4h18v6H3zM3 14h18v6H3z',
+    list: 'M4 6h.01M4 12h.01M4 18h.01M9 6h11M9 12h11M9 18h11',
 };
 
 const LS = {
     get(k, d) { try { const v = localStorage.getItem('kf_' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
     set(k, v) { try { localStorage.setItem('kf_' + k, JSON.stringify(v)); } catch (e) {} },
-    clear() { try { Object.keys(localStorage).filter(k => k.startsWith('kf_') && !['kf_theme', 'kf_view', 'kf_palL', 'kf_palD', 'kf_look', 'kf_paint', 'kf_font', 'kf_mode', 'kf_ldb', 'kf_pdfo', 'kf_pdfx'].includes(k)).forEach(k => localStorage.removeItem(k)); } catch (e) {} },
+    clear() { try { Object.keys(localStorage).filter(k => k.startsWith('kf_') && !['kf_theme', 'kf_view', 'kf_tick', 'kf_palL', 'kf_palD', 'kf_look', 'kf_paint', 'kf_font', 'kf_mode', 'kf_ldb', 'kf_pdfo', 'kf_pdfx'].includes(k)).forEach(k => localStorage.removeItem(k)); } catch (e) {} },
 };
 
 const low = s => String(s).toLocaleLowerCase('de');
@@ -436,12 +437,12 @@ if ('serviceWorker' in navigator) {
 
 /* ---------- Meldung unten, mit Knopf (z. B. Rückgängig) ---------- */
 let toastTimer = 0;
-function toast(text, actionLabel, action) {
+function toast(text, actionLabel, action, ms) {
     const el = $('#toast');
     clearTimeout(toastTimer);
     fill(el, h('span', null, text), actionLabel && h('button', { type: 'button', onclick: () => { el.hidden = true; action(); } }, actionLabel));
     el.hidden = false;
-    toastTimer = setTimeout(() => { el.hidden = true; }, actionLabel ? 6000 : 3500);
+    toastTimer = setTimeout(() => { el.hidden = true; }, ms || (actionLabel ? 6000 : 3500));
 }
 
 /* ---------- Fenster ---------- */
@@ -762,7 +763,7 @@ function tile(cls, data, name, note, by, ago) {
 const prodTile = (n, c, src, always) => {
     const it = itemByName(n), u = !it && usageOf(n), d = u ? daysAgo(u.last) : 99;
     return tile(it ? 'has' : '', { k: 'prod', n, c, src: src || '' }, dn(n), it ? it.note : memOf(n), '',
-        !it && inBasket(n) ? tr('im Korb') : u && (always || d < 14) ? agoText(d, true) : '');
+        !it && inBasket(n) ? tr(strikeOn() ? 'abgehakt' : 'im Korb') : u && (always || d < 14) ? agoText(d, true) : '');
 };
 
 /* ---------- Gekauft: wann zuletzt, und was bald wieder fällig ist ---------- */
@@ -809,22 +810,28 @@ function viewHome(l) {
     const out = [];
     const order = catOrder();
     const shared = l.members.length > 1;
-    const todo = openItems(), bask = basketItems();
+    const todo = openItems(), bask = basketItems(), strike = strikeOn();
     out.push(h('h2', null, tr('Noch zu kaufen'), h('small', null, todo.length ? String(todo.length) : '')));
-    if (!todo.length) out.push(h('p', { class: 'hint' }, bask.length ? tr('Alles im Korb. Wenn du fertig bist, tippe unten auf „Einkauf fertig“.')
+    if (!todo.length) out.push(h('p', { class: 'hint' }, bask.length ? tr(strike ? 'Alles abgehakt. Wenn du fertig bist, tippe unten auf „Einkauf fertig“.' : 'Alles im Korb. Wenn du fertig bist, tippe unten auf „Einkauf fertig“.')
         : tr('Alles erledigt. Tippe unten auf ein Produkt oder such oben danach, dann landet es hier.')));
+    // Durchstreichen statt Korb (Einstellung pro Gerät): Abgehaktes bleibt an seinem Platz stehen, mit Haken und durchgestrichen
     const groups = new Map(order.map(id => [id, []]));
-    for (const it of todo) groups.get(hasCat(it.c) ? it.c : 0).push(it);
+    for (const it of strike ? L.items : todo) groups.get(hasCat(it.c) ? it.c : 0).push(it);
+    const secs = [];
     for (const [id, items] of groups) {
         if (!items.length) continue;
-        out.push(h('div', { class: 'grp' }, catName(id)));
-        out.push(h('div', { class: 'grid todo' }, items.map(it => tile('on', { k: 'item', uid: it.uid }, dn(it.n), it.note, shared && look.who && it.by !== S.me.id && userName(it.by)))));
+        secs.push(h('div', { class: 'sec' }, h('div', { class: 'grp' }, catName(id)),
+            h('div', { class: 'grid todo' }, items.map(it => it.got ? gotTile(it) : tile('on', { k: 'item', uid: it.uid }, dn(it.n), it.note, shared && look.who && it.by !== S.me.id && userName(it.by))))));
     }
+    if (secs.length) out.push(h('div', { class: 'secs' }, secs));
     // Einkaufskorb: Abgehaktes, durchgestrichen wie auf dem Zettel. Antippen holt es zurück, „Einkauf fertig“ leert den Korb.
     if (bask.length) {
-        out.push(h('h2', { class: 'basket' }, tr('Im Einkaufskorb'), h('small', null, String(bask.length))));
-        out.push(h('div', { class: 'grid todo' }, bask.map(it => tile('got', { k: 'got', uid: it.uid }, dn(it.n), it.note))));
-        out.push(h('button', { class: 'btn wide finish' + (todo.length ? '' : ' primary'), type: 'button', onclick: finishShopping }, tr('Einkauf fertig')));
+        if (!strike) {
+            out.push(h('h2', { class: 'basket' }, tr('Im Einkaufskorb'), h('small', null, String(bask.length))));
+            out.push(h('div', { class: 'secs' }, h('div', { class: 'sec' }, h('div', { class: 'grid todo' }, bask.map(gotTile)))));
+        }
+        out.push(h('button', { class: 'btn wide finish' + (todo.length ? '' : ' primary'), type: 'button', onclick: finishShopping },
+            strike ? tr('Einkauf fertig ({0} abgehakt)', bask.length) : tr('Einkauf fertig')));
     }
 
     const open = LS.get('open', {});
@@ -1066,9 +1073,34 @@ function guessCat(name) {
 }
 
 /* ---------- Tippen, wischen und lange halten ---------- */
-/** Antippen in der Liste: abgehakt, ab in den Korb. Im Korb antippen: zurück auf die Liste. */
-function tapItem(uid) { if (L.items.some(i => i.uid === uid && !i.got)) op({ t: 'got', uid }); }
-function tapGot(uid) { if (L.items.some(i => i.uid === uid && i.got)) op({ t: 'ungot', uid }); }
+/** Antippen in der Liste: abgehakt, ab in den Korb. Im Korb antippen: zurück auf die Liste.
+    Beim Durchstreichen braucht das Zurückholen zwei Tipps innerhalb von ARM_MS: der erste macht den Eintrag scharf, erst der zweite holt ihn zurück.
+    So holt ein Tipp aus Versehen (etwa beim Rollen im Laden) nichts wieder auf die Liste. */
+const ARM_MS = 2000;
+let armUid = '', armTimer = 0;
+function tapItem(uid) { if (L.items.some(i => i.uid === uid && !i.got)) { disarm(); op({ t: 'got', uid }); } }
+function tapGot(uid) {
+    const it = L.items.find(i => i.uid === uid && i.got);
+    if (!it) return;
+    if (strikeOn() && armUid !== uid) {
+        disarm();
+        armUid = uid;
+        for (const t of main.querySelectorAll('.tile[data-k="got"]')) if (t.dataset.uid === uid) t.classList.add('arm');
+        armTimer = setTimeout(disarm, ARM_MS);
+        if (navigator.vibrate) navigator.vibrate(10);
+        toast(tr('Nochmal tippen, dann ist {0} wieder auf der Liste', dn(it.n)), null, null, ARM_MS);
+        return;
+    }
+    disarm();
+    op({ t: 'ungot', uid });
+}
+function disarm() {
+    clearTimeout(armTimer);
+    armUid = '';
+    for (const t of main.querySelectorAll('.tile.arm')) t.classList.remove('arm');
+}
+/** Ein abgehakter Eintrag, im Korb oder an seinem Platz durchgestrichen */
+const gotTile = it => tile('got' + (armUid === it.uid ? ' arm' : ''), { k: 'got', uid: it.uid }, dn(it.n), it.note);
 /** Ganz von der Liste löschen, ein paar Sekunden lang mit „Rückgängig“ */
 function delItem(it) {
     op({ t: 'remove', uid: it.uid });
@@ -1077,7 +1109,7 @@ function delItem(it) {
 /** „Einkauf fertig“: nach einer Sicherheitsfrage den Korb leeren. Was noch zu kaufen ist, bleibt auf der Liste. */
 function finishShopping() {
     const left = openItems().length;
-    confirmDlg(tr('Einkauf fertig?'), tr('Ist alles im Korb wirklich gekauft? Dann wird der Korb geleert und alles darin von der Liste genommen.')
+    confirmDlg(tr('Einkauf fertig?'), tr(strikeOn() ? 'Ist alles Abgehakte wirklich gekauft? Dann wird es von der Liste genommen.' : 'Ist alles im Korb wirklich gekauft? Dann wird der Korb geleert und alles darin von der Liste genommen.')
         + (left === 1 ? ' ' + tr('Das eine, was noch zu kaufen ist, bleibt drauf.') : left ? ' ' + tr('Die {0} Sachen, die noch zu kaufen sind, bleiben drauf.', left) : ''),
         tr('Ja, Korb leeren'), () => {
             const bask = basketItems();
@@ -1841,22 +1873,33 @@ async function wake() {
     } catch (e) {}
 }
 
-/** Drei Ansichten: kleine Kacheln, kompakte Schildchen oder Laden-Modus (große Zeilen zum Abhaken). Gemerkt pro Gerät. */
-const VIEWS = ['tiles', 'compact', 'shop'];
+/** Vier Ansichten: kleine Kacheln, kompakte Schildchen, Laden-Modus (große Zeilen zum Abhaken) oder Liste (schlichte Zeilen auf Karten,
+    je Warengruppe eine Überschrift, die Menge als Pille rechts). Gemerkt pro Gerät. */
+const VIEWS = ['tiles', 'compact', 'shop', 'list'];
+const VIEW_NAMES = [['tiles', 'Kleine Kacheln'], ['compact', 'Kompakt'], ['shop', 'Laden-Modus'], ['list', 'Liste']];
 const curView = () => { const v = LS.get('view', 'tiles'); return VIEWS.includes(v) ? v : 'tiles'; };
 function applyView() {
     const v = curView(), next = VIEWS[(VIEWS.indexOf(v) + 1) % VIEWS.length];
     main.classList.toggle('compact', v === 'compact');
     main.classList.toggle('shop', v === 'shop');
+    main.classList.toggle('list', v === 'list');
     const btn = $('#viewBtn');
     fill(btn, icon(I[next]));   // der Knopf zeigt, wohin er umschaltet
-    btn.title = tr({ tiles: 'Zur Kachel-Ansicht', compact: 'Zur kompakten Ansicht', shop: 'Zum Laden-Modus' }[next]);
+    btn.title = tr({ tiles: 'Zur Kachel-Ansicht', compact: 'Zur kompakten Ansicht', shop: 'Zum Laden-Modus', list: 'Zur Listen-Ansicht' }[next]);
 }
+/** Was beim Abhaken passiert, gemerkt pro Gerät: auto = in der Liste durchstreichen, sonst in den Korb; strike = immer durchstreichen; basket = immer in den Korb */
+const TICKS = [['auto', 'In der Liste durchstreichen, sonst Korb'], ['strike', 'Immer durchstreichen'], ['basket', 'Immer in den Korb']];
+const curTick = () => { const v = LS.get('tick', 'auto'); return TICKS.some(x => x[0] === v) ? v : 'auto'; };
+const strikeOn = () => { const t = curTick(); return t === 'strike' || (t === 'auto' && curView() === 'list'); };
+/** Ansicht wechseln: Durchstreichen oder Korb kann davon abhängen, deshalb neu zeichnen */
+const setView = v => { LS.set('view', v); disarm(); applyView(); render(); };
 
 /** Schriftgrößen, gemerkt pro Gerät wie die Ansicht: je ein Faktor (1 = Standard, Grenzen von bis) und wie fett die Anzahl ohne Einheit ist.
     Landen als CSS-Variablen --fs-… und --fw-cnt an der Seite, boot.js setzt sie schon vor dem ersten Bild. */
 const FONTS = [['all', 'Alle Schriften', .85, 1.4], ['head', 'Überschriften', .7, 1.5], ['name', 'Produktnamen', .7, 1.5],
-    ['qty', 'Menge', .7, 1.5], ['cnt', 'Anzahl', .6, 1.5], ['hint', 'Hinweis', .7, 1.5]];
+    ['qty', 'Menge', .7, 1.5], ['cnt', 'Anzahl', .6, 1.5], ['hint', 'Hinweis', .7, 1.5],
+    ['row', 'Höhe der Einträge', .6, 1.8], ['gap', 'Abstand dazwischen', 0, 3]];
+const SIZES = ['row', 'gap'];   // keine Schrift, sondern Größe der Kacheln, Schildchen und Zeilen und die Lücke zwischen ihnen (--fs-row, --fs-gap)
 const WEIGHTS = [[800, 'Fett'], [600, 'Halbfett'], [400, 'Normal']];
 function curFont() {
     const f = LS.get('font', null) || {}, o = {};
@@ -1898,14 +1941,15 @@ function peekOption() {
     const box = h('input', { type: 'checkbox', checked: LS.get('peek', false), onchange: () => LS.set('peek', box.checked) });
     return h('label', { class: 'check peekopt' }, box, h('span', null, tr('Beim Ziehen am Regler die echte Liste zeigen')));
 }
-/** Fenster für die Schriftgrößen: oben eine Vorschau in der Ansicht dieses Geräts, darunter je ein Regler */
+/** Fenster für Schriftgrößen, Größe und Abstände: oben eine Vorschau in der Ansicht dieses Geräts, darunter je ein Regler */
 function editFont() {
-    const sh = sheet(tr('Schriftgrößen'));
-    const v = curView();
+    const sh = sheet(tr('Schrift, Größe und Abstände'));
+    const v = curView(), strike = strikeOn();
     const prev = h('div', { class: 'prev' + (v === 'tiles' ? '' : ' ' + v), 'aria-hidden': 'true' },
-        h('h2', null, tr('Noch zu kaufen'), h('small', null, '3')),
-        h('div', { class: 'grp' }, dc('Milch & Käse')),
-        h('div', { class: 'grid todo' }, tile('on', {}, dn('Milch'), '3'), tile('on', {}, dn('Butter'), '2 Packungen, die guten'), tile('on', {}, dn('Quark'), '1,5 kg')));
+        h('h2', null, tr('Noch zu kaufen'), h('small', null, strike ? '2' : '3')),
+        h('div', { class: 'secs' }, h('div', { class: 'sec' }, h('div', { class: 'grp' }, dc('Milch & Käse')),
+            h('div', { class: 'grid todo' }, tile('on', {}, dn('Milch'), '3'), tile('on', {}, dn('Butter'), '2 Packungen, die guten'),
+                tile(strike ? 'got' : 'on', {}, dn('Quark'), '1,5 kg')))));
     prev.querySelectorAll('button').forEach(b => { b.tabIndex = -1; });
     let f = curFont();
     const save = () => { LS.set('font', f); applyFont(); };
@@ -1921,8 +1965,11 @@ function editFont() {
         for (const x of rows) { x.r.value = String(Math.round(f[x.k] * 100)); x.out.textContent = x.r.value + ' %'; }
         wSel.value = String(f.w);
     };
-    put(sh.body, prev, peekOption(), rows.map(x => x.node),
+    const fontRows = rows.filter(x => !SIZES.includes(x.k)), sizeRows = rows.filter(x => SIZES.includes(x.k));
+    put(sh.body, prev, peekOption(), h('div', { class: 'qlabel' }, tr('Schriftgrößen')), fontRows.map(x => x.node),
         h('label', { class: 'field' }, tr('Anzahl ohne Einheit'), wSel),
+        h('div', { class: 'qlabel gap' }, tr('Größe und Abstände')), sizeRows.map(x => x.node),
+        h('p', { class: 'info' }, tr('Höhe der Einträge macht Kacheln, Schildchen und Zeilen in allen Ansichten größer oder kleiner, Abstand dazwischen die Lücke zwischen ihnen. In der Liste stehen die Zeilen ohne Lücke untereinander.')),
         h('p', { class: 'info' }, tr('Gilt nur auf diesem Gerät. 100 % und fett ist der Standard.')),
         h('div', { class: 'btns' },
             h('button', { class: 'btn', type: 'button', onclick: () => { LS.set('font', null); f = curFont(); applyFont(); show(); } }, tr('Zurücksetzen')),
@@ -2062,8 +2109,10 @@ function showSettings() {
     const whoBox = h('input', { type: 'checkbox', checked: look.who, onchange: () => { setLook({ who: whoBox.checked }); render(); } });
     const dueBox = h('input', { type: 'checkbox', checked: look.due, onchange: () => { setLook({ due: dueBox.checked }); render(); } });
     const ivInput = h('input', { type: 'number', min: '1', max: '60', inputmode: 'numeric', value: String(S.interval) });
-    const view = h('select', { onchange: () => { LS.set('view', view.value); applyView(); } },
-        [['tiles', 'Kleine Kacheln'], ['compact', 'Kompakt'], ['shop', 'Laden-Modus']].map(([v, s]) => h('option', { value: v, selected: curView() === v }, tr(s))));
+    const view = h('select', { onchange: () => setView(view.value) },
+        VIEW_NAMES.map(([v, s]) => h('option', { value: v, selected: curView() === v }, tr(s))));
+    const tick = h('select', { onchange: () => { LS.set('tick', tick.value); disarm(); render(); } },
+        TICKS.map(([v, s]) => h('option', { value: v, selected: curTick() === v }, tr(s))));
     const swatches = mode => {
         const row = h('div', { class: 'pals', role: 'radiogroup', 'aria-label': mode === 'dark' ? tr('Dunkles Design') : tr('Helles Design') });
         const pk = mode === 'dark' ? 'd' : 'l', ck = mode === 'dark' ? 'cd' : 'cl';
@@ -2081,8 +2130,10 @@ function showSettings() {
     put(sh.body,
         h('label', { class: 'field' }, 'Sprache / Language', langSel),
         h('label', { class: 'field' }, tr('Ansicht (nur dieses Gerät)'), view),
-        h('div', { class: 'qlabel' }, tr('Schrift (nur dieses Gerät)')),
-        h('button', { class: 'btn fontbtn', type: 'button', onclick: editFont }, tr('Schriftgrößen anpassen …')),
+        h('label', { class: 'field' }, tr('Abgehaktes (nur dieses Gerät)'), tick),
+        h('p', { class: 'info' }, tr('Durchgestrichenes bleibt an seinem Platz stehen. Zurück auf die Liste kommt es mit zwei Tipps innerhalb von 2 Sekunden, so passiert das nicht aus Versehen. Im Korb reicht ein Tipp.')),
+        h('div', { class: 'qlabel' }, tr('Schrift und Größe (nur dieses Gerät)')),
+        h('button', { class: 'btn fontbtn', type: 'button', onclick: editFont }, tr('Schrift, Größe und Abstände anpassen …')),
         h('label', { class: 'field' }, tr('Hell oder dunkel'), theme),
         h('div', { class: 'qlabel' }, tr('Design für hell')), swatches('light'),
         h('div', { class: 'qlabel' }, tr('Design für dunkel')), swatches('dark'),
@@ -2599,7 +2650,7 @@ async function updAuto() {
 
 /* ---------- Start ---------- */
 $('#menuBtn').addEventListener('click', () => { if (S) showMenu(); });
-$('#viewBtn').addEventListener('click', () => { LS.set('view', VIEWS[(VIEWS.indexOf(curView()) + 1) % VIEWS.length]); applyView(); });
+$('#viewBtn').addEventListener('click', () => setView(VIEWS[(VIEWS.indexOf(curView()) + 1) % VIEWS.length]));
 $('#listBtn').addEventListener('click', () => { if (S) showLists(); });
 document.addEventListener('visibilitychange', () => { wake(); if (document.hidden) { clearTimeout(timer); pushDone(); } else tick(); });
 window.addEventListener('pagehide', pushDone);
