@@ -48,7 +48,7 @@ const I = {
 const LS = {
     get(k, d) { try { const v = localStorage.getItem('kf_' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
     set(k, v) { try { localStorage.setItem('kf_' + k, JSON.stringify(v)); } catch (e) {} },
-    clear() { try { Object.keys(localStorage).filter(k => k.startsWith('kf_') && !['kf_theme', 'kf_view', 'kf_tick', 'kf_palL', 'kf_palD', 'kf_look', 'kf_paint', 'kf_font', 'kf_mode', 'kf_ldb', 'kf_a2hsNo', 'kf_pdfo', 'kf_pdfx'].includes(k)).forEach(k => localStorage.removeItem(k)); } catch (e) {} },
+    clear() { try { Object.keys(localStorage).filter(k => k.startsWith('kf_') && !['kf_theme', 'kf_view', 'kf_tick', 'kf_palL', 'kf_palD', 'kf_look', 'kf_paint', 'kf_font', 'kf_mode', 'kf_ldb', 'kf_a2hsNo', 'kf_pdfo', 'kf_pdfx', 'kf_fontL', 'kf_viewL', 'kf_fontNow', 'kf_helpSeen'].includes(k)).forEach(k => localStorage.removeItem(k)); } catch (e) {} },
 };
 
 const low = s => String(s).toLocaleLowerCase('de');
@@ -193,6 +193,7 @@ function applyState(s, oldLook) {
         cur = S.lists.length ? S.lists[0].id : null;
         LS.set('cur', cur);
         L = cur ? LS.get('list_' + cur, null) : null;
+        applyListLook();
         if (cur) loadList();
     }
     render();
@@ -233,6 +234,8 @@ function openList(id) {
     LS.set('cur', cur);
     L = LS.get('list_' + cur, null);
     qInput.value = '';
+    disarm();
+    applyListLook();
     render();
     loadList();
 }
@@ -806,7 +809,7 @@ function render() {
     renderLater = false;
     if (gest) { stopHold(); gest = null; }   // die Kachel unter dem Finger wird gleich ersetzt: Halten gilt nicht mehr
     const q = norm(qInput.value.trim());
-    main.replaceChildren(...(q ? viewSearch(q) : [demoBanner(), ...viewHome(l), demoFoot()].filter(Boolean)));
+    main.replaceChildren(...(q ? viewSearch(q) : [demoBanner(), helpHint(), ...viewHome(l), demoFoot()].filter(Boolean)));
 }
 
 function viewHome(l) {
@@ -1737,22 +1740,40 @@ const TPARTS = [['head', 'Überschriften', '--head'], ['mut', 'Nebentext', '--mu
 const isHex = v => /^#[0-9a-f]{6}$/.test(v);
 const okCols = c => c && PARTS.every(([k]) => isHex(c[k])) ? Object.fromEntries([...PARTS, ...TPARTS].filter(([k]) => isHex(c[k])).map(([k]) => [k, c[k]])) : null;
 const okUnit = u => typeof u === 'string' && u.split('/').length <= 2 && u.split('/').every(x => UWORD.test(x));
-const normLook = o => ({ mode: o && ['light', 'dark'].includes(o.mode) ? o.mode : 'auto', l: String(o && o.l || ''), d: String(o && o.d || ''), cl: okCols(o && o.cl), cd: okCols(o && o.cd),
+/** Was pro Liste gelten kann: hell oder dunkel, Design für hell und dunkel, eigene Farben */
+const LOOKC = ['mode', 'l', 'd', 'cl', 'cd'];
+const normC = o => ({ mode: o && ['light', 'dark'].includes(o.mode) ? o.mode : 'auto', l: String(o && o.l || ''), d: String(o && o.d || ''), cl: okCols(o && o.cl), cd: okCols(o && o.cd) });
+const normPl = o => Object.fromEntries(Object.entries(o && typeof o === 'object' ? o : {}).filter(([k, v]) => /^[\w-]{1,40}$/.test(k) && v && typeof v === 'object').slice(0, 100).map(([k, v]) => [k, normC(v)]));
+const normLook = o => ({ ...normC(o), pl: normPl(o && o.pl),
     lang: o && ['de', 'en'].includes(o.lang) ? o.lang : '', keep: !(o && o.keep === false), who: !(o && o.who === false), due: !(o && o.due === false), units: Array.isArray(o && o.units) ? o.units.filter(okUnit).slice(0, 12) : [],
     uv: Array.isArray(o && o.uv) ? UNITS.map(x => x[0]).filter(k => o.uv.includes(k)) : null });
-/** Einstellungen des Kontos: mode = auto|light|dark, l/d = gewähltes Design für hell/dunkel, cl/cd = eigene Farben,
+/** Einstellungen des Kontos: mode = auto|light|dark, l/d = gewähltes Design für hell/dunkel, cl/cd = eigene Farben (der Standard für alle Listen),
+    pl = dasselbe je Liste ({Listennummer: {mode, l, d, cl, cd}}), sobald an einer Liste das Aussehen eigens eingestellt wurde,
     lang = Sprache ('' = noch nicht gewählt), keep = zuletzt benutzte Menge merken, who = anzeigen, wer einen Artikel hinzugefügt hat, due = „Bald wieder fällig“ zeigen, units = eigene Einheiten,
     uv = mitgelieferte Einheiten, die bei der Mengenauswahl immer dastehen (null = Standard). Liegt auf dem Server, hier nur die Kopie. */
 let look = normLook(LS.get('look', null) || { mode: LS.get('theme', 'auto'), l: LS.get('palL', ''), d: LS.get('palD', '') });
+/** Das Aussehen, das gerade gilt: das eigene der offenen Liste, sonst der Standard des Kontos */
+const lk = () => { const o = cur != null && look.pl[cur]; return o ? { ...look, ...o } : look; };
 const palOf = mode => {
-    const v = look[mode === 'dark' ? 'd' : 'l'];
-    if (v === 'eigen' && look[mode === 'dark' ? 'cd' : 'cl']) return v;
+    const a = lk(), v = a[mode === 'dark' ? 'd' : 'l'];
+    if (v === 'eigen' && a[mode === 'dark' ? 'cd' : 'cl']) return v;
     return PALS[mode].some(p => p[0] === v) ? v : PALS[mode][0][0];
 };
 let lookEpoch = 0;   // zählt jede Änderung an den Einstellungen des Kontos und jedes Speichern, siehe applyState
 function setLook(patch, later) {
     lookEpoch++;
-    Object.assign(look, patch);
+    // Farben und Design gelten für die offene Liste. Beim ersten Mal übernimmt sie den Standard und ändert dann nur, was sich ändert.
+    const own = {}, rest = {};
+    for (const k in patch) (LOOKC.includes(k) ? own : rest)[k] = patch[k];
+    if (Object.keys(own).length) {
+        if (cur != null) {
+            const a = lk(), pl = {};
+            for (const k in look.pl) if (!S || S.lists.some(l => String(l.id) === k)) pl[k] = look.pl[k];   // gelöschte Listen fallen raus
+            pl[cur] = { ...Object.fromEntries(LOOKC.map(k => [k, a[k]])), ...own };
+            look.pl = pl;
+        } else Object.assign(look, own);
+    }
+    Object.assign(look, rest);
     LS.set('look', look);
     LS.set('lookDirty', true);
     applyTheme();
@@ -1847,17 +1868,18 @@ function palColors(id) {
 
 /** Hell oder dunkel (fest oder wie das Gerät) und dazu das jeweils ausgesuchte Design. Die fertigen Designs stehen in app.css. */
 function applyTheme() {
-    const mode = look.mode === 'auto' ? (darkMq.matches ? 'dark' : 'light') : look.mode;
+    const a = lk();
+    const mode = a.mode === 'auto' ? (darkMq.matches ? 'dark' : 'light') : a.mode;
     const root = document.documentElement;
     const pal = palOf(mode);
     root.dataset.theme = mode;
     root.dataset.pal = pal;
-    setVars(root, pal === 'eigen' ? look[mode === 'dark' ? 'cd' : 'cl'] : null);
+    setVars(root, pal === 'eigen' ? a[mode === 'dark' ? 'cd' : 'cl'] : null);
     const meta = $('meta[name=theme-color]');
     if (meta) meta.content = getComputedStyle(root).getPropertyValue(mode === 'dark' ? '--bg' : '--acc').trim() || meta.content;
     // Merkzettel für boot.js: so sieht dieses Gerät beim nächsten Start sofort richtig aus, auch auf der Anmeldeseite
-    const side = m => { const pal = palOf(m), c = pal === 'eigen' ? look[m === 'dark' ? 'cd' : 'cl'] : null; return { pal, vars: c ? derive(c) : null }; };
-    const paint = { mode: look.mode, light: side('light'), dark: side('dark') };
+    const side = m => { const pal = palOf(m), c = pal === 'eigen' ? a[m === 'dark' ? 'cd' : 'cl'] : null; return { pal, vars: c ? derive(c) : null }; };
+    const paint = { mode: a.mode, light: side('light'), dark: side('dark') };
     if (meta) paint[mode].tc = meta.content;
     LS.set('paint', paint);
 }
@@ -1877,10 +1899,10 @@ async function wake() {
 }
 
 /** Vier Ansichten: kleine Kacheln, kompakte Schildchen, Laden-Modus (große Zeilen zum Abhaken) oder Liste (schlichte Zeilen auf Karten,
-    je Warengruppe eine Überschrift, die Menge als Pille rechts). Gemerkt pro Gerät. */
+    je Warengruppe eine Überschrift, die Menge als Pille rechts). Gemerkt pro Gerät und je Liste (viewL), sonst der Standard dieses Geräts, sonst die Liste. */
 const VIEWS = ['tiles', 'compact', 'shop', 'list'];
 const VIEW_NAMES = [['tiles', 'Kleine Kacheln'], ['compact', 'Kompakt'], ['shop', 'Laden-Modus'], ['list', 'Liste']];
-const curView = () => { const v = LS.get('view', 'tiles'); return VIEWS.includes(v) ? v : 'tiles'; };
+const curView = () => { const m = LS.get('viewL', {}), v = cur != null && m[cur] || LS.get('view', 'list'); return VIEWS.includes(v) ? v : 'list'; };
 function applyView() {
     const v = curView(), next = VIEWS[(VIEWS.indexOf(v) + 1) % VIEWS.length];
     main.classList.toggle('compact', v === 'compact');
@@ -1890,12 +1912,29 @@ function applyView() {
     fill(btn, icon(I[next]));   // der Knopf zeigt, wohin er umschaltet
     btn.title = tr({ tiles: 'Zur Kachel-Ansicht', compact: 'Zur kompakten Ansicht', shop: 'Zum Laden-Modus', list: 'Zur Listen-Ansicht' }[next]);
 }
-/** Was beim Abhaken passiert, gemerkt pro Gerät: auto = in der Liste durchstreichen, sonst in den Korb; strike = immer durchstreichen; basket = immer in den Korb */
-const TICKS = [['auto', 'In der Liste durchstreichen, sonst Korb'], ['strike', 'Immer durchstreichen'], ['basket', 'Immer in den Korb']];
-const curTick = () => { const v = LS.get('tick', 'auto'); return TICKS.some(x => x[0] === v) ? v : 'auto'; };
+/** Was beim Abhaken passiert, gemerkt pro Gerät: strike = immer durchstreichen (Standard); basket = immer in den Korb; auto = in der Listen-Ansicht durchstreichen, sonst in den Korb */
+const TICKS = [['strike', 'Immer durchstreichen'], ['basket', 'Immer in den Korb'], ['auto', 'In der Listen-Ansicht durchstreichen, sonst Korb']];
+const curTick = () => { const v = LS.get('tick', 'strike'); return TICKS.some(x => x[0] === v) ? v : 'strike'; };
 const strikeOn = () => { const t = curTick(); return t === 'strike' || (t === 'auto' && curView() === 'list'); };
 /** Ansicht wechseln: Durchstreichen oder Korb kann davon abhängen, deshalb neu zeichnen */
-const setView = v => { LS.set('view', v); disarm(); applyView(); render(); };
+const setView = v => {
+    if (cur != null) { const m = LS.get('viewL', {}); m[cur] = v; LS.set('viewL', m); } else LS.set('view', v);
+    disarm(); applyView(); render();
+};
+/** Beim Wechsel der Liste: ihr Aussehen, ihre Schrift und ihre Ansicht */
+function applyListLook() { applyTheme(); applyFont(); applyView(); }
+/** Das Aussehen der offenen Liste gilt ab jetzt für alle Listen: wird Standard, die eigenen Einstellungen der anderen Listen fallen weg */
+function lookForAll() {
+    const a = lk(), f = fontRaw(), v = curView();
+    for (const k of LOOKC) look[k] = a[k];
+    look.pl = {};
+    LS.set('font', f); LS.set('fontL', {});
+    LS.set('view', v); LS.set('viewL', {});
+    setLook({});
+    applyListLook();
+    render();
+    toast(tr('Gilt jetzt für alle Listen'));
+}
 
 /** Schriftgrößen, gemerkt pro Gerät wie die Ansicht: je ein Faktor (1 = Standard, Grenzen von bis) und wie fett die Anzahl ohne Einheit ist.
     Landen als CSS-Variablen --fs-… und --fw-cnt an der Seite, boot.js setzt sie schon vor dem ersten Bild. */
@@ -1904,8 +1943,13 @@ const FONTS = [['all', 'Alle Schriften', .85, 1.4], ['head', 'Überschriften', .
     ['row', 'Höhe der Einträge', .6, 1.8], ['gap', 'Abstand dazwischen', 0, 3]];
 const SIZES = ['row', 'gap'];   // keine Schrift, sondern Größe der Kacheln, Schildchen und Zeilen und die Lücke zwischen ihnen (--fs-row, --fs-gap)
 const WEIGHTS = [[800, 'Fett'], [600, 'Halbfett'], [400, 'Normal']];
+/** Schrift dieses Geräts für die offene Liste (fontL), sonst der Standard dieses Geräts */
+const fontRaw = () => { const m = LS.get('fontL', {}); return cur != null && m[cur] || LS.get('font', null) || {}; };
+function setFontRaw(f) {
+    if (cur != null) { const m = LS.get('fontL', {}); m[cur] = f; LS.set('fontL', m); } else LS.set('font', f);
+}
 function curFont() {
-    const f = LS.get('font', null) || {}, o = {};
+    const f = fontRaw(), o = {};
     for (const [k, , lo, hi] of FONTS) o[k] = +f[k] >= lo && +f[k] <= hi ? +f[k] : 1;
     o.w = WEIGHTS.some(([w]) => w === +f.w) ? +f.w : 800;
     return o;
@@ -1914,6 +1958,7 @@ function applyFont() {
     const f = curFont(), st = document.documentElement.style;
     for (const [k] of FONTS) st.setProperty('--fs-' + k, String(f[k]));
     st.setProperty('--fw-cnt', String(f.w));
+    LS.set('fontNow', f);   // für boot.js: so startet dieses Gerät gleich mit der Schrift der zuletzt offenen Liste
 }
 /** Beim Ziehen an einem Regler die echte Liste zeigen (Schalter im Farbmischer und bei den Schriftgrößen, gemerkt pro Gerät):
     alle Fenster werden unsichtbar, nur die Zeile mit dem Regler bleibt als Leiste stehen. on(true) beim Anfassen, on(false) beim Loslassen. */
@@ -1955,7 +2000,7 @@ function editFont() {
                 tile(strike ? 'got' : 'on', {}, dn('Quark'), '1,5 kg')))));
     prev.querySelectorAll('button').forEach(b => { b.tabIndex = -1; });
     let f = curFont();
-    const save = () => { LS.set('font', f); applyFont(); };
+    const save = () => { setFontRaw(f); applyFont(); };
     const rows = FONTS.map(([k, name, lo, hi]) => {
         const out = h('b');
         const r = h('input', { type: 'range', min: String(lo * 100), max: String(hi * 100), step: '5', 'aria-label': tr(name),
@@ -1973,9 +2018,9 @@ function editFont() {
         h('label', { class: 'field' }, tr('Anzahl ohne Einheit'), wSel),
         h('div', { class: 'qlabel gap' }, tr('Größe und Abstände')), sizeRows.map(x => x.node),
         h('p', { class: 'info' }, tr('Höhe der Einträge macht Kacheln, Schildchen und Zeilen in allen Ansichten größer oder kleiner, Abstand dazwischen die Lücke zwischen ihnen. In der Liste stehen die Zeilen ohne Lücke untereinander.')),
-        h('p', { class: 'info' }, tr('Gilt nur auf diesem Gerät. 100 % und fett ist der Standard.')),
+        h('p', { class: 'info' }, tr('Gilt für diese Liste und nur auf diesem Gerät. 100 % und fett ist der Standard.')),
         h('div', { class: 'btns' },
-            h('button', { class: 'btn', type: 'button', onclick: () => { LS.set('font', null); f = curFont(); applyFont(); show(); } }, tr('Zurücksetzen')),
+            h('button', { class: 'btn', type: 'button', onclick: () => { setFontRaw({}); f = curFont(); applyFont(); show(); } }, tr('Zurücksetzen')),
             h('button', { class: 'btn primary', type: 'button', onclick: () => sh.close() }, tr('Fertig'))));
     show();
 }
@@ -2000,7 +2045,7 @@ function applyLang() {
     oben eine Vorschau, die sofort mitgeht. Eine Schriftfarbe auf „Automatisch“ wird aus den anderen ausgerechnet. */
 function editLook(mode, redraw) {
     const ck = mode === 'dark' ? 'cd' : 'cl';
-    const start = { ...look[ck] };
+    const start = { ...lk()[ck] };
     const col = { ...start }, hsl = {};
     const ALL = [...PARTS, ...TPARTS], tvar = Object.fromEntries(TPARTS.map(([k, , v]) => [k, v]));
     const eff = k => col[k] || derive(col)[tvar[k]];   // die Farbe, die gerade gilt, auch wenn sie automatisch ist
@@ -2107,7 +2152,7 @@ function showSettings() {
     } });
     if (pushCan()) pushSub().then(s => { pushBox.checked = !!s; pushBox.disabled = false; });
     const theme = h('select', { onchange: () => setLook({ mode: theme.value }) },
-        [['auto', 'Wie das Gerät'], ['light', 'Hell'], ['dark', 'Dunkel']].map(([v, s]) => h('option', { value: v, selected: look.mode === v }, tr(s))));
+        [['auto', 'Wie das Gerät'], ['light', 'Hell'], ['dark', 'Dunkel']].map(([v, s]) => h('option', { value: v, selected: lk().mode === v }, tr(s))));
     const wakeBox = h('input', { type: 'checkbox', checked: LS.get('wake', true), onchange: () => { LS.set('wake', wakeBox.checked); wake(); } });
     const whoBox = h('input', { type: 'checkbox', checked: look.who, onchange: () => { setLook({ who: whoBox.checked }); render(); } });
     const dueBox = h('input', { type: 'checkbox', checked: look.due, onchange: () => { setLook({ due: dueBox.checked }); render(); } });
@@ -2120,10 +2165,11 @@ function showSettings() {
         const row = h('div', { class: 'pals', role: 'radiogroup', 'aria-label': mode === 'dark' ? tr('Dunkles Design') : tr('Helles Design') });
         const pk = mode === 'dark' ? 'd' : 'l', ck = mode === 'dark' ? 'cd' : 'cl';
         const draw = () => {
-            const own = h('button', { class: 'pal' + (look[ck] ? '' : ' empty'), type: 'button', role: 'radio', 'aria-checked': String(palOf(mode) === 'eigen'), data: { pal: 'eigen' },
-                onclick: () => { setLook({ [ck]: look[ck] || palColors(palOf(mode)), [pk]: 'eigen' }); draw(); editLook(mode, draw); } },
-                h('span', { class: 'dot' }, look[ck] ? h('i') : icon(I.edit)), h('span', null, tr('Eigenes')));
-            if (look[ck]) setVars(own, look[ck]);
+            const a = lk();
+            const own = h('button', { class: 'pal' + (a[ck] ? '' : ' empty'), type: 'button', role: 'radio', 'aria-checked': String(palOf(mode) === 'eigen'), data: { pal: 'eigen' },
+                onclick: () => { setLook({ [ck]: a[ck] || palColors(palOf(mode)), [pk]: 'eigen' }); draw(); editLook(mode, draw); } },
+                h('span', { class: 'dot' }, a[ck] ? h('i') : icon(I.edit)), h('span', null, tr('Eigenes')));
+            if (a[ck]) setVars(own, a[ck]);
             fill(row, PALS[mode].map(([id, name]) => h('button', { class: 'pal', type: 'button', role: 'radio', 'aria-checked': String(palOf(mode) === id), data: { pal: id },
                 onclick: () => { setLook({ [pk]: id }); draw(); } }, h('span', { class: 'dot' }, h('i')), h('span', null, tr(name)))), own);
         };
@@ -2132,15 +2178,22 @@ function showSettings() {
     };
     put(sh.body,
         h('label', { class: 'field' }, 'Sprache / Language', langSel),
-        h('label', { class: 'field' }, tr('Ansicht (nur dieses Gerät)'), view),
         h('label', { class: 'field' }, tr('Abgehaktes (nur dieses Gerät)'), tick),
         h('p', { class: 'info' }, tr('Durchgestrichenes bleibt an seinem Platz stehen. Zurück auf die Liste kommt es mit zwei Tipps innerhalb von 2 Sekunden, so passiert das nicht aus Versehen. Im Korb reicht ein Tipp.')),
-        h('div', { class: 'qlabel' }, tr('Schrift und Größe (nur dieses Gerät)')),
+        // Aussehen: gilt für die offene Liste, auf Wunsch für alle
+        h('h2', { class: 'looksec' }, curList() ? tr('Aussehen der Liste „{0}“', curList().n) : tr('Aussehen')),
+        h('label', { class: 'field' }, tr('Ansicht'), view),
+        h('div', { class: 'qlabel' }, tr('Schrift und Größe')),
         h('button', { class: 'btn fontbtn', type: 'button', onclick: editFont }, tr('Schrift, Größe und Abstände anpassen …')),
         h('label', { class: 'field' }, tr('Hell oder dunkel'), theme),
         h('div', { class: 'qlabel' }, tr('Design für hell')), swatches('light'),
         h('div', { class: 'qlabel' }, tr('Design für dunkel')), swatches('dark'),
-        h('p', { class: 'info' }, tr('Design und Farben gehören zu deinem Konto und gelten überall, wo du angemeldet bist. „Eigenes“ öffnet den Farbmischer.')),
+        h('p', { class: 'info' }, curList() ? tr('Gilt nur für diese Liste, jede Liste kann anders aussehen. Design und Farben gehören zu deinem Konto und gelten überall, wo du angemeldet bist, Ansicht und Schrift nur auf diesem Gerät. „Eigenes“ öffnet den Farbmischer.')
+            : tr('Design und Farben gehören zu deinem Konto und gelten überall, wo du angemeldet bist, Ansicht und Schrift nur auf diesem Gerät. „Eigenes“ öffnet den Farbmischer.')),
+        curList() && S.lists.length > 1 && h('div', { class: 'btns' }, h('button', { class: 'btn', type: 'button', onclick: () => confirmDlg(tr('Für alle Listen übernehmen?'),
+            tr('Ansicht, Schrift, Design und Farben von „{0}“ gelten dann für alle Listen. Was du an anderen Listen eigens eingestellt hast, fällt dabei weg.', curList().n),
+            tr('Für alle übernehmen'), lookForAll) }, tr('Für alle Listen übernehmen'))),
+        h('h2', null, tr('Weitere Einstellungen')),
         h('label', { class: 'check' }, whoBox, h('span', null, tr('Anzeigen, wer einen Artikel hinzugefügt hat'))),
         h('label', { class: 'check' }, wakeBox, h('span', null, tr('Bildschirm anlassen, solange Kaufen offen ist'))),
         h('label', { class: 'check' }, keepBox, h('span', null, tr('Zuletzt benutzte Menge merken'))),
@@ -2631,6 +2684,7 @@ const demoFoot = () => DEMO && h('footer', { class: 'demofoot' },
 
 /* ---------- Hilfe: kurz und knapp, wie Kaufen bedient wird. Die ausführliche Fassung steht auf GitHub. ---------- */
 function showHelp() {
+    if (!LS.get('helpSeen', false)) { LS.set('helpSeen', true); render(); }
     const sh = sheet(tr('Hilfe'));
     const strike = strikeOn(), solo = LOCAL || DEMO;
     const sec = (title, ...kids) => [h('h2', null, title), ...kids];
@@ -2642,33 +2696,52 @@ function showHelp() {
         sec(tr('Auf die Liste'),
             p(tr('Ein Produkt im Katalog antippen oder oben ins Suchfeld tippen. Mehrere auf einmal gehen auch, sogar mit Menge: „Milch, 2 kg Äpfel und Brot“, dann Enter. Diktieren klappt genauso. Was es noch nicht gibt, legst du direkt aus der Suche an.'))),
         sec(tr('Auf der Liste'),
-            dl([[tr('Antippen'), strike ? tr('Abhaken, es bleibt durchgestrichen stehen. Zweimal tippen holt es zurück.') : tr('Abhaken, ab in den Einkaufskorb. Im Korb antippen holt es zurück.')],
+            dl([[tr('Antippen'), strike ? tr('Abhaken, es bleibt durchgestrichen an seinem Platz stehen.') : tr('Abhaken, ab in den Einkaufskorb.')],
+                [tr('Zweimal tippen'), tr('Holt Durchgestrichenes zurück auf die Liste. Im Korb reicht ein Tipp.')],
                 [tr('Nach links wischen'), tr('Löschen, ein paar Sekunden lang mit „Rückgängig“')],
                 [tr('Nach rechts wischen'), tr('Menge und Hinweis')],
-                [tr('1 Sekunde halten'), tr('Warengruppe wechseln. Ein Ring zeigt, wann es so weit ist.')]])),
+                [tr('1 Sekunde halten'), tr('Warengruppe wechseln, dazu Menge und Löschen. Ein Ring zeigt, wann es so weit ist.')]])),
         sec(tr('Im Katalog'),
             dl([[tr('Antippen'), tr('Auf die Liste oder wieder runter')],
                 [tr('Kurz halten'), tr('Erst Menge und Hinweis wählen, dann auf die Liste')],
-                [tr('Warengruppe antippen'), tr('Auf- und zuklappen. „+ Neu“ legt dort ein Produkt an.')]])),
+                [tr('Warengruppe antippen'), tr('Auf- und zuklappen, genauso „Bald wieder fällig“ und „Zuletzt gekauft“. „+ Neu“ legt dort ein Produkt an.')]])),
         sec(tr('Menge'),
-            p(tr('Plus und Minus zählen, gedrückt halten zählt schneller, ½ gibt Halbe. Dazu eine Einheit antippen, mehr gibt es unter „Weitere …“, eigene mit „+ Einheit“.'),
+            p(tr('Plus und Minus zählen, gedrückt halten zählt schneller, ½ gibt Halbe. Dazu eine Einheit antippen, mehr gibt es unter „Weitere …“, eigene mit „+ Einheit“. Darunter ist Platz für einen Hinweis, etwa „die grünen“.'),
                 look.keep ? ' ' + tr('Beim Abhaken merkt sich Kaufen die Menge fürs nächste Mal.') : '')),
         sec(tr('Im Laden'),
             p(strike ? tr('Abhaken, was im Wagen liegt. „Einkauf fertig“ unten nimmt alles Abgehakte von der Liste, der Rest bleibt für den nächsten Laden.')
                 : tr('Abhaken, was im Wagen liegt. „Einkauf fertig“ unter dem Korb leert ihn, der Rest bleibt für den nächsten Laden.'),
-                ' ' + tr('Ob Abgehaktes in den Korb wandert oder durchgestrichen stehen bleibt, stellst du in den Einstellungen ein.')),
+                ' ' + tr('Ob Abgehaktes durchgestrichen stehen bleibt oder in einen Einkaufskorb wandert, stellst du in den Einstellungen ein.')),
             p(tr('Unter der Liste schlägt „Bald wieder fällig“ vor, was du regelmäßig kaufst, „Zuletzt gekauft“ hat deine Klassiker.'))),
         sec(tr('Oben'),
             dl([[tr('Listenname'), tr('Liste wechseln oder eine neue anlegen')],
+                [tr('Suchfeld'), tr('Suchen, eintippen oder diktieren, das ✕ leert es')],
                 [[svg('#viewBtn'), tr('Ansicht')], tr('Kacheln, kompakt, Laden-Modus oder Liste')],
-                [[svg('#menuBtn'), tr('Menü')], tr('Vorlagen, Reihenfolge im Laden, Drucken und Teilen, Aus Text einfügen, Katalog verwalten, Einstellungen für Aussehen, Schrift und Einheiten')]])),
+                [[svg('#menuBtn'), tr('Menü')], tr('Vorlagen, Reihenfolge im Laden, Drucken und Teilen, Aus Text einfügen, Katalog verwalten, Einstellungen und diese Hilfe')]])),
+        sec(tr('In den Fenstern'),
+            dl([[tr('Reihenfolge im Laden'), tr('Warengruppe am Griff nach oben oder unten ziehen oder die Pfeile antippen')],
+                [tr('Vorlagen'), tr('Antippen setzt alles auf die Liste, der Stift bearbeitet')],
+                [tr('Schließen'), tr('Das ✕ oben oder ein Tipp daneben')]])),
+        sec(tr('Aussehen'),
+            p(tr('Ansicht, Schrift, Design und Farben stellst du in den Einstellungen für jede Liste einzeln ein. „Für alle Listen übernehmen“ macht sie überall gleich.'))),
         sec(tr('Am Rechner'),
-            p(tr('Mit gedrückter Maus ziehen statt wischen, Rechtsklick statt halten. Enter im Suchfeld nimmt den ersten Treffer, Esc schließt ein Fenster.'))),
+            p(tr('Mit gedrückter Maus ziehen statt wischen, Rechtsklick statt halten, Doppelklick statt zweimal tippen. Enter im Suchfeld nimmt den ersten Treffer, Esc schließt ein Fenster.'))),
         sec(tr('Gut zu wissen'),
             p(solo ? tr('Alles bleibt auf diesem Gerät, auch ohne Netz geht alles. Mach ab und zu eine Sicherung als Datei (im Menü), sonst ist alles weg, wenn die Browserdaten gelöscht werden.')
                 : tr('Geteilte Listen gleichen sich nach ein paar Sekunden ab. Ohne Netz geht alles weiter, Änderungen werden nachgereicht.'))),
         p(h('a', { href: ghDoc(), target: '_blank', rel: 'noopener' }, tr('Ausführliche Anleitung auf GitHub')))),
         h('div', { class: 'btns' }, h('button', { class: 'btn primary', type: 'button', onclick: () => sh.close() }, tr('Alles klar'))));
+}
+/** Einmal beim ersten Start: wo die Hilfe ist. Schließen oder die Hilfe öffnen, dann kommt der Kasten nie wieder. */
+function helpHint() {
+    if (LS.get('helpSeen', false)) return null;
+    const done = () => { LS.set('helpSeen', true); render(); };
+    return h('div', { class: 'a2hs helphint', role: 'region', 'aria-label': tr('Neu bei Kaufen?') },
+        h('b', null, tr('Neu bei Kaufen?')),
+        h('p', null, tr('Antippen hakt ab, wischen löscht oder ändert die Menge, halten wechselt die Warengruppe. Die Hilfe erklärt alles kurz, später findest du sie im Menü.')),
+        h('div', { class: 'btns' },
+            h('button', { class: 'btn', type: 'button', onclick: done }, tr('Schließen')),
+            h('button', { class: 'btn primary', type: 'button', onclick: () => { done(); showHelp(); } }, tr('Hilfe ansehen'))));
 }
 
 function showMenu() {

@@ -71,7 +71,7 @@ If you do not want anything on a server at all, tap **“Use without an account,
 ## How it works
 
 1. **Onto the list:** tap products in the catalog or type them at the top, several at once if you like (“milk, 2 kg apples and bread”). Everyone who shares the list sees them within a few seconds.
-2. **Tick off in the store:** tap an item and it moves, ticked, into the cart below the list. Tapped the wrong one? Tap it in the cart and it is back up. If you prefer, ticked items can stay struck through where they are instead (the default in the list view); then two taps within 2 seconds bring one back.
+2. **Tick off in the store:** tap an item and it stays where it is, checked and struck through, like on paper. Tapped the wrong one? Two taps within 2 seconds bring it back. If you prefer, ticked items can move into a cart below the list instead, where one tap brings them back.
 3. **Done:** “Done shopping” below the cart empties it after asking once more. Whatever is still missing stays on the list for the next store.
 
 | Gesture | On the list and in the cart | In the catalog |
@@ -82,7 +82,7 @@ If you do not want anything on a server at all, tap **“Use without an account,
 | Hold | change the category (about one second, a ring shows it) | quantity and note (half a second) |
 | On a computer | drag with the mouse instead of swiping, right-click instead of holding | right-click instead of holding |
 
-**Explained briefly in the app:** Menu → Help shows how to use it at a glance, with all gestures.
+**Explained briefly in the app:** Menu → Help shows how to use it at a glance, with all gestures. On first start a small box points to it once.
 
 **Without a server:** in [local mode](#on-this-device-only-local-mode) everything works the same, except that the lists never leave the device.
 
@@ -99,8 +99,8 @@ If you do not want anything on a server at all, tap **“Use without an account,
 - **Several at once, also by voice:** type or dictate “milk, 2 kg apples and half a bread” into the search field, press Enter, and everything is on the list. Items are split at commas, “and” or line breaks; without commas (“milk bread apples cream”) the catalog splits the words. Quantities may come before or after, in digits or words. While you type, a preview shows what was recognized.
 - **Recently bought:** the latest and most frequent products, collapsible like the categories. What was bought in the last two weeks says so on the tile (“3 days ago”), a long-press shows the date and how often.
 - **Due again soon:** when you tick things off, Kaufen learns how often you buy them (milk about every 5 days). When it is time again, it waits below the list, ready to tap. A product needs a few purchases for this. Everything stays on your own server, can be switched off per account or per product.
-- **Four views:** small tiles, compact, shopping mode (large rows for ticking off in the store) or list (plain rows on one card, a heading per category, a circle for ticking off on the left, the quantity as a pill on the right). Switched with the button at the top right, remembered per device. Colors come from the chosen theme, as everywhere.
-- **Strike through instead of the cart:** a per-device choice in the settings. Ticked items then stay where they are, checked and struck through, instead of moving into the cart. That is the default in the list view, and can be turned on for every view or for none. Two taps within 2 seconds put an item back on the list, so a single accidental tap brings nothing back. “Done shopping” then takes everything ticked off the list. Others sharing the list who prefer the cart see the same items in their cart.
+- **Four views:** small tiles, compact, shopping mode (large rows for ticking off in the store) or list (plain rows on one card, a heading per category, a circle for ticking off on the left, the quantity as a pill on the right). By default Kaufen starts in the list view, the closest to a paper shopping list. Switched with the button at the top right, remembered per device and for each list separately. Colors come from the chosen theme, as everywhere.
+- **Strike through or cart:** by default ticked items stay where they are, checked and struck through. A per-device choice in the settings: always strike through, always into the cart, or strike through in the list view only. Two taps within 2 seconds put an item back on the list, so a single accidental tap brings nothing back. “Done shopping” then takes everything ticked off the list. Others sharing the list who prefer the cart see the same items in their cart.
 - **Keep shopping without a signal:** the app starts without reception, changes are collected and sent later.
 - **Screen stays on** while the app is open (can be turned off).
 - **Help in the app:** Menu → Help briefly explains tapping, swiping and holding, quantities, shopping in the store and what is at the top and in the menu. The help adapts: if you strike through instead of using the cart, that is what it says.
@@ -153,7 +153,8 @@ For anyone who wants to let others try Kaufen without signing up. **Not for your
 
 - **German and English:** each account picks its language in the settings. A German device starts in German, all others in English. Everything is translated, including the catalog. In a shared list one person sees "Milch" and the other sees "Milk", and it is still the same entry.
 - **Ten themes and your own colors:** five light and five dark color schemes, plus one custom theme each from the color mixer (sliders or color picker, with preview). There you can also pick the text colors for headings, secondary text, list text and quantity. One button matches them to the accent color automatically: easy-to-read list text and a quantity color from the color wheel that stands out from it. If you like, dragging a slider shows your real list instead of the preview. With "Same as device" Kaufen switches automatically between your light and your dark favorite. The look belongs to the account and applies on all devices.
-- **Text, size and spacing:** set per device in the settings: text sizes for everything at once or separately for headings, product names, quantity, count and note, plus how bold the count is. Also the entry height (tiles, labels and rows, 60 to 180 %) and the space between them (0 to 300 %), in every view. With a preview in the chosen view, or right on the real list while dragging if you like.
+- **Every list its own look:** view, text, light or dark, theme and colors apply to the list that is open. The grocery list as a plain list, the hardware store dark with large tiles. Every user sets this up for themselves, in shared lists everyone sees their own look. “Apply to all lists” in the settings makes the look of the open list the default for all.
+- **Text, size and spacing:** set per device and list in the settings: text sizes for everything at once or separately for headings, product names, quantity, count and note, plus how bold the count is. Also the entry height (tiles, labels and rows, 60 to 180 %) and the space between them (0 to 300 %), in every view. With a preview in the chosen view, or right on the real list while dragging if you like.
 - **Installable as an app** (PWA), with its own icon on the home screen.
 
 ### Managing
