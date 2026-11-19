@@ -22,6 +22,11 @@ Upload `kaufen-install.php`, open it in the browser, create the first account. T
 
 <table>
   <tr>
+    <td align="center" width="33%"><img src="docs/en/cart.png" alt="Checked-off items sit ticked and crossed out in the cart, with the “Done shopping” button below" width="250"><br><sub>Cart: ticked and crossed out</sub></td>
+    <td align="center" width="33%"><img src="docs/en/swipe.png" alt="An item in shopping mode being swiped to the left, with a red “Delete” behind it" width="250"><br><sub>Swipe: left deletes, right sets quantity</sub></td>
+    <td align="center" width="33%"><img src="docs/en/category.png" alt="After holding an item: change its category or create a new one" width="250"><br><sub>Hold: change the category</sub></td>
+  </tr>
+  <tr>
     <td align="center" width="33%"><img src="docs/en/store.png" alt="Shopping mode with large rows for ticking off" width="250"><br><sub>Shopping mode: large rows for ticking off</sub></td>
     <td align="center" width="33%"><img src="docs/en/dark.png" alt="Dark theme in the compact view" width="250"><br><sub>Dark and compact</sub></td>
     <td align="center" width="33%"><img src="docs/en/several.png" alt="Preview when typing several products at once" width="250"><br><sub>Several at once, with preview</sub></td>
@@ -43,13 +48,27 @@ Upload `kaufen-install.php`, open it in the browser, create the first account. T
   </tr>
 </table>
 
-<sub>Screenshots of versions 1.11.1 and 1.13.0. Names and entries are made up.</sub>
+<sub>Screenshots of versions 1.11.1, 1.13.0 and 1.14.0. Names and entries are made up.</sub>
 
 > 💜 **Using Kaufen and happy with it?** A ⭐ on GitHub is the easiest way to let me know, and it does more than you'd think: stars are the visible proof that a project does good work, and they are how small projects like this one get found by other people in the first place. Or [tell me what you use it for](https://github.com/burnersen/kaufen/issues/new), I read every message. Thanks for being here!
 
 ## Contents
 
-[Features](#features) · [Requirements](#requirements) · [Installation](#installation) · [Protecting your data](#protecting-your-data) · [Updating](#updating) · [Backup and restore](#backup-and-restore) · [Structure](#structure) · [Good to know](#good-to-know) · [License](#license)
+[How it works](#how-it-works) · [Features](#features) · [Requirements](#requirements) · [Installation](#installation) · [Protecting your data](#protecting-your-data) · [Updating](#updating) · [Backup and restore](#backup-and-restore) · [Structure](#structure) · [Good to know](#good-to-know) · [License](#license)
+
+## How it works
+
+1. **Onto the list:** tap products in the catalog or type them at the top, several at once if you like (“milk, 2 kg apples and bread”). Everyone who shares the list sees them within a few seconds.
+2. **Tick off in the store:** tap an item and it moves, ticked, into the cart below the list. Tapped the wrong one? Tap it in the cart and it is back up.
+3. **Done:** “Done shopping” below the cart empties it after asking once more. Whatever is still missing stays on the list for the next store.
+
+| Gesture | On the list and in the cart | In the catalog |
+|---|---|---|
+| Tap | tick off, into the cart (in the cart: bring back) | put on the list or take it off again |
+| Swipe left | delete completely, with “Undo” for a few seconds | |
+| Swipe right | quantity and note | |
+| Hold | change the category (about one and a half seconds, a ring shows it) | quantity and note (half a second) |
+| On a computer | drag with the mouse instead of swiping, right-click instead of holding | right-click instead of holding |
 
 ## Features
 
@@ -208,6 +227,7 @@ The files in `app/` do nothing when called directly, everything goes through `in
 
 - **Notifications:** on the iPhone they only work when Kaufen is installed via "Add to Home Screen" (iOS 16.4 or later), on Android and on a computer they also work in the browser. When you turn them on, the server sends a test, so you see right away whether it can reach the notification service. If a device does not say goodbye when leaving (no signal), the notification goes out about three minutes after the last change, as soon as any device has Kaufen open again.
 - **Language:** the built-in catalog is stored in German in the database and is only translated for display on English accounts. Products, categories and templates you create yourself stay exactly as typed.
+- **Cart:** belongs to the list and applies to everyone sharing it. Ticking off counts as bought (for “Recently bought” and “Due again soon”), bringing an item back from the cart undoes that. Deleting by swiping does not count as bought.
 - **What belongs to whom:** remembered quantities belong to the list and apply to everyone sharing it. Language, "remember quantity", "who added it", custom units and the look belong to the account. View and text sizes only apply to the device.
 - **Catalog and templates** apply to all accounts and all lists. Any account may change individual products and categories. "Delete everything", "Restore default", export and import and the backups are reserved for the administrator.
 - **Lists** are only visible to their members. Only the person who created a list can share, rename and delete it. When an account is deleted, its lists go to the administrator so nothing is lost.

@@ -22,6 +22,11 @@ Produkte tippt man aus einem fertigen Katalog an, sortiert nach Warengruppen. Im
 
 <table>
   <tr>
+    <td align="center" width="33%"><img src="docs/de/korb.png" alt="Abgehaktes liegt mit Haken und durchgestrichen im Einkaufskorb, darunter der Knopf „Einkauf fertig“" width="250"><br><sub>Einkaufskorb: abgehakt und durchgestrichen</sub></td>
+    <td align="center" width="33%"><img src="docs/de/wischen.png" alt="Ein Eintrag im Laden-Modus wird nach links gewischt, dahinter erscheint rot „Löschen“" width="250"><br><sub>Wischen: links löschen, rechts Menge</sub></td>
+    <td align="center" width="33%"><img src="docs/de/warengruppe.png" alt="Nach langem Halten: Warengruppe wechseln oder neu anlegen" width="250"><br><sub>Halten: Warengruppe wechseln</sub></td>
+  </tr>
+  <tr>
     <td align="center" width="33%"><img src="docs/de/laden.png" alt="Laden-Modus mit großen Zeilen zum Abhaken" width="250"><br><sub>Laden-Modus: große Zeilen zum Abhaken</sub></td>
     <td align="center" width="33%"><img src="docs/de/dunkel.png" alt="Dunkles Design in der kompakten Ansicht" width="250"><br><sub>Dunkel und kompakt</sub></td>
     <td align="center" width="33%"><img src="docs/de/mehrere.png" alt="Vorschau, wenn man mehrere Produkte auf einmal eintippt" width="250"><br><sub>Mehrere auf einmal, mit Vorschau</sub></td>
@@ -43,13 +48,27 @@ Produkte tippt man aus einem fertigen Katalog an, sortiert nach Warengruppen. Im
   </tr>
 </table>
 
-<sub>Screenshots von Version 1.11.1 und 1.13.0. Namen und Einträge sind erfunden.</sub>
+<sub>Screenshots von Version 1.11.1, 1.13.0 und 1.14.0. Namen und Einträge sind erfunden.</sub>
 
 > 💜 **Gefällt dir Kaufen?** Ein ⭐ auf GitHub ist die einfachste Art, mir das zu sagen, und es bringt mehr, als man denkt: Sterne sind der sichtbare Beweis, dass ein Projekt gute Arbeit leistet, und genau darüber finden andere kleine Projekte wie dieses überhaupt erst Leute. Oder [erzähl mir, wofür du es nutzt](https://github.com/burnersen/kaufen/issues/new), ich lese jede Nachricht. Danke, dass du da bist!
 
 ## Inhalt
 
-[Funktionen](#funktionen) · [Voraussetzungen](#voraussetzungen) · [Installation](#installation) · [Daten schützen](#daten-schützen) · [Aktualisieren](#aktualisieren) · [Sichern und Zurückholen](#sichern-und-zurückholen) · [Aufbau](#aufbau) · [Gut zu wissen](#gut-zu-wissen) · [Lizenz](#lizenz)
+[So funktioniert's](#so-funktionierts) · [Funktionen](#funktionen) · [Voraussetzungen](#voraussetzungen) · [Installation](#installation) · [Daten schützen](#daten-schützen) · [Aktualisieren](#aktualisieren) · [Sichern und Zurückholen](#sichern-und-zurückholen) · [Aufbau](#aufbau) · [Gut zu wissen](#gut-zu-wissen) · [Lizenz](#lizenz)
+
+## So funktioniert's
+
+1. **Auf die Liste:** Produkte im Katalog antippen oder oben eintippen, auch mehrere auf einmal („Milch, 2 kg Äpfel und Brot“). Alle, die die Liste teilen, sehen es nach ein paar Sekunden.
+2. **Im Laden abhaken:** Eintrag antippen, dann wandert er mit Haken in den Einkaufskorb unter der Liste. Vertippt? Im Korb nochmal antippen, dann ist er wieder oben.
+3. **Fertig:** „Einkauf fertig“ unter dem Korb leert ihn nach einer Sicherheitsfrage. Was noch fehlt, bleibt für den nächsten Laden auf der Liste.
+
+| Geste | Auf der Liste und im Korb | Im Katalog |
+|---|---|---|
+| Antippen | abhaken, ab in den Korb (im Korb: zurückholen) | auf die Liste setzen oder wieder runternehmen |
+| Nach links wischen | ganz löschen, ein paar Sekunden lang mit „Rückgängig“ | |
+| Nach rechts wischen | Menge und Hinweis | |
+| Halten | Warengruppe wechseln (etwa anderthalb Sekunden, ein Ring zeigt es an) | Menge und Hinweis (eine halbe Sekunde) |
+| Am Rechner | mit gedrückter Maus ziehen statt wischen, Rechtsklick statt halten | Rechtsklick statt halten |
 
 ## Funktionen
 
@@ -208,6 +227,7 @@ Die Dateien in `app/` tun nichts, wenn man sie direkt aufruft, alles läuft übe
 
 - **Mitteilungen:** auf dem iPhone gehen sie nur, wenn Kaufen über „Zum Home-Bildschirm“ installiert ist (ab iOS 16.4), auf Android und am Rechner auch im Browser. Beim Einschalten schickt der Server eine Probe, so sieht man sofort, ob er den Mitteilungsdienst erreicht. Meldet sich ein Gerät beim Verlassen nicht ab (Funkloch), geht die Mitteilung rund drei Minuten nach der letzten Änderung raus, sobald irgendein Gerät Kaufen das nächste Mal offen hat.
 - **Sprache:** der mitgelieferte Katalog liegt deutsch in der Datenbank und wird für englische Konten nur bei der Anzeige übersetzt. Selbst angelegte Produkte, Warengruppen und Vorlagen bleiben so, wie sie getippt wurden.
+- **Einkaufskorb:** gehört zur Liste und gilt für alle, die sie teilen. Abhaken zählt als gekauft (für „Zuletzt gekauft“ und „Bald wieder fällig“), zurückholen aus dem Korb nimmt das wieder zurück. Löschen per Wischen zählt nicht als gekauft.
 - **Was wem gehört:** die gemerkten Mengen gehören zur Liste und gelten für alle, die sie teilen. Sprache, „Menge merken“, „Wer war's“, eigene Einheiten und das Aussehen gehören zum Konto. Ansicht und Schriftgrößen gelten nur für das jeweilige Gerät.
 - **Katalog und Vorlagen** gelten für alle Konten und alle Listen. Einzelne Produkte und Warengruppen darf jedes Konto ändern, „Alles löschen“, „Standard wiederherstellen“, Export und Import sowie die Sicherungen sind dem Administrator vorbehalten.
 - **Listen** sehen nur ihre Mitglieder. Teilen, umbenennen und löschen kann nur, wer die Liste angelegt hat. Wird ein Konto gelöscht, gehen seine Listen an den Administrator, damit nichts verloren geht.
