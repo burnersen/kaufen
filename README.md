@@ -36,9 +36,14 @@ Produkte tippt man aus einem fertigen Katalog an, sortiert nach Warengruppen. Im
     <td align="center"><img src="docs/de/menue.png" alt="Das Menü" width="250"><br><sub>Menü</sub></td>
     <td align="center"><img src="docs/de/sicherung.png" alt="Sicherung und Update für den Administrator" width="250"><br><sub>Sicherung und Update</sub></td>
   </tr>
+  <tr>
+    <td align="center"><img src="docs/de/drucken.png" alt="Drucken und Teilen: Einkaufszettel als PDF, Liste als Text" width="250"><br><sub>Drucken und Teilen</sub></td>
+    <td align="center"><img src="docs/de/einfuegen.png" alt="Aus Text einfügen, mit Vorschau, was erkannt wurde" width="250"><br><sub>Aus Text einfügen</sub></td>
+    <td align="center"><img src="docs/de/zettel.png" alt="Der Einkaufszettel als PDF: zwei Spalten, Kästchen zum Abhaken" width="250"><br><sub>Der Zettel zum Ausdrucken</sub></td>
+  </tr>
 </table>
 
-<sub>Screenshots von Version 1.11.1. Namen und Einträge sind erfunden.</sub>
+<sub>Screenshots von Version 1.11.1 und 1.13.0. Namen und Einträge sind erfunden.</sub>
 
 > 💜 **Gefällt dir Kaufen?** Ein ⭐ auf GitHub ist die einfachste Art, mir das zu sagen, und es bringt mehr, als man denkt: Sterne sind der sichtbare Beweis, dass ein Projekt gute Arbeit leistet, und genau darüber finden andere kleine Projekte wie dieses überhaupt erst Leute. Oder [erzähl mir, wofür du es nutzt](https://github.com/burnersen/kaufen/issues/new), ich lese jede Nachricht. Danke, dass du da bist!
 
@@ -74,7 +79,9 @@ Produkte tippt man aus einem fertigen Katalog an, sortiert nach Warengruppen. Im
 - **Mehrere Listen:** jeder kann eigene Listen anlegen und mit beliebigen Konten teilen. Wer eingeladen wurde, kann eine Liste auch wieder verlassen.
 - **Wer war's:** in geteilten Listen steht am Produkt, wer es draufgesetzt hat. Jedes Konto kann das in den Einstellungen ausblenden.
 - **Mitteilungen aufs Handy:** wer möchte, bekommt eine Mitteilung, wenn jemand etwas auf eine geteilte Liste setzt. Jedes Konto schaltet das pro Gerät in den Einstellungen ein oder aus. Gebündelt statt einzeln: drei Produkte ergeben eine Mitteilung, und zwar in dem Moment, in dem der andere Kaufen verlässt. Abhaken im Laden meldet nichts.
-- **Liste als Text teilen:** die offene Liste geht als schlichter Text an WhatsApp, Mail und Co. oder in die Zwischenablage, für Leute ohne Konto.
+- **Einkaufszettel als PDF:** für die Tage, an denen das Handy zu Hause bleibt. Zwei Spalten, damit das Blatt voll genutzt wird, nach Warengruppen in der Reihenfolge des eigenen Ladens, vor jedem Eintrag ein Kästchen zum Abhaken mit dem Kuli. Schlicht schwarzweiß, druckt also auf jedem Drucker gut. Unten auf Wunsch leere Zeilen „Noch dazu“ zum Dazuschreiben, eine leere Liste ergibt einen leeren Zettel. Am Handy geht das PDF übers Teilen direkt zum Drucker. Erstellt wird es im Browser, ohne fremde Bibliothek und auch ohne Netz.
+- **Liste als Text:** die offene Liste geht als schlichter Text an WhatsApp, Mail und Co., in die Zwischenablage oder als Textdatei, für Leute ohne Konto. Beides steht unter Menü → Drucken und Teilen.
+- **Aus Text einfügen:** Text reinkopieren oder eine Textdatei öffnen, und alles landet auf der offenen Liste. Kaufen versteht den eigenen Export, Listen mit Spiegelstrichen, Kästchen oder Nummern und freien Text wie „Milch, 2 kg Äpfel und Brot“. Vorher zeigt eine Vorschau, was erkannt wurde. Was schon auf der Liste steht, kommt nicht doppelt drauf, abgehakte Zeilen ([x]) bleiben weg.
 - **Reihenfolge im Laden:** die Warengruppen lassen sich pro Liste so sortieren, wie der eigene Laden aufgebaut ist.
 - **Vorlagen:** „Grillen“ oder „Frühstück“ setzt mit einem Tipp mehrere Produkte auf die Liste. Auch die aktuelle Liste lässt sich als Vorlage speichern.
 
@@ -187,7 +194,7 @@ index.php      Einstieg und Einstellungen (PHP)
 app/lib/       Sprache, Datenbank, Konten und Anmeldung, Listen und Katalog, Standardkatalog, Mitteilungen, Sicherung und Update (PHP)
 app/routes/    alle JSON-Aktionen (PHP)
 app/views/     Anmeldeseite und Hauptseite (PHP/HTML)
-app/assets/    die App im Browser (JavaScript, CSS), englische Übersetzung, Symbole, Service Worker
+app/assets/    die App im Browser (JavaScript, CSS), PDF-Einkaufszettel, englische Übersetzung, Symbole, Service Worker
 data/          entsteht beim ersten Start, hier liegen Datenbank und Konten
 tools/         baut die Release-Dateien (php tools/build-release.php)
 ```

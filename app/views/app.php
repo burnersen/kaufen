@@ -19,6 +19,7 @@ $kfV = function (string $f): string { return h('?action=asset&f=' . $f . '&v=' .
 <link rel="stylesheet" href="<?= $kfV('app.css') ?>">
 <script src="<?= $kfV('boot.js') ?>"></script>
 <script defer src="<?= $kfV('i18n.js') ?>"></script>
+<script defer src="<?= $kfV('pdf.js') ?>"></script>
 <script defer src="<?= $kfV('app.js') ?>"></script>
 </head>
 <body>

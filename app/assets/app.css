@@ -177,6 +177,8 @@ button.row { font-weight: 600; }
 .row .mini { display: grid; place-items: center; width: 2.3rem; height: 2.3rem; border: 0; border-radius: .6rem; background: none; color: var(--mut); font-size: 1.05rem; flex: none; }
 .row .mini:hover { background: var(--acc-soft); color: var(--text); }
 .row.plain { border: 0; background: none; padding-left: 0; padding-right: 0; }
+.imp .row { min-height: 2.5rem; margin-bottom: .1rem; padding-top: .2rem; padding-bottom: .2rem; }
+.imp .row.off { opacity: .5; }
 .grip { touch-action: none; cursor: grab; }
 .row.drag { border-color: var(--acc); box-shadow: 0 4px 18px rgba(0, 0, 0, .2); }
 .badge { font-size: .7rem; font-weight: 700; padding: .1rem .45rem; border-radius: 1rem; background: var(--acc-soft); color: var(--acc); margin-left: .35rem; }
