@@ -284,6 +284,12 @@ The files in `app/` do nothing when called directly, everything goes through `in
 
 Kaufen is free and made in my spare time, on my own hardware and electricity bill. If it saved you time and you'd like to say thanks, you can [drop a little something in the tip jar on Ko-fi](https://ko-fi.com/burnersen), it keeps motivation and coffee flowing. ☕ Completely optional, and either way: thank you for using it!
 
+## ⚠️ Disclaimer
+
+Kaufen is free hobby software, provided **"as is", without any warranty or condition of any kind**. It was built and tested with care, but you use it **at your own risk**. Make a backup from the menu regularly and before every update. If you run Kaufen on your own server, you are responsible for that server, its updates and backups.
+
+Where this README describes what Kaufen does, checks or never does, that is how it is designed to work, not a promise or guarantee: software can have bugs, and systems, services and other programs do not always behave as expected. As far as the applicable law allows, the author is not liable for any damages or data loss arising from the use of this software. See sections 15 and 16 of the [license](LICENSE).
+
 ## License
 
 GNU Affero General Public License v3.0, see [LICENSE](LICENSE).
