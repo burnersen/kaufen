@@ -219,7 +219,15 @@ function kfUsageBought(int $lid, array $row, int $now): void {
         [$lid, $row['name'], (int)$row['cat_id'], $now, (string)$row['note'], $gap, $gn, $rs, $u ? $u['last_at'] . ',' . $u['gap'] . ',' . $u['gn'] . ',' . $u['rs'] : '']);
 }
 
-/** Abhaken rückgängig: Zähler und Kaufrhythmus wie vorher, ohne gemerkten Stand nur einen weniger */
+/** Abgehaktes mit diesem Namen fällt weg, weil es wieder gebraucht wird: es ist gekauft (zum Zeitpunkt des Abhakens) und geht von der Liste */
+function kfDropGot(int $lid, string $name): void {
+    foreach (kfQ('SELECT uid, name, cat_id, note, got_at FROM items WHERE list_id = ? AND name = ? AND got_at > 0', [$lid, $name])->fetchAll() as $r) {
+        kfUsageBought($lid, $r, (int)$r['got_at']);
+        kfQ('DELETE FROM items WHERE uid = ?', [$r['uid']]);
+    }
+}
+
+/** Kauf rückgängig: Zähler und Kaufrhythmus wie vorher, ohne gemerkten Stand nur einen weniger */
 function kfUsageUndo(int $lid, string $name): void {
     $u = kfQ('SELECT prev FROM usage WHERE list_id = ? AND name = ?', [$lid, $name])->fetch();
     $p = $u ? explode(',', (string)$u['prev']) : [];
@@ -256,7 +264,7 @@ function kfApplyOps(array $me, int $lid, array $ops): void {
             kfQ('UPDATE usage SET am = last_at WHERE list_id = ? AND name = ?', [$lid, $name]);
             $changed = true;
             if (kfQ('SELECT 1 FROM items WHERE list_id = ? AND name = ? AND got_at = 0', [$lid, $name])->fetchColumn()) continue;
-            kfQ('DELETE FROM items WHERE list_id = ? AND name = ? AND got_at > 0', [$lid, $name]);
+            kfDropGot($lid, $name);
             kfQ('INSERT INTO items (uid, list_id, name, cat_id, note, added_by, added_at) VALUES (?, ?, ?, ?, ?, ?, ?)', [$uid, $lid, $name, $cat, $note, $me['id'], $now]);
         } elseif (($t === 'noauto' || $t === 'reauto') && $name !== '') {   // dieses Produkt nie mehr automatisch auf die Liste, oder wieder
             $st = $t === 'noauto' ? kfQ('UPDATE usage SET am = -1 WHERE list_id = ? AND name = ? AND am >= 0', [$lid, $name])
@@ -269,37 +277,39 @@ function kfApplyOps(array $me, int $lid, array $ops): void {
                 if ($note !== '') { kfQ('UPDATE items SET note = ? WHERE uid = ?', [$note, $same]); $changed = true; }
             } else {
                 // Liegt es schon im Korb, wird es eben noch einmal gebraucht: das im Korb ist gekauft und fällt weg, die Liste bekommt es neu
-                kfQ('DELETE FROM items WHERE list_id = ? AND name = ? AND got_at > 0', [$lid, $name]);
+                kfDropGot($lid, $name);
                 kfQ('INSERT INTO items (uid, list_id, name, cat_id, note, added_by, added_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
                     [$uid, $lid, $name, $cat, $note, (int)($t === 'restore' && !empty($op['by']) ? $op['by'] : $me['id']), $now]);
                 $changed = true;
                 if ($t === 'add') kfPushQueue($lid, $me['id'], $name);   // die anderen erfahren es gebündelt, siehe push.php
             }
             if ($t === 'restore') kfUsageUndo($lid, $name);   // altes Abhaken (done) rückgängig
-        } elseif ($t === 'got' && $uidOk) {   // abgehakt: in den Korb, zählt als gekauft
-            $row = kfQ('SELECT name, cat_id, note FROM items WHERE uid = ? AND list_id = ? AND got_at = 0', [$uid, $lid])->fetch();
+        } elseif ($t === 'got' && $uidOk) {   // abgehakt: bleibt durchgestrichen stehen. Gekauft zählt es erst mit „Einkauf fertig“ (buy).
+            $row = kfQ('SELECT name FROM items WHERE uid = ? AND list_id = ? AND got_at = 0', [$uid, $lid])->fetch();
             if (!$row) continue;
             kfQ('UPDATE items SET got_at = ? WHERE uid = ?', [$now, $uid]);
             kfPushUnqueue($lid, $row['name']);
-            kfUsageBought($lid, $row, $now);
             $changed = true;
-        } elseif ($t === 'ungot' && $uidOk) {   // aus dem Korb zurück auf die Liste
-            $row = kfQ('SELECT name FROM items WHERE uid = ? AND list_id = ? AND got_at > 0', [$uid, $lid])->fetch();
+        } elseif ($t === 'ungot' && $uidOk) {   // Abgehaktes zurück auf die Liste
+            $st = kfQ('UPDATE items SET got_at = 0 WHERE uid = ? AND list_id = ? AND got_at > 0', [$uid, $lid]);
+            $changed = $changed || $st->rowCount() > 0;
+        } elseif ($t === 'buy' && $uidOk) {   // „Einkauf fertig“: Abgehaktes ist gekauft (zum Zeitpunkt des Abhakens) und geht von der Liste
+            $row = kfQ('SELECT name, cat_id, note, got_at FROM items WHERE uid = ? AND list_id = ? AND got_at > 0', [$uid, $lid])->fetch();
             if (!$row) continue;
-            kfQ('UPDATE items SET got_at = 0 WHERE uid = ?', [$uid]);
-            kfUsageUndo($lid, $row['name']);
+            kfQ('DELETE FROM items WHERE uid = ?', [$uid]);
+            kfUsageBought($lid, $row, min($now, (int)$row['got_at']));
             $changed = true;
         } elseif ($t === 'back' && $uidOk && $name !== '') {   // Löschen rückgängig: genau so wieder hin, ohne Mitteilung und ohne Zählerei
             if (kfQ('SELECT 1 FROM items WHERE uid = ?', [$uid])->fetchColumn()) continue;
             if (kfQ('SELECT 1 FROM items WHERE list_id = ? AND name = ? AND got_at = 0', [$lid, $name])->fetchColumn()) continue;   // steht schon wieder drauf
             $got = max(0, min($now, (int)($op['got'] ?? 0)));
-            if (!$got) kfQ('DELETE FROM items WHERE list_id = ? AND name = ? AND got_at > 0', [$lid, $name]);
+            if (!$got) kfDropGot($lid, $name);
             elseif (kfQ('SELECT 1 FROM items WHERE list_id = ? AND name = ?', [$lid, $name])->fetchColumn()) continue;
             $at = (int)($op['at'] ?? 0);
             kfQ('INSERT INTO items (uid, list_id, name, cat_id, note, added_by, added_at, got_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
                 [$uid, $lid, $name, $cat, $note, max(0, (int)($op['by'] ?? 0)) ?: $me['id'], $at > 0 && $at <= $now ? $at : $now, $got]);
             $changed = true;
-        } elseif (($t === 'done' || $t === 'remove') && $uidOk) {   // done: Abhaken ohne Korb (ältere App-Versionen), remove: löschen
+        } elseif (($t === 'done' || $t === 'remove') && $uidOk) {   // done: Abhaken ohne Korb (ältere App-Versionen), remove: löschen, zählt nie als gekauft
             $row = kfQ('SELECT name, cat_id, note, got_at FROM items WHERE uid = ? AND list_id = ?', [$uid, $lid])->fetch();
             if (!$row) continue;
             kfQ('DELETE FROM items WHERE uid = ?', [$uid]);
