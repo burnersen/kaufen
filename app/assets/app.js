@@ -1882,7 +1882,20 @@ const normC = o => ({ mode: o && ['light', 'dark'].includes(o.mode) ? o.mode : '
 const normPl = o => Object.fromEntries(Object.entries(o && typeof o === 'object' ? o : {}).filter(([k, v]) => /^[\w-]{1,40}$/.test(k) && v && typeof v === 'object').slice(0, 100).map(([k, v]) => [k, normC(v)]));
 const normLook = o => ({ ...normC(o), pl: normPl(o && o.pl),
     lang: o && ['de', 'en'].includes(o.lang) ? o.lang : '', keep: !(o && o.keep === false), who: !(o && o.who === false), due: !(o && o.due === false), dn: [2, 3, 4].includes(o && o.dn) ? o.dn : 2, auto: [0, 28, 56, 84].includes(o && o.auto) ? o.auto : 28, units: Array.isArray(o && o.units) ? o.units.filter(okUnit).slice(0, 12) : [],
-    uv: Array.isArray(o && o.uv) ? UNITS.map(x => x[0]).filter(k => o.uv.includes(k)) : null });
+    uv: Array.isArray(o && o.uv) ? UNITS.map(x => x[0]).filter(k => o.uv.includes(k)) : null, my: normMy(o && o.my) });
+/** Meine Designs: [{id: 'my' + 8 Buchstaben, n: Name, dk: dunkel?, c: Farben wie beim eigenen Design}], höchstens 30 */
+function normMy(a) {
+    const out = [];
+    for (const d of Array.isArray(a) ? a : []) {
+        const c = d && okCols(d.c);
+        if (out.length >= 30 || !c || typeof d.id !== 'string' || !/^my[a-z]{8}$/.test(d.id) || out.some(x => x.id === d.id)) continue;
+        const n = String(d.n || '').trim().slice(0, 40);
+        if (n) out.push({ id: d.id, n, dk: !!d.dk, c });
+    }
+    return out;
+}
+const myOf = id => typeof id === 'string' && id.startsWith('my') && look.my.find(d => d.id === id) || null;
+const newMyId = () => 'my' + Array.from({ length: 8 }, () => String.fromCharCode(97 + Math.floor(Math.random() * 26))).join('');
 /** Einstellungen des Kontos: mode = auto|light|dark, l/d = gewähltes Design für hell/dunkel, cl/cd = eigene Farben (der Standard für alle Listen),
     pl = dasselbe je Liste ({Listennummer: {mode, l, d, cl, cd}}), sobald an einer Liste das Aussehen eigens eingestellt wurde,
     lang = Sprache ('' = noch nicht gewählt), keep = zuletzt benutzte Menge merken, who = anzeigen, wer einen Artikel hinzugefügt hat, due = „Bald wieder fällig“ zeigen, dn = ab dem wievielten Kauf (2 bis 4),
@@ -1896,6 +1909,8 @@ const lk = () => { const o = cur != null && (look.pl[lvKey()] || look.pl[cur]); 
 const palOf = mode => {
     const a = lk(), v = a[mode === 'dark' ? 'd' : 'l'];
     if (v === 'eigen' && a[mode === 'dark' ? 'cd' : 'cl']) return v;
+    const my = myOf(v);
+    if (my && my.dk === (mode === 'dark')) return v;   // eins von „Meine Designs“
     return PALS[mode].some(p => p[0] === v) ? v : PALS[mode][0][0];
 };
 let lookEpoch = 0;   // zählt jede Änderung an den Einstellungen des Kontos und jedes Speichern, siehe applyState
@@ -2083,8 +2098,9 @@ function applyTheme() {
     const pal = palOf(mode);
     root.dataset.theme = mode;
     root.dataset.pal = pal;
-    setVars(root, pal === 'eigen' ? a[mode === 'dark' ? 'cd' : 'cl'] : null);
-    if (pal !== 'eigen') {   // fertige Designs: der Fertig-Haken passend zum Akzent aus app.css
+    const colsOf = (m, p) => p === 'eigen' ? a[m === 'dark' ? 'cd' : 'cl'] : myOf(p) ? myOf(p).c : null;   // eigene Farben oder eins von „Meine Designs“
+    setVars(root, colsOf(mode, pal));
+    if (!colsOf(mode, pal)) {   // fertige Designs: der Fertig-Haken passend zum Akzent aus app.css
         const cs = getComputedStyle(root), v = k => cs.getPropertyValue(k).trim().toLowerCase(), acc = v('--acc');
         if (isHex(acc)) root.style.setProperty('--ok', okAuto(acc));
         if (isHex(acc) && isHex(v('--card')) && isHex(v('--bg'))) root.style.setProperty('--acc-ink', inkOf(acc, v('--card'), v('--bg')));
@@ -2093,7 +2109,7 @@ function applyTheme() {
     const meta = $('meta[name=theme-color]');
     if (meta) meta.content = getComputedStyle(root).getPropertyValue(mode === 'dark' ? '--bg' : '--acc').trim() || meta.content;
     // Merkzettel für boot.js: so sieht dieses Gerät beim nächsten Start sofort richtig aus, auch auf der Anmeldeseite
-    const side = m => { const pal = palOf(m), c = pal === 'eigen' ? a[m === 'dark' ? 'cd' : 'cl'] : null; return { pal, vars: c ? derive(c) : null }; };
+    const side = m => { const pal = palOf(m), c = colsOf(m, pal); return { pal, vars: c ? derive(c) : null }; };
     const paint = { mode: a.mode, light: side('light'), dark: side('dark') };
     if (meta) paint[mode].tc = meta.content;
     LS.set('paint', paint);
@@ -2355,6 +2371,106 @@ function editLook(mode, redraw) {
     show();
 }
 
+/* ---------- Meine Designs: gespeicherte Farbsätze im Konto, als Datei exportieren und wieder einlesen ---------- */
+/** Was gerade zu sehen ist: hell oder dunkel */
+const curMode = () => { const a = lk(); return a.mode === 'auto' ? (darkMq.matches ? 'dark' : 'light') : a.mode; };
+/** Die Farben des Designs, das auf dieser Seite (hell/dunkel) gerade gilt, als Farbsatz wie beim eigenen Design */
+function curColors(mode) {
+    const a = lk(), pal = palOf(mode);
+    if (pal === 'eigen') return { ...a[mode === 'dark' ? 'cd' : 'cl'] };
+    if (myOf(pal)) return { ...myOf(pal).c };
+    return fillAuto({ ...palColors(pal), m: ['bg', 'card', 'text'] }, mode === 'dark');   // fertiges Design: seine Grundfarben, der Rest wie im Farbmischer
+}
+const designName = mode => { const pal = palOf(mode), my = myOf(pal), p = PALS[mode].find(x => x[0] === pal); return my ? my.n : p ? tr(p[1]) : tr('Eigenes'); };
+function saveMyDesign(done) {
+    const mode = curMode();
+    if (look.my.length >= 30) return toast(tr('Mehr als 30 Designs gehen nicht. Lösch eins unter „Meine Designs“.'));
+    ask(tr('Aktuelles Design speichern'), [
+        { type: 'info', text: mode === 'dark' ? tr('Gespeichert wird das dunkle Design, das du gerade siehst („{0}“), mit allen Farben.', designName(mode))
+            : tr('Gespeichert wird das helle Design, das du gerade siehst („{0}“), mit allen Farben.', designName(mode)) },
+        { k: 'n', label: tr('Name'), value: designName(mode), max: 40 }], tr('Speichern'), v => {
+        const n = v.n.trim().slice(0, 40);
+        if (!n) throw new Error(tr('Bitte einen Namen eingeben.'));
+        const d = { id: newMyId(), n, dk: mode === 'dark', c: okCols(curColors(mode)) };
+        setLook({ my: [...look.my, d], [mode === 'dark' ? 'd' : 'l']: d.id });
+        toast(tr('„{0}“ gespeichert', n));
+        if (done) done();
+    });
+}
+function showMyDesigns(done) {
+    const sh = sheet(tr('Meine Designs'), { onclose: () => { if (done) done(); } });
+    const fileIn = h('input', { type: 'file', class: 'vh', accept: '.json,application/json', onchange: () => {
+        const f = fileIn.files && fileIn.files[0];
+        if (!f) return;
+        const rd = new FileReader();
+        rd.onload = () => { try { importMyDesigns(String(rd.result)); } catch (e) { toast(e.message); } fileIn.value = ''; draw(); };
+        rd.readAsText(f);
+    } });
+    const set = my => setLook({ my });
+    const row = d => {
+        const dot = h('span', { class: 'pal mine mini' }, h('span', { class: 'dot' }, h('i')));
+        setVars(dot, d.c);
+        const pk = d.dk ? 'd' : 'l', ck = d.dk ? 'cd' : 'cl', mode = d.dk ? 'dark' : 'light';
+        return h('div', { class: 'row mydesign' }, dot,
+            h('span', { class: 'grow' }, d.n, h('small', null, d.dk ? tr('dunkel') : tr('hell'))),
+            h('div', { class: 'acts' },
+                h('button', { class: 'btn small', type: 'button', onclick: () => ask(tr('Umbenennen'), [{ k: 'n', label: tr('Name'), value: d.n, max: 40 }], tr('Speichern'), v => {
+                    const n = v.n.trim().slice(0, 40);
+                    if (!n) throw new Error(tr('Bitte einen Namen eingeben.'));
+                    set(look.my.map(x => x.id === d.id ? { ...x, n } : x)); draw();
+                }) }, tr('Umbenennen')),
+                h('button', { class: 'btn small', type: 'button', onclick: () => confirmDlg(tr('Überschreiben?'),
+                    tr('„{0}“ bekommt die Farben des {1} Designs, das gerade gilt („{2}“).', d.n, d.dk ? tr('dunklen') : tr('hellen'), designName(mode)), tr('Überschreiben'),
+                    () => { set(look.my.map(x => x.id === d.id ? { ...x, c: okCols(curColors(mode)) } : x)); draw(); toast(tr('„{0}“ überschrieben', d.n)); }) }, tr('Überschreiben')),
+                h('button', { class: 'btn small', type: 'button', onclick: () => {   // als „Eigenes“ in den Farbmischer, das gespeicherte bleibt, wie es ist
+                    const go = () => { sh.close(); setLook({ [ck]: { ...d.c }, [pk]: 'eigen' }); editLook(mode, () => {}); };
+                    const own = lk()[ck];
+                    if (own && JSON.stringify(okCols(own)) !== JSON.stringify(okCols(d.c)) && !look.my.some(x => JSON.stringify(x.c) === JSON.stringify(okCols(own))))
+                        confirmDlg(tr('Eigenes ersetzen?'), tr('Dein bisheriges „Eigenes“ wird dabei ersetzt. Speichere es vorher, wenn du es behalten willst.'), tr('Ersetzen'), go);
+                    else go();
+                } }, tr('Bearbeiten')),
+                h('button', { class: 'btn small danger', type: 'button', onclick: () => confirmDlg(tr('Design löschen'), tr('„{0}“ wird gelöscht.', d.n), tr('Löschen'),
+                    () => { set(look.my.filter(x => x.id !== d.id)); draw(); }) }, tr('Löschen'))));
+    };
+    const list = h('div');
+    function draw() {
+        fill(list, look.my.length ? [...look.my.filter(d => !d.dk), ...look.my.filter(d => d.dk)].map(row)
+            : h('p', { class: 'hint' }, tr('Noch keine gespeicherten Designs. „Aktuelles Design speichern …“ in den Einstellungen legt eins an.')));
+    }
+    draw();
+    put(sh.body,
+        h('p', { class: 'info' }, tr('Gespeicherte Designs gehören zu deinem Konto und stehen auf allen Geräten bei den Designs für hell bzw. dunkel. „Bearbeiten“ holt eins als „Eigenes“ in den Farbmischer, mit „Überschreiben“ kommt das Ergebnis zurück.')),
+        list,
+        h('div', { class: 'btns' },
+            h('button', { class: 'btn', type: 'button', disabled: !look.my.length, onclick: exportMyDesigns }, tr('Exportieren')),
+            h('label', { class: 'btn' }, fileIn, tr('Importieren'))),
+        h('p', { class: 'info' }, tr('Exportieren speichert alle deine Designs als Datei, zur Sicherung oder für ein anderes Konto. Importieren liest so eine Datei wieder ein, schon vorhandene werden übersprungen.')));
+}
+function exportMyDesigns() {
+    const d = new Date(), p = n => String(n).padStart(2, '0');
+    download('Kaufen-' + tr('Designs') + ' ' + d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + '.json',
+        JSON.stringify({ kaufen: 'designs', v: 1, designs: look.my.map(x => ({ n: x.n, dk: x.dk, c: x.c })) }, null, 2), 'application/json');
+}
+function importMyDesigns(text) {
+    let data;
+    try { data = JSON.parse(text); } catch (e) { throw new Error(tr('Das ist keine Design-Datei von Kaufen.')); }
+    const list = data && data.kaufen === 'designs' && Array.isArray(data.designs) ? data.designs : null;
+    if (!list) throw new Error(tr('Das ist keine Design-Datei von Kaufen.'));
+    const key = x => x.n + '|' + (x.dk ? 1 : 0) + '|' + JSON.stringify(okCols(x.c));
+    const have = new Set(look.my.map(key)), add = [];
+    let skipped = 0;
+    for (const x of list) {
+        const c = x && okCols(x.c), n = x && String(x.n || '').trim().slice(0, 40);
+        if (!c || !n) { skipped++; continue; }
+        const d = { id: newMyId(), n, dk: !!x.dk, c };
+        if (have.has(key(d))) { skipped++; continue; }
+        if (look.my.length + add.length >= 30) { skipped++; continue; }
+        have.add(key(d)); add.push(d);
+    }
+    if (add.length) setLook({ my: [...look.my, ...add] });
+    toast(add.length ? (add.length === 1 ? tr('1 Design eingelesen') : tr('{0} Designs eingelesen', add.length)) + (skipped ? ' · ' + tr('{0} übersprungen', skipped) : '') : tr('Nichts Neues in der Datei.'));
+}
+
 function showSettings(top) {
     const sh = sheet(tr('Einstellungen'));
     if (top) requestAnimationFrame(() => { sh.body.scrollTop = top; });   // nach dem Wechsel der Ansicht an derselben Stelle weiter
@@ -2409,8 +2525,15 @@ function showSettings(top) {
                 onclick: () => { setLook({ [ck]: a[ck] || fillAuto({ acc: palColors(palOf(mode)).acc, m: [] }, mode === 'dark'), [pk]: 'eigen' }); draw(); editLook(mode, draw); } },
                 h('span', { class: 'dot' }, a[ck] ? h('i') : icon(I.edit)), h('span', null, tr('Eigenes')));
             if (a[ck]) setVars(own, a[ck]);
+            // dazu „Meine Designs“ für diese Seite (hell oder dunkel), mit ihren eigenen Farben im Muster
+            const mine = look.my.filter(d => d.dk === (mode === 'dark')).map(d => {
+                const b = h('button', { class: 'pal mine', type: 'button', role: 'radio', 'aria-checked': String(palOf(mode) === d.id), data: { pal: d.id }, title: d.n,
+                    onclick: () => { setLook({ [pk]: d.id }); draw(); } }, h('span', { class: 'dot' }, h('i')), h('span', null, d.n));
+                setVars(b, d.c);
+                return b;
+            });
             fill(row, PALS[mode].map(([id, name]) => h('button', { class: 'pal', type: 'button', role: 'radio', 'aria-checked': String(palOf(mode) === id), data: { pal: id },
-                onclick: () => { setLook({ [pk]: id }); draw(); } }, h('span', { class: 'dot' }, h('i')), h('span', null, tr(name)))), own);
+                onclick: () => { setLook({ [pk]: id }); draw(); } }, h('span', { class: 'dot' }, h('i')), h('span', null, tr(name)))), mine, own);
         };
         draw();
         return row;
@@ -2426,6 +2549,9 @@ function showSettings(top) {
         h('label', { class: 'field' }, tr('Hell oder dunkel'), theme),
         h('div', { class: 'qlabel' }, tr('Design für hell')), swatches('light'),
         h('div', { class: 'qlabel' }, tr('Design für dunkel')), swatches('dark'),
+        h('div', { class: 'btns mydesigns' },
+            h('button', { class: 'btn', type: 'button', onclick: () => saveMyDesign(() => { sh.close(); showSettings(sh.body.scrollTop); }) }, tr('Aktuelles Design speichern …')),
+            h('button', { class: 'btn', type: 'button', onclick: () => showMyDesigns(() => { sh.close(); showSettings(sh.body.scrollTop); }) }, tr('Meine Designs …'))),
         h('p', { class: 'info' }, curList() ? tr('Gilt nur für diese Liste in der Ansicht „{0}“. Design und Farben gehören zu deinem Konto und gelten überall, wo du angemeldet bist, Ansicht und Schrift nur auf diesem Gerät. „Eigenes“ öffnet den Farbmischer.', tr(VIEW_NAMES.find(x => x[0] === curView())[1]))
             : tr('Design und Farben gehören zu deinem Konto und gelten überall, wo du angemeldet bist, Ansicht und Schrift nur auf diesem Gerät. „Eigenes“ öffnet den Farbmischer.')),
         curList() && h('div', { class: 'btns' }, h('button', { class: 'btn', type: 'button', onclick: () => confirmDlg(tr('Für alle Listen und Ansichten übernehmen?'),
