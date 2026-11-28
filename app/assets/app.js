@@ -1909,8 +1909,7 @@ const lk = () => { const o = cur != null && (look.pl[lvKey()] || look.pl[cur]); 
 const palOf = mode => {
     const a = lk(), v = a[mode === 'dark' ? 'd' : 'l'];
     if (v === 'eigen' && a[mode === 'dark' ? 'cd' : 'cl']) return v;
-    const my = myOf(v);
-    if (my && my.dk === (mode === 'dark')) return v;   // eins von „Meine Designs“
+    if (myOf(v)) return v;   // eins von „Meine Designs“, egal ob hell oder dunkel gespeichert: es lässt sich auf beiden Seiten verwenden
     return PALS[mode].some(p => p[0] === v) ? v : PALS[mode][0][0];
 };
 let lookEpoch = 0;   // zählt jede Änderung an den Einstellungen des Kontos und jedes Speichern, siehe applyState
@@ -2335,8 +2334,17 @@ function editLook(mode, redraw) {
     const autoBtn = h('button', { class: 'btn auto', type: 'button', onclick: () => { man.delete(part); recompute(); hsl[part] = hex2hsl(col[part]); show(); } });
     const allBtn = h('button', { class: 'btn auto', type: 'button', onclick: () => { man = new Set(); recompute(); hsl[part] = hex2hsl(col[part]); show(); } }, tr('Alles automatisch'));
     const load = (c, m) => { Object.assign(col, c); man = new Set(m); recompute(); for (const [k] of ALL) hsl[k] = hex2hsl(col[k]); show(); };
-    const base = h('select', { 'aria-label': tr('Fertiges Design als Ausgangspunkt'), onchange: () => { if (base.value) load(palColors(base.value), ['bg', 'card', 'text']); base.value = ''; } },
-        h('option', { value: '' }, tr('Von einem fertigen Design ausgehen …')),
+    // Ausgangspunkt: ein fertiges Design (seine Grundfarben bleiben fest) oder eins von „Meine Designs“. Was dort automatisch war, rechnet sich
+    // für diese Seite neu: ein helles eigenes Design im Mischer für dunkel ergibt so eine dunkle Variante mit demselben Akzent.
+    const base = h('select', { 'aria-label': tr('Fertiges Design als Ausgangspunkt'), onchange: () => {
+        const my = myOf(base.value);
+        // von der anderen Seite (hell ↔ dunkel): Hintergrund, Kacheln und Schriften neu für diese Seite, Akzent und Sonderfarben bleiben
+        if (my) load({ ...my.c }, (my.c.m || AUTO_KEYS).filter(k => my.dk === dark || !['bg', 'card', 'text', 'head', 'mut'].includes(k)));
+        else if (base.value) load(palColors(base.value), ['bg', 'card', 'text']);
+        base.value = '';
+    } },
+        h('option', { value: '' }, tr('Von einem Design ausgehen …')),
+        look.my.length && h('optgroup', { label: tr('Meine Designs') }, look.my.map(d => h('option', { value: d.id }, d.n + ' (' + (d.dk ? tr('dunkel') : tr('hell')) + ')'))),
         [['Hell', PALS.light], ['Dunkel', PALS.dark]].map(([g, list]) => h('optgroup', { label: tr(g) }, list.map(([id, nm]) => h('option', { value: id }, tr(nm))))));
     const warn = h('p', { class: 'err', hidden: true });
     // Welche Farbe auf welchem Untergrund steht: Schrift braucht 4,5, Nebentext, Menge und Haken 3. Der Akzent selbst darf alles, Schrift und Ränder in Akzentfarbe hebt --acc-ink ab.
@@ -2410,7 +2418,8 @@ function showMyDesigns(done) {
     const row = d => {
         const dot = h('span', { class: 'pal mine mini' }, h('span', { class: 'dot' }, h('i')));
         setVars(dot, d.c);
-        const pk = d.dk ? 'd' : 'l', ck = d.dk ? 'cd' : 'cl', mode = d.dk ? 'dark' : 'light';
+        // Überschreiben und Bearbeiten beziehen sich auf das, was gerade zu sehen ist (hell oder dunkel)
+        const mode = curMode(), pk = mode === 'dark' ? 'd' : 'l', ck = mode === 'dark' ? 'cd' : 'cl';
         return h('div', { class: 'row mydesign' }, dot,
             h('span', { class: 'grow' }, d.n, h('small', null, d.dk ? tr('dunkel') : tr('hell'))),
             h('div', { class: 'acts' },
@@ -2420,8 +2429,8 @@ function showMyDesigns(done) {
                     set(look.my.map(x => x.id === d.id ? { ...x, n } : x)); draw();
                 }) }, tr('Umbenennen')),
                 h('button', { class: 'btn small', type: 'button', onclick: () => confirmDlg(tr('Überschreiben?'),
-                    tr('„{0}“ bekommt die Farben des {1} Designs, das gerade gilt („{2}“).', d.n, d.dk ? tr('dunklen') : tr('hellen'), designName(mode)), tr('Überschreiben'),
-                    () => { set(look.my.map(x => x.id === d.id ? { ...x, c: okCols(curColors(mode)) } : x)); draw(); toast(tr('„{0}“ überschrieben', d.n)); }) }, tr('Überschreiben')),
+                    tr('„{0}“ bekommt die Farben des {1} Designs, das gerade gilt („{2}“).', d.n, mode === 'dark' ? tr('dunklen') : tr('hellen'), designName(mode)), tr('Überschreiben'),
+                    () => { set(look.my.map(x => x.id === d.id ? { ...x, dk: mode === 'dark', c: okCols(curColors(mode)) } : x)); draw(); toast(tr('„{0}“ überschrieben', d.n)); }) }, tr('Überschreiben')),
                 h('button', { class: 'btn small', type: 'button', onclick: () => {   // als „Eigenes“ in den Farbmischer, das gespeicherte bleibt, wie es ist
                     const go = () => { sh.close(); setLook({ [ck]: { ...d.c }, [pk]: 'eigen' }); editLook(mode, () => {}); };
                     const own = lk()[ck];
@@ -2439,7 +2448,7 @@ function showMyDesigns(done) {
     }
     draw();
     put(sh.body,
-        h('p', { class: 'info' }, tr('Gespeicherte Designs gehören zu deinem Konto und stehen auf allen Geräten bei den Designs für hell bzw. dunkel. „Bearbeiten“ holt eins als „Eigenes“ in den Farbmischer, mit „Überschreiben“ kommt das Ergebnis zurück.')),
+        h('p', { class: 'info' }, tr('Gespeicherte Designs gehören zu deinem Konto und stehen auf allen Geräten bei den Designs für hell und für dunkel, egal wo du sie gespeichert hast. „Bearbeiten“ holt eins als „Eigenes“ in den Farbmischer der Seite, die du gerade siehst, mit „Überschreiben“ kommt das Ergebnis zurück. Im Farbmischer kannst du auch von einem deiner Designs ausgehen: was dort automatisch war, passt sich hell bzw. dunkel an.')),
         list,
         h('div', { class: 'btns' },
             h('button', { class: 'btn', type: 'button', disabled: !look.my.length, onclick: exportMyDesigns }, tr('Exportieren')),
@@ -2525,8 +2534,8 @@ function showSettings(top) {
                 onclick: () => { setLook({ [ck]: a[ck] || fillAuto({ acc: palColors(palOf(mode)).acc, m: [] }, mode === 'dark'), [pk]: 'eigen' }); draw(); editLook(mode, draw); } },
                 h('span', { class: 'dot' }, a[ck] ? h('i') : icon(I.edit)), h('span', null, tr('Eigenes')));
             if (a[ck]) setVars(own, a[ck]);
-            // dazu „Meine Designs“ für diese Seite (hell oder dunkel), mit ihren eigenen Farben im Muster
-            const mine = look.my.filter(d => d.dk === (mode === 'dark')).map(d => {
+            // dazu alle „Meine Designs“, die passenden (hell bzw. dunkel) zuerst, mit ihren eigenen Farben im Muster
+            const mine = [...look.my.filter(d => d.dk === (mode === 'dark')), ...look.my.filter(d => d.dk !== (mode === 'dark'))].map(d => {
                 const b = h('button', { class: 'pal mine', type: 'button', role: 'radio', 'aria-checked': String(palOf(mode) === d.id), data: { pal: d.id }, title: d.n,
                     onclick: () => { setLook({ [pk]: d.id }); draw(); } }, h('span', { class: 'dot' }, h('i')), h('span', null, d.n));
                 setVars(b, d.c);
