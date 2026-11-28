@@ -3,6 +3,8 @@
     --bg: #f3f6f5; --card: #ffffff; --text: #13201d; --mut: #5b6a66; --line: #dbe3e0;
     --acc: #0f766e; --acc-text: #ffffff; --acc-soft: #d7f0ec; --danger: #b42318; --shadow: 0 1px 2px rgba(16, 32, 28, .08);
     color-scheme: light;
+    /* Schrift und Nebentext je Untergrund. Fertige Designs: wie --text/--mut. Eigene Designs: app.js (derive) rechnet sie lesbar aus. */
+    --text-bg: var(--text); --text-card: var(--text); --mut-bg: var(--mut); --mut-card: var(--mut);
 }
 :root[data-theme="dark"] {
     --bg: #0f1720; --card: #18232e; --text: #e7eef3; --mut: #94a3ae; --line: #2a3846;
@@ -47,6 +49,15 @@
     --acc: #e4e4e7; --acc-text: #111113; --acc-soft: #26262a; --danger: #ff8a7a; --shadow: none; color-scheme: dark; }
 * { box-sizing: border-box; }
 /* Kein Zoomen mit den Fingern: die Oberfläche passt sich der Breite an. pan-x pan-y lässt Rollen zu, aber kein Aufziehen und kein Doppeltipp-Zoom. */
+/* Steht vorn, damit Bausteine mit eigener Schriftfarbe (etwa .qbtn, .tile.on, .btn.danger) sie behalten.
+   Alles, was auf Kachelfarbe steht, nimmt Schrift und Nebentext für die Kacheln, der Rest (Seite, Menüs, Fenster) die für den Hintergrund.
+   Was darin wieder auf Hintergrundfarbe steht (Band der Warengruppe in der Liste, Feld auf der Anmeldeseite), schaltet zurück. */
+#q, .csearch input, .field input, .field select, .field textarea, .tile, .notes, .cat, .btn, .row, .chip, .qbtn, .qrow input, .seg, .pick .hex,
+.login, .list .secs, .list .sec, .cbig, .help dl {
+    --text: var(--text-card); --mut: var(--mut-card); color: var(--text);
+}
+.list .secs .grp, .login input { --text: var(--text-bg); --mut: var(--mut-bg); }
+
 /* --fs-all: „Alle Schriften“ aus den Schriftgrößen (nur dieses Gerät). Alles ist in rem angegeben und wächst mit. */
 html { font-size: calc(100% * var(--fs-all, 1)); -webkit-text-size-adjust: 100%; text-size-adjust: 100%; touch-action: pan-x pan-y; overflow-anchor: none; }   /* Nachscrollen macht app.js (keepAnchor), überall gleich */
 body { margin: 0; background: var(--bg); color: var(--text); font: 1rem/1.4 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
@@ -486,3 +497,4 @@ button.row { font-weight: 600; }
 .row.mydesign .grow small { display: block; }
 .row.mydesign .acts { display: flex; flex-wrap: wrap; gap: .35rem; width: 100%; }
 .pal.mine.mini { display: inline-flex; padding: 0; border: 0; background: none; box-shadow: none; }
+
