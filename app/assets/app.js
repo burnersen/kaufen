@@ -2019,20 +2019,54 @@ function okAuto(acc) {
  * im Ton des Akzents. Schrift fast Schwarz bzw. fast Weiß mit demselben Hauch, Überschriften einen Tick kräftiger. Nebentext gedämpft, aber gut lesbar (mindestens 4,5).
  * Listenschrift und Menge auf dem Akzent wie matchText, der Fertig-Haken wie okAuto.
  */
-function autoColors(acc, dark) {
+function autoColors(acc, dark, c = {}, m = []) {
     const [ah, as] = hex2hsl(acc), t = as < 12 ? 0 : 1;   // t = 0: grauer Akzent, dann alles neutral
-    const c = (s, l) => hsl2hex([ah, t * s, l]);
-    const o = dark
-        ? { bg: c(24, 8), card: c(20, 13), text: c(14, 92), head: c(22, 96) }
-        : { bg: c(18, 96), card: c(30, 99.5), text: c(25, 12), head: c(35, 15) };
-    // Nebentext: zwischen Schrift und Kacheln, so weit Richtung Hintergrund wie es die Lesbarkeit erlaubt
+    const hs = (s, l) => hsl2hex([ah, t * s, l]);
+    const own = k => m.includes(k) && isHex(c[k]);
+    // Hintergrund und Kacheln: selbst eingestellt, sonst aus dem Akzent. Ist nur eins von beiden selbst eingestellt, richtet sich das andere danach.
+    let bg = own('bg') ? c.bg : '', card = own('card') ? c.card : '';
+    if (!bg && !card) { bg = dark ? hs(24, 8) : hs(18, 96); card = dark ? hs(20, 13) : hs(30, 99.5); }
+    else if (!card) { const [h, s, l] = hex2hsl(bg); card = lum(bg) < .2 ? hsl2hex([h, s, Math.min(100, l + 5)]) : hsl2hex([h, Math.min(s, 40), Math.min(99.5, l + (100 - l) * .85)]); }
+    else if (!bg) { const [h, s, l] = hex2hsl(card); bg = hsl2hex([h, s, Math.max(0, l - (lum(card) < .2 ? 5 : 3.5))]); }
+    // Schrift und Überschriften: hell oder dunkel, was auf Hintergrund und Kacheln zusammen besser zu lesen ist, mit einem Hauch vom Akzent, mindestens Kontrast 7
+    // Liegen Hintergrund und Kacheln sehr weit auseinander (hell und dunkel), geht eine Schrift nicht für beides: dann zählen für die Schrift
+    // die Kacheln (dort steht fast alles), für die Überschriften der Hintergrund.
+    const ink = ([ls, ll], [ds, dl], goal, under) => {
+        const minC = x => Math.min(...under.map(u => contrast(x, u)));
+        const run = (s, l, up) => { let x = hs(s, l); while (minC(x) < goal && l > 0 && l < 100) { l += up ? 1 : -1; x = hs(s, l); } return x; };
+        const light = run(ls, ll, true), darkX = run(ds, dl, false);
+        return minC(light) >= minC(darkX) ? light : darkX;
+    };
+    let text = ink([14, 92], [25, 12], 7, [bg, card]);
+    if (Math.min(contrast(text, bg), contrast(text, card)) < 4.5) text = ink([14, 92], [25, 12], 7, [card]);
+    const o = { bg, card, text, head: ink([22, 96], [35, 15], 7, [bg]) };
+    // Nebentext: zwischen Schrift und Kacheln, so weit Richtung Hintergrund wie es die Lesbarkeit erlaubt (mindestens 4,6)
     for (let f = .5; f >= 0; f -= .02) { o.mut = mix(o.text, o.card, f); if (contrast(o.mut, o.card) >= 4.6 && contrast(o.mut, o.bg) >= 4.6) break; }
-    const m = matchText(acc);
-    return { ...o, at: m.at, qty: m.qty, ok: okAuto(acc) };
+    const mt = matchText(acc);
+    return { ...o, at: mt.at, qty: mt.qty, ok: okAuto(acc) };
 }
-/** Eigenes Design vervollständigen: was nicht selbst eingestellt ist (m), kommt aus dem Akzent */
+/**
+ * Eine selbst gewählte Schriftfarbe lesbar halten, wenn sich der Untergrund ändert: Farbton und Sättigung bleiben, nur die Helligkeit
+ * rückt so wenig wie nötig, bis der Kontrast zu allen Untergründen reicht. Geht das nicht, die Helligkeit mit dem besten Kontrast.
+ */
+function readableOn(x, under, min) {
+    const mc = y => Math.min(...under.map(u => contrast(y, u)));
+    if (mc(x) >= min) return x;
+    const [h, s, l] = hex2hsl(x);
+    let best = x;
+    for (let d = 1; d <= 100; d++) {
+        for (const nl of [l + d, l - d]) {
+            if (nl < 0 || nl > 100) continue;
+            const y = hsl2hex([h, s, nl]);
+            if (mc(y) >= min) return y;
+            if (mc(y) > mc(best)) best = y;
+        }
+    }
+    return best;
+}
+/** Eigenes Design vervollständigen: was nicht selbst eingestellt ist (m), kommt aus dem Akzent und aus Hintergrund und Kacheln */
 function fillAuto(c, dark) {
-    const a = autoColors(c.acc, dark), m = c.m || [], out = { ...c, m: [...m] };
+    const m = c.m || [], a = autoColors(c.acc, dark, c, m), out = { ...c, m: [...m] };
     for (const k of AUTO_KEYS) if (!m.includes(k) || !isHex(out[k])) out[k] = a[k];
     return out;
 }
@@ -2071,7 +2105,8 @@ function derive(c) {
         '--bg': c.bg, '--card': c.card, '--text': c.text, '--acc': c.acc, '--mut': c.mut || mix(c.text, c.bg, .4), '--line': mix(c.text, c.bg, .85),
         '--head': c.head || c.text, '--qty': c.qty || at, '--ok': ok, '--acc-ink': inkOf(c.acc, c.card, c.bg), '--acc-g1': accGrad(c.acc, at)[0], '--acc-g2': accGrad(c.acc, at)[1],
         '--acc-text': at, '--acc-soft': mix(c.acc, c.card, .82),
-        '--danger': dark ? '#ff8a7a' : '#b42318', '--shadow': dark ? 'none' : '0 1px 2px rgba(0, 0, 0, .08)', 'color-scheme': dark ? 'dark' : 'light',
+        // „Löschen“ bleibt auf jedem Untergrund lesbar
+        '--danger': readableOn(dark ? '#ff8a7a' : '#b42318', [c.card, c.bg], 4.5), '--shadow': dark ? 'none' : '0 1px 2px rgba(0, 0, 0, .08)', 'color-scheme': dark ? 'dark' : 'light',
     };
 }
 /** Schriftfarben auf dem Akzent abstimmen (Knopf im Farbmischer).
@@ -2327,7 +2362,14 @@ function editLook(mode, redraw) {
     const ALL = [['acc', 'Akzent'], ...PARTS.filter(([k]) => k !== 'acc'), ...TPARTS];
     const name = k => tr(ALL.find(x => x[0] === k)[1]);
     let part = 'acc';
-    const recompute = () => { Object.assign(col, fillAuto({ ...col, m: [...man] }, dark)); col.m = [...man]; for (const [k] of ALL) if (k !== part) hsl[k] = hex2hsl(col[k]); };
+    // Nach jeder Änderung: Automatisches neu ausrechnen, selbst gewählte Schriftfarben lesbar halten (außer der, an der gerade gedreht wird)
+    const recompute = () => {
+        Object.assign(col, fillAuto({ ...col, m: [...man] }, dark)); col.m = [...man];
+        // nachgerückt wird bis „gut lesbar“: Schrift und Überschriften 7, Nebentext und Listenschrift 4,5, Menge 3,5, Haken 3
+        const goal = { text: 7, head: 7, mut: 4.5, at: 4.5, qty: 3.5, ok: 3 };
+        for (const [k, on] of pairs) if (man.has(k) && k !== part) col[k] = readableOn(col[k], on.map(u => col[u]), goal[k]);
+        for (const [k] of ALL) if (k !== part) hsl[k] = hex2hsl(col[k]);
+    };
     const set = hex => { col[part] = hex; if (part !== 'acc') man.add(part); recompute(); show(); };
     for (const [k] of ALL) hsl[k] = hex2hsl(col[k]);
     const sh = sheet(dark ? tr('Eigenes Design für dunkel') : tr('Eigenes Design für hell'), { onclose: () => { saveLook(); redraw(); } });
@@ -2396,12 +2438,14 @@ function editLook(mode, redraw) {
         autoBtn.setAttribute('aria-pressed', String(!man.has(part)));
         allBtn.setAttribute('aria-pressed', String(!man.size));
         const bad = pairs.filter(([k, on, min]) => man.has(k) && on.some(u => contrast(col[k], col[u]) < min)).map(([k]) => name(k));   // automatisch ist schon das Beste, was geht
-        warn.textContent = tr('Schwer zu erkennen: {0}', bad.join(', '));
-        warn.hidden = !bad.length;
+        const split = Math.min(contrast(col.text, col.bg), contrast(col.text, col.card)) < 4.5;   // Hintergrund hell, Kacheln dunkel (oder umgekehrt)
+        warn.textContent = [bad.length && tr('Schwer zu erkennen: {0}', bad.join(', ')),
+            split && tr('Hintergrund und Kacheln sind sehr verschieden hell, eine Schrift passt nicht auf beides. Die Schrift richtet sich nach den Kacheln.')].filter(Boolean).join(' ');
+        warn.hidden = !bad.length && !split;
     }
     put(sh.body, prev, h('div', { class: 'segs' }, tabs), peekOption(), sliders,
         h('div', { class: 'pick' }, h('label', { class: 'btn' }, picker, tr('Farbwähler')), code),
-        h('p', { class: 'info' }, tr('Wähl nur die Akzentfarbe, alles andere stimmt Kaufen darauf ab, gut lesbar und in sich stimmig. Jede Farbe lässt sich trotzdem ändern, „A“ heißt automatisch.')),
+        h('p', { class: 'info' }, tr('Wähl nur die Akzentfarbe, alles andere stimmt Kaufen darauf ab, gut lesbar und in sich stimmig. Jede Farbe lässt sich trotzdem ändern, „A“ heißt automatisch. Änderst du Hintergrund oder Kacheln, gehen alle Schriften mit, damit alles lesbar bleibt, auch selbst gewählte.')),
         h('div', { class: 'btns autos' }, autoBtn, allBtn), warn,
         h('label', { class: 'field' }, base),
         h('div', { class: 'btns' },
