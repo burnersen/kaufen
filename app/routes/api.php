@@ -163,6 +163,11 @@ try {
         kfBump('cv');
         $state();
 
+    case 'cat_icon':   // Symbol der Warengruppe: '' = Standard, '-' = keins, Emoji oder kleines Bild
+        kfQ('UPDATE cats SET icon = ? WHERE id = ?', [kfIcon($in['icon'] ?? ''), $int('id')]);
+        kfBump('cv');
+        $state();
+
     case 'cat_delete':
         $id = $int('id');
         $name = kfQ('SELECT name FROM cats WHERE id = ?', [$id])->fetchColumn();

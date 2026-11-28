@@ -36,13 +36,17 @@
     const touch = l => { l.v = (l.v || 1) + 1; };
 
     /* ---------- Katalog ---------- */
+    /** Symbol der Warengruppe prüfen wie kfIcon: '' Standard, '-' keins, kurzes Emoji oder kleines Bild (PNG, JPEG, WebP) */
+    const icon = v => typeof v !== 'string' || v === '' || v === '-' ? (typeof v === 'string' ? v : '')
+        : v.startsWith('data:') ? (v.length <= 120000 && /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(v) ? v : '')
+        : /^[^\s<>"'&\\]{1,16}$/u.test(v) && [...v].length <= 8 ? v : '';
     const catalog = () => ({
-        cats: db.cats.map(c => ({ id: c.id, n: c.n, ...(c.e ? { e: c.e } : {}) })),
+        cats: db.cats.map(c => ({ id: c.id, n: c.n, ...(c.e ? { e: c.e } : {}), ...(c.i ? { i: c.i } : {}) })),
         products: db.products.slice().sort(byName).map(p => ({ id: p.id, c: p.c, n: p.n, ...(p.e ? { e: p.e } : {}) })),
     });
     /** Der Katalog als einfache Liste (Gruppe + Produktnamen), so wie ihn der Server sichert und einspielt */
     function catalogExport() {
-        return db.cats.map(c => ({ name: c.n, ...(c.e ? { en: c.e } : {}),
+        return db.cats.map(c => ({ name: c.n, ...(c.e ? { en: c.e } : {}), ...(c.i ? { icon: c.i } : {}),
             products: db.products.filter(p => p.c === c.id).sort((a, b) => a.id - b.id).map(p => p.e ? { de: p.n, en: p.e } : p.n) }));
     }
     function catalogBackup(reason) {
@@ -55,6 +59,7 @@
     /** Ersetzt den ganzen Katalog. Einträge, Gekauftes, Vorlagen und Reihenfolge werden über den Namen der Warengruppe umgehängt. */
     function catalogReplace(data) {
         const old = new Map(db.cats.map(c => [c.id, low(c.n)]));
+        const oldIcon = new Map(db.cats.map(c => [low(c.n), c.i || '']));   // eigene Symbole bleiben an der gleichnamigen Warengruppe
         db.cats = [];
         db.products = [];
         const fresh = new Map();
@@ -62,7 +67,7 @@
             if (!c || typeof c !== 'object') continue;
             const name = clean(c.name, 60);
             if (!name || fresh.has(low(name))) continue;
-            const cat = { id: id(), n: name, e: clean(typeof c.en === 'string' ? c.en : '', 60) };
+            const cat = { id: id(), n: name, e: clean(typeof c.en === 'string' ? c.en : '', 60), i: 'icon' in c ? icon(c.icon) : oldIcon.get(low(name)) || '' };
             db.cats.push(cat);
             fresh.set(low(name), cat.id);
             for (let p of Array.isArray(c.products) ? c.products : []) {
@@ -263,6 +268,12 @@
             db.cv++;
             return state();
         },
+        cat_icon: b => {
+            const c = db.cats.find(x => x.id === +b.id);
+            if (c) c.i = icon(b.icon);
+            db.cv++;
+            return state();
+        },
         cat_delete: b => {
             const c = db.cats.find(x => x.id === +b.id);
             if (!c) return state();
@@ -372,7 +383,7 @@
     /** Aus einem Konto übernehmen: was app.js vom Server hat (S und die Listen mit ihrem Inhalt), dazu der Standardkatalog für später */
     function fromAccount(a) {
         db = { kaufen: 'local', v: 1, seq: 1, me: { id: a.me.id, n: a.me.n }, look: a.look || null, cv: 1, lv: 1, start: a.start || 0,
-            cats: a.catalog.cats.map(c => ({ id: c.id, n: c.n, e: c.e || '' })),
+            cats: a.catalog.cats.map(c => ({ id: c.id, n: c.n, e: c.e || '', i: c.i || '' })),
             products: a.catalog.products.map(p => ({ id: p.id, c: p.c, n: p.n, e: p.e || '' })),
             tpls: a.templates.map(t => ({ id: t.id, n: t.n, items: t.items.map(i => ({ n: i.n, c: i.c, note: i.note || '' })) })),
             lists: a.lists.map(({ meta, data }) => {

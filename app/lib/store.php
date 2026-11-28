@@ -15,9 +15,21 @@ function kfClean($s, int $max): string {
 
 /* ---------- Katalog ---------- */
 
+/**
+ * Symbol einer Warengruppe prüfen: '' (Standard), '-' (keins), ein kurzes Emoji oder ein kleines Bild (PNG, JPEG oder WebP als data:-Adresse, höchstens 120 KB).
+ * Alles andere wird zu '' (Standard).
+ */
+function kfIcon($v): string {
+    if (!is_string($v) || $v === '' || $v === '-') return is_string($v) ? $v : '';
+    if (strncmp($v, 'data:', 5) === 0) return strlen($v) <= 120000 && preg_match('~^data:image/(png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$~', $v) ? $v : '';
+    return preg_match('~^[^\s<>"\'&\\\\]{1,16}$~u', $v) && mb_strlen($v) <= 8 ? $v : '';
+}
+
 function kfCatalog(): array {
     $cats = [];
-    foreach (kfQ('SELECT id, name, en FROM cats ORDER BY pos, id') as $r) $cats[] = ['id' => (int)$r['id'], 'n' => $r['name']] + ($r['en'] !== '' ? ['e' => $r['en']] : []);
+    foreach (kfQ('SELECT id, name, en, icon FROM cats ORDER BY pos, id') as $r) {
+        $cats[] = ['id' => (int)$r['id'], 'n' => $r['name']] + ($r['en'] !== '' ? ['e' => $r['en']] : []) + ($r['icon'] !== '' ? ['i' => $r['icon']] : []);
+    }
     $prods = [];
     foreach (kfQ('SELECT id, cat_id, name, en FROM products ORDER BY name COLLATE NOCASE') as $r) $prods[] = ['id' => (int)$r['id'], 'c' => (int)$r['cat_id'], 'n' => $r['name']] + ($r['en'] !== '' ? ['e' => $r['en']] : []);
     return ['cats' => $cats, 'products' => $prods];
@@ -28,9 +40,9 @@ function kfCatalog(): array {
 function kfCatalogExport(): array {
     $out = [];
     $idx = [];
-    foreach (kfQ('SELECT id, name, en FROM cats ORDER BY pos, id') as $r) {
+    foreach (kfQ('SELECT id, name, en, icon FROM cats ORDER BY pos, id') as $r) {
         $idx[(int)$r['id']] = count($out);
-        $out[] = ['name' => $r['name']] + ($r['en'] !== '' ? ['en' => $r['en']] : []) + ['products' => []];
+        $out[] = ['name' => $r['name']] + ($r['en'] !== '' ? ['en' => $r['en']] : []) + ($r['icon'] !== '' ? ['icon' => $r['icon']] : []) + ['products' => []];
     }
     foreach (kfQ('SELECT cat_id, name, en FROM products ORDER BY id') as $r) {
         if (isset($idx[(int)$r['cat_id']])) $out[$idx[(int)$r['cat_id']]]['products'][] = $r['en'] !== '' ? ['de' => $r['name'], 'en' => $r['en']] : $r['name'];
@@ -57,10 +69,11 @@ function kfCatalogReplace(array $data, ?PDO $pdo = null): void {
     $own = !$pdo->inTransaction();
     if ($own) $pdo->beginTransaction();
     $old = [];
-    foreach ($pdo->query('SELECT id, name FROM cats') as $r) $old[(int)$r['id']] = kfLower($r['name']);
+    $oldIcon = [];   // eigene Symbole bleiben an der gleichnamigen Warengruppe, wenn die neuen Daten keins mitbringen
+    foreach ($pdo->query('SELECT id, name, icon FROM cats') as $r) { $old[(int)$r['id']] = kfLower($r['name']); $oldIcon[kfLower($r['name'])] = $r['icon']; }
     $pdo->exec('DELETE FROM cats');
     $pdo->exec('DELETE FROM products');
-    $insC = $pdo->prepare('INSERT OR IGNORE INTO cats (name, pos, en) VALUES (?, ?, ?)');
+    $insC = $pdo->prepare('INSERT OR IGNORE INTO cats (name, pos, en, icon) VALUES (?, ?, ?, ?)');
     $getC = $pdo->prepare('SELECT id FROM cats WHERE name = ?');
     $insP = $pdo->prepare('INSERT OR IGNORE INTO products (cat_id, name, en) VALUES (?, ?, ?)');
     $new = [];
@@ -68,7 +81,8 @@ function kfCatalogReplace(array $data, ?PDO $pdo = null): void {
     foreach ($data as $c) {
         $name = kfClean($c['name'] ?? '', 60);
         if ($name === '') continue;
-        $insC->execute([$name, ++$pos, kfClean(is_string($c['en'] ?? null) ? $c['en'] : '', 60)]);
+        $icon = array_key_exists('icon', $c) ? kfIcon($c['icon']) : ($oldIcon[kfLower($name)] ?? '');
+        $insC->execute([$name, ++$pos, kfClean(is_string($c['en'] ?? null) ? $c['en'] : '', 60), $icon]);
         $getC->execute([$name]);
         $cid = (int)$getC->fetchColumn();
         $new[kfLower($name)] = $cid;

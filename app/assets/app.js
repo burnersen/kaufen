@@ -40,7 +40,7 @@ const I = {
     x: 'M6 6l12 12M18 6L6 18', down: 'M6 9l6 6 6-6', up: 'M6 15l6-6 6 6', more: 'M5 12h.01M12 12h.01M19 12h.01',
     edit: 'M4 20h4L19 9l-4-4L4 16v4zM14 6l4 4', grip: 'M5 9h14M5 15h14',
     trash: 'M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3',
-    tiles: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z', compact: 'M3 6h8M14 6h7M3 12h5M11 12h10M3 18h9M15 18h6', shop: 'M3 4h18v6H3zM3 14h18v6H3z',
+    tiles: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z',
     list: 'M4 6h.01M4 12h.01M4 18h.01M9 6h11M9 12h11M9 18h11',
     cart: 'M3 4h2.2l2.3 10.5h10.8L20.5 7H6.3M9.5 19.5h.01M17 19.5h.01', check: 'M5 12.5l4.5 4.5L19 7.5',
     globe: 'M12 3a9 9 0 100 18 9 9 0 000-18zM3 12h18M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9s1.2-6.5 3.6-9z', code: 'M8 7l-5 5 5 5M16 7l5 5-5 5M14 4l-4 16',
@@ -117,6 +117,19 @@ const saveQueue = () => LS.set('queue', queue);
 const curList = () => S && S.lists.find(l => l.id === cur) || null;
 const userName = id => { const u = S && S.users.find(u => u.id === id); return u ? u.n : ''; };
 const catName = id => { const c = S && S.catalog.cats.find(c => c.id === id); return c ? dc(c.n) : tr('Sonstiges'); };
+/** Mitgelieferte Symbole der Warengruppen, nach dem (deutschen) Namen im Katalog. Eigene Warengruppen haben keins, bis man eins wählt. */
+const CAT_IC = { 'Obst & Gemüse': '🥦', 'Brot & Gebäck': '🥖', 'Milch & Käse': '🧀', 'Fleisch & Fisch': '🥩', 'Zutaten & Gewürze': '🧂', 'Nudeln, Reis & Co.': '🍝',
+    'Konserven & Fertiges': '🥫', 'Frühstück & Aufstrich': '🍯', 'Süßes & Snacks': '🍫', 'Tiefkühl': '🧊', 'Getränke': '🧃', 'Haushalt': '🧽', 'Drogerie & Pflege': '🧴',
+    'Baby': '🍼', 'Tierbedarf': '🐾', 'Haus & Garten': '🌱', 'Sonstiges': '📦' };
+/** Was für eine Warengruppe gilt: eigenes Bild (data:), eigenes Emoji, nichts ('-') oder das mitgelieferte */
+const catIconOf = c => !c ? CAT_IC.Sonstiges : c.i === '-' ? '' : c.i || CAT_IC[c.n] || '';
+/** Symbol als Element: ein kleines Bild oder ein Emoji, nur als Text, nie als HTML */
+function iconEl(v, cls = 'ci') {
+    if (!v) return null;
+    if (v.startsWith('data:image/')) return h('img', { class: cls + ' img', src: v, alt: '', draggable: 'false' });
+    return h('span', { class: cls, 'aria-hidden': 'true' }, v);
+}
+const catIcon = id => iconEl(catIconOf(S && S.catalog.cats.find(c => c.id === id)));
 const hasCat = id => !!(S && S.catalog.cats.some(c => c.id === id));
 /** Was noch zu kaufen ist, unter diesem Namen. Abgehaktes (got = seit wann) zählt hier nicht. */
 const itemByName = n => L ? L.items.find(i => !i.got && low(i.n) === low(n)) : null;
@@ -851,8 +864,10 @@ function viewHome(l) {
     const shared = l.members.length > 1;
     const todo = openItems(), bask = basketItems();
     out.push(h('h2', null, tr('Noch zu kaufen'), h('small', null, todo.length ? String(todo.length) : '')));
-    if (!todo.length) out.push(h('p', { class: 'hint' }, bask.length ? tr('Alles abgehakt. Wenn du fertig bist, tippe unten auf „Einkauf fertig“.')
-        : tr('Alles erledigt. Tippe unten auf ein Produkt oder such oben danach, dann landet es hier.')));
+    if (!todo.length && bask.length) out.push(h('p', { class: 'hint' }, tr('Alles abgehakt. Wenn du fertig bist, tippe unten auf „Einkauf fertig“.')));
+    // Leere Liste: ein großer Haken statt eines grauen Satzes
+    if (!todo.length && !bask.length) out.push(h('div', { class: 'empty' }, h('div', { class: 'ebig' }, icon(I.check)),
+        h('b', null, tr('Alles erledigt')), h('p', null, tr('Tippe unten auf ein Produkt oder such oben danach, dann landet es hier.'))));
     // Abgehaktes bleibt an seinem Platz stehen, mit Haken und durchgestrichen, bis „Einkauf fertig“
     const groups = new Map(order.map(id => [id, []]));
     for (const it of L.items) groups.get(hasCat(it.c) ? it.c : 0).push(it);
@@ -860,7 +875,9 @@ function viewHome(l) {
     for (const [id, items] of groups) {
         if (!items.length) continue;
         items.sort((x, y) => dn(x.n).localeCompare(dn(y.n), lang));   // innerhalb der Warengruppe alphabetisch, wie bei der Auswahl unten
-        secs.push(h('div', { class: 'sec' }, h('div', { class: 'grp' }, catName(id)),
+        const left = items.filter(it => !it.got).length;   // rechts an der Überschrift: wie viel hier noch fehlt, ✓ wenn alles abgehakt ist
+        secs.push(h('div', { class: 'sec' }, h('div', { class: 'grp' }, catIcon(id), h('span', { class: 'gn' }, catName(id)),
+                h('span', { class: 'gc' + (left ? '' : ' done'), 'aria-label': left ? tr('{0} offen', left) : tr('Alles abgehakt') }, left ? String(left) : '✓')),
             h('div', { class: 'grid todo' }, items.map(it => it.got ? gotTile(it) : tile('on', { k: 'item', uid: it.uid }, dn(it.n), it.note, shared && look.who && it.by !== S.me.id && userName(it.by))))));
     }
     if (secs.length) out.push(h('div', { class: 'secs' }, secs));
@@ -887,7 +904,7 @@ function viewHome(l) {
         if (!id) continue;
         const prods = byCat.get(id) || [];
         const isOpen = !!open[id];
-        out.push(h('button', { class: 'cat' + (isOpen ? ' open' : ''), type: 'button', data: { k: 'cat', id }, 'aria-expanded': String(isOpen) }, catName(id), h('small', null, String(prods.length)), icon(I.down)));
+        out.push(h('button', { class: 'cat' + (isOpen ? ' open' : ''), type: 'button', data: { k: 'cat', id }, 'aria-expanded': String(isOpen) }, catIcon(id), h('span', { class: 'cn' }, catName(id)), h('small', null, String(prods.length)), icon(I.down)));
         if (isOpen) out.push(h('div', { class: 'grid' }, prods.map(p => prodTile(p.n, p.c)),
             tile('new', { k: 'newin', id }, tr('+ Neu'))));
     }
@@ -1102,7 +1119,10 @@ function guessCat(name) {
     So holt ein Tipp aus Versehen (etwa beim Rollen im Laden) nichts wieder auf die Liste. */
 const ARM_MS = 2000;
 let armUid = '', armTimer = 0;
-function tapItem(uid) { if (L.items.some(i => i.uid === uid && !i.got)) { disarm(); op({ t: 'got', uid }); } }
+/** Gerade abgehakt: für die kleine Animation (Strich zieht sich durch, Kreis hüpft). Wird die Liste währenddessen neu gezeichnet, läuft sie dort weiter, wo sie war. */
+let justGot = null;
+const JUST_MS = 450;
+function tapItem(uid) { if (L.items.some(i => i.uid === uid && !i.got)) { disarm(); justGot = { uid, t: Date.now() }; op({ t: 'got', uid }); } }
 function tapGot(uid) {
     const it = L.items.find(i => i.uid === uid && i.got);
     if (!it) return;
@@ -1124,7 +1144,12 @@ function disarm() {
     for (const t of main.querySelectorAll('.tile.arm')) t.classList.remove('arm');
 }
 /** Ein abgehakter Eintrag, an seinem Platz durchgestrichen */
-const gotTile = it => tile('got' + (armUid === it.uid ? ' arm' : ''), { k: 'got', uid: it.uid }, dn(it.n), it.note);
+function gotTile(it) {
+    const t = tile('got' + (armUid === it.uid ? ' arm' : ''), { k: 'got', uid: it.uid }, dn(it.n), it.note);
+    const ms = justGot && justGot.uid === it.uid ? Date.now() - justGot.t : JUST_MS;
+    if (ms < JUST_MS) { t.classList.add('justgot'); t.style.setProperty('--jd', -ms + 'ms'); }
+    return t;
+}
 /** Ganz von der Liste löschen, ein paar Sekunden lang mit „Rückgängig“ */
 function delItem(it) {
     op({ t: 'remove', uid: it.uid });
@@ -1466,7 +1491,7 @@ function showOrder() {
     const box = h('div');
     const row = id => h('div', { class: 'row', data: { id } },
         h('span', { class: 'mini grip', 'aria-hidden': 'true' }, icon(I.grip)),
-        h('span', { class: 'grow' }, catName(id)),
+        catIcon(id), h('span', { class: 'grow' }, catName(id)),
         h('button', { class: 'mini', type: 'button', 'aria-label': tr('nach oben'), onclick: e => { const r = e.currentTarget.parentNode; if (r.previousSibling) box.insertBefore(r, r.previousSibling); } }, icon(I.up)),
         h('button', { class: 'mini', type: 'button', 'aria-label': tr('nach unten'), onclick: e => { const r = e.currentTarget.parentNode; if (r.nextSibling) box.insertBefore(r.nextSibling, r); } }, icon(I.down)));
     box.append(...catOrder().filter(Boolean).map(row));
@@ -1601,7 +1626,7 @@ function showCatalog() {
                     tr('Alle Produkte und Warengruppen werden gelöscht, der Katalog ist danach leer. Vorher wird eine Sicherung angelegt, Einkaufslisten bleiben wie sie sind.'),
                     tr('Alles löschen'), () => act('catalog_clear', {})) }, tr('Alles löschen'))),
             S.catalog.cats.map(c => [
-                h('div', { class: 'mcat' }, h('h4', null, dc(c.n), h('span', { class: 'badge' }, String((byCat.get(c.id) || []).length))),
+                h('div', { class: 'mcat' }, h('h4', null, iconEl(catIconOf(c)), dc(c.n), h('span', { class: 'badge' }, String((byCat.get(c.id) || []).length))),
                     h('button', { class: 'btn small', type: 'button', onclick: () => editCat(c, (byCat.get(c.id) || []).length) }, tr('Ändern'))),
                 h('div', { class: 'chips' },
                     (byCat.get(c.id) || []).map(p => h('button', { class: 'chip', type: 'button', onclick: () => editProd(p) }, dn(p.n))),
@@ -1732,12 +1757,65 @@ function editProd(p) {
 }
 function editCat(c, count) {
     ask(tr('Warengruppe ändern'), [{ k: 'name', label: tr('Name'), value: dc(c.n), max: 60 }], tr('Speichern'), v => act('cat_rename', { id: c.id, name: v.name.trim() === dc(c.n) ? c.n : canonC(v.name.trim()) }),
-        [{ label: tr('Löschen'), danger: true, fn: () => {
+        [{ label: tr('Symbol …'), fn: () => { catIconDialog(c); } },
+         { label: tr('Löschen'), danger: true, fn: () => {
             confirmDlg(tr('Warengruppe löschen'), !count ? tr('„{0}“ wird gelöscht. Vorher wird eine Sicherung angelegt.', dc(c.n))
                 : count === 1 ? tr('„{0}“ wird gelöscht, samt 1 Produkt. Vorher wird eine Sicherung angelegt.', dc(c.n))
                 : tr('„{0}“ wird gelöscht, samt {1} Produkten. Vorher wird eine Sicherung angelegt.', dc(c.n), count),
                 tr('Löschen'), () => act('cat_delete', { id: c.id }));
         } }]);
+}
+/**
+ * Symbol einer Warengruppe wählen: ein eigenes Bild (aus Fotos, Mediathek, Dateien, etwa ein mit KI erzeugtes), ein Emoji,
+ * das mitgelieferte oder keins. Bilder werden hier auf 96 × 96 Pixel verkleinert (mittig zugeschnitten), so bleiben sie klein.
+ */
+function catIconDialog(c) {
+    const sh = sheet(tr('Symbol für „{0}“', dc(c.n)));
+    const err = h('p', { class: 'err', role: 'alert', hidden: true });
+    const save = async v => { try { await act('cat_icon', { id: c.id, icon: v }); sh.close(); } catch (e) { err.textContent = e.message; err.hidden = false; } };
+    const cur = catIconOf(c), def = CAT_IC[c.n] || '';
+    const file = h('input', { type: 'file', class: 'vh', accept: 'image/*', onchange: async () => {
+        const f = file.files && file.files[0];
+        if (!f) return;
+        try { await save(await shrinkIcon(f)); } catch (e) { err.textContent = e.message || tr('Das Bild ließ sich nicht lesen.'); err.hidden = false; }
+    } });
+    const emo = h('input', { type: 'text', maxlength: 8, placeholder: '🥕', autocomplete: 'off', value: cur && !cur.startsWith('data:') ? cur : '', 'aria-label': tr('Emoji') });
+    put(sh.body, h('div', { class: 'cidlg' },
+        h('div', { class: 'cibig' }, iconEl(cur, 'cbig') || h('span', { class: 'cbig none' }, '–')),
+        h('p', { class: 'info' }, tr('Ein eigenes Bild aus deinen Fotos oder Dateien, etwa eines, das du dir per KI hast malen lassen. Am besten quadratisch, es wird verkleinert.')),
+        // ein Label um das Dateifeld: öffnet die Auswahl auf jedem Gerät, ohne Skript-Klick
+        h('div', { class: 'btns' }, h('label', { class: 'btn primary' }, file, tr('Bild wählen …'))),
+        h('label', { class: 'field' }, tr('Oder ein Emoji'), h('div', { class: 'row2' }, emo,
+            h('button', { class: 'btn', type: 'button', onclick: () => { const v = emo.value.trim(); if (v) save(v); } }, tr('Übernehmen')))),
+        err,
+        h('div', { class: 'btns' },
+            h('button', { class: 'btn', type: 'button', onclick: () => save('') }, def ? [tr('Standard'), ' ', def] : tr('Standard (keins)')),
+            h('button', { class: 'btn', type: 'button', onclick: () => save('-') }, tr('Kein Symbol')))));
+}
+/** Bild auf 96 × 96 verkleinern, mittig zugeschnitten. WebP, wo es geht, sonst PNG, zur Not JPEG. Nur Standardmittel: FileReader, Image, Canvas. */
+function shrinkIcon(f) {
+    return new Promise((ok, fail) => {
+        const rd = new FileReader();
+        rd.onerror = () => fail(new Error(tr('Das Bild ließ sich nicht lesen.')));
+        rd.onload = () => {
+            const img = new Image();
+            img.onerror = () => fail(new Error(tr('Dieses Bildformat geht leider nicht. PNG oder JPEG klappt immer.')));
+            img.onload = () => {
+                const N = 96, cv = document.createElement('canvas'), s = Math.min(img.naturalWidth, img.naturalHeight);
+                if (!s) return fail(new Error(tr('Das Bild ließ sich nicht lesen.')));
+                cv.width = cv.height = N;
+                const g = cv.getContext('2d');
+                g.imageSmoothingQuality = 'high';
+                g.drawImage(img, (img.naturalWidth - s) / 2, (img.naturalHeight - s) / 2, s, s, 0, 0, N, N);
+                let out = cv.toDataURL('image/webp', .85);
+                if (!out.startsWith('data:image/webp')) out = cv.toDataURL('image/png');
+                if (out.length > 110000) out = cv.toDataURL('image/jpeg', .82);
+                ok(out);
+            };
+            img.src = rd.result;
+        };
+        rd.readAsDataURL(f);
+    });
 }
 /** Der Grund einer Sicherung steht deutsch in der Datenbank */
 function backupReason(r) {
@@ -1927,13 +2005,26 @@ function inkOf(acc, card, bg) {
     }
     return textOn(card);
 }
+/**
+ * Leichter Farbverlauf für Flächen in Akzentfarbe (--acc-g1 oben links, --acc-g2 unten rechts): der Farbton ein Stück nach links und rechts im Farbkreis,
+ * dazu etwas heller und dunkler. Wie weit, hängt an der Schrift darauf: sie soll auf beiden Enden so gut lesbar bleiben wie auf dem Akzent selbst.
+ * Bei grauem Akzent nur hell und dunkel.
+ */
+function accGrad(acc, at) {
+    const [ah, as, al] = hex2hsl(acc), dh = as < 12 ? 0 : 12, need = Math.min(contrast(acc, at), 4.5) - .25;
+    for (let d = 6; d >= 0; d--) {
+        const g1 = hsl2hex([(ah + 360 - dh) % 360, as, Math.min(97, al + d)]), g2 = hsl2hex([(ah + dh) % 360, as, Math.max(3, al - d)]);
+        if (contrast(g1, at) >= need && contrast(g2, at) >= need) return [g1, g2];
+    }
+    return [acc, acc];
+}
 /** Aus den gewählten Farben alle Farben der Oberfläche. Ohne eigene Wahl wird die Schrift auf dem Akzent so gewählt, dass sie lesbar bleibt. */
 function derive(c) {
     const dark = lum(c.bg) < .2;
     const at = c.at || textOn(c.acc), ok = c.ok || okAuto(c.acc);
     return {
         '--bg': c.bg, '--card': c.card, '--text': c.text, '--acc': c.acc, '--mut': c.mut || mix(c.text, c.bg, .4), '--line': mix(c.text, c.bg, .85),
-        '--head': c.head || c.text, '--qty': c.qty || at, '--ok': ok, '--acc-ink': inkOf(c.acc, c.card, c.bg),
+        '--head': c.head || c.text, '--qty': c.qty || at, '--ok': ok, '--acc-ink': inkOf(c.acc, c.card, c.bg), '--acc-g1': accGrad(c.acc, at)[0], '--acc-g2': accGrad(c.acc, at)[1],
         '--acc-text': at, '--acc-soft': mix(c.acc, c.card, .82),
         '--danger': dark ? '#ff8a7a' : '#b42318', '--shadow': dark ? 'none' : '0 1px 2px rgba(0, 0, 0, .08)', 'color-scheme': dark ? 'dark' : 'light',
     };
@@ -1997,6 +2088,7 @@ function applyTheme() {
         const cs = getComputedStyle(root), v = k => cs.getPropertyValue(k).trim().toLowerCase(), acc = v('--acc');
         if (isHex(acc)) root.style.setProperty('--ok', okAuto(acc));
         if (isHex(acc) && isHex(v('--card')) && isHex(v('--bg'))) root.style.setProperty('--acc-ink', inkOf(acc, v('--card'), v('--bg')));
+        if (isHex(acc)) { const [g1, g2] = accGrad(acc, isHex(v('--acc-text')) ? v('--acc-text') : textOn(acc)); root.style.setProperty('--acc-g1', g1); root.style.setProperty('--acc-g2', g2); }
     }
     const meta = $('meta[name=theme-color]');
     if (meta) meta.content = getComputedStyle(root).getPropertyValue(mode === 'dark' ? '--bg' : '--acc').trim() || meta.content;
@@ -2021,19 +2113,16 @@ async function wake() {
     } catch (e) {}
 }
 
-/** Vier Ansichten: kleine Kacheln, kompakte Schildchen, Laden-Modus (große Zeilen zum Abhaken) oder Liste (schlichte Zeilen auf Karten,
-    je Warengruppe eine Überschrift, die Menge als Pille rechts). Gemerkt pro Gerät und je Liste (viewL), sonst der Standard dieses Geräts, sonst die Liste. */
-const VIEWS = ['tiles', 'compact', 'shop', 'list'];
-const VIEW_NAMES = [['tiles', 'Kleine Kacheln'], ['compact', 'Kompakt'], ['shop', 'Laden-Modus'], ['list', 'Liste']];
+/** Zwei Ansichten: Kacheln oder Liste (schlichte Zeilen auf Karten, je Warengruppe eine Überschrift, die Menge als Pille rechts). Gemerkt pro Gerät und je Liste (viewL), sonst der Standard dieses Geräts, sonst die Liste. */
+const VIEWS = ['tiles', 'list'];   // „Kompakt“ und „Laden-Modus“ gibt es seit 1.23 nicht mehr, wer sie hatte, bekommt die Liste
+const VIEW_NAMES = [['tiles', 'Kacheln'], ['list', 'Liste']];
 const curView = () => { const m = LS.get('viewL', {}), v = cur != null && m[cur] || LS.get('view', 'list'); return VIEWS.includes(v) ? v : 'list'; };
 function applyView() {
     const v = curView(), next = VIEWS[(VIEWS.indexOf(v) + 1) % VIEWS.length];
-    main.classList.toggle('compact', v === 'compact');
-    main.classList.toggle('shop', v === 'shop');
     main.classList.toggle('list', v === 'list');
     const btn = $('#viewBtn');
     fill(btn, icon(I[next]));   // der Knopf zeigt, wohin er umschaltet
-    btn.title = tr({ tiles: 'Zur Kachel-Ansicht', compact: 'Zur kompakten Ansicht', shop: 'Zum Laden-Modus', list: 'Zur Listen-Ansicht' }[next]);
+    btn.title = tr({ tiles: 'Zur Kachel-Ansicht', list: 'Zur Listen-Ansicht' }[next]);
 }
 /** Ansicht wechseln und neu zeichnen */
 const setView = v => {
@@ -2869,14 +2958,15 @@ function showHelp() {
         sec(tr('Oben'),
             dl([[tr('Listenname'), tr('Liste wechseln oder eine neue anlegen')],
                 [tr('Suchfeld'), tr('Suchen, eintippen oder diktieren, das ✕ leert es')],
-                [[svg('#viewBtn'), tr('Ansicht')], tr('Kacheln, kompakt, Laden-Modus oder Liste')],
+                [[svg('#viewBtn'), tr('Ansicht')], tr('Kacheln oder Liste')],
                 [[svg('#menuBtn'), tr('Menü')], tr('Vorlagen, Reihenfolge im Laden, Drucken und Teilen, Aus Text einfügen, Katalog verwalten, Einstellungen und diese Hilfe')]])),
         sec(tr('In den Fenstern'),
             dl([[tr('Reihenfolge im Laden'), tr('Warengruppe am Griff nach oben oder unten ziehen oder die Pfeile antippen')],
                 [tr('Vorlagen'), tr('Antippen setzt alles auf die Liste, der Stift bearbeitet')],
                 [tr('Schließen'), tr('Das ✕ oben oder ein Tipp daneben')]])),
         sec(tr('Aussehen'),
-            p(tr('Schrift, Design und Farben stellst du in den Einstellungen für jede Liste und jede Ansicht einzeln ein, die Ansicht für jede Liste. „Für alle Listen und Ansichten übernehmen“ macht alles überall gleich.'))),
+            p(tr('Schrift, Design und Farben stellst du in den Einstellungen für jede Liste und jede Ansicht einzeln ein, die Ansicht für jede Liste. „Für alle Listen und Ansichten übernehmen“ macht alles überall gleich.')),
+            p(tr('Jede Warengruppe hat ein Symbol. Ein eigenes Bild oder Emoji wählst du unter Menü → Katalog verwalten → Ändern → Symbol.'))),
         sec(tr('Am Rechner'),
             p(tr('Mit gedrückter Maus ziehen statt wischen, Rechtsklick statt halten, Doppelklick statt zweimal tippen. Enter im Suchfeld nimmt den ersten Treffer, Esc schließt ein Fenster.'))),
         sec(tr('Gut zu wissen'),

@@ -19,14 +19,14 @@ Produkte tippt man aus einem fertigen Katalog an, sortiert nach Warengruppen. Im
 Wer gar nichts auf einem Server haben will, tippt auf der Anmeldeseite auf **„Ohne Konto nutzen, nur auf diesem Gerät“**. Dann bleiben alle Listen auf dem eigenen Handy oder Rechner, siehe [Lokaler Modus](#nur-auf-diesem-gerät-lokaler-modus).
 
 <p align="center">
-  <img src="docs/de/liste.png" alt="Die Einkaufsliste mit Mengen, Hinweisen, wer was draufgesetzt hat, und darunter „Bald wieder fällig“" width="320">
+  <img src="docs/de/liste.png" alt="Die Einkaufsliste als Kacheln mit Farbverlauf, Symbol und Zähler je Warengruppe, Mengen, Hinweisen und darunter „Bald wieder fällig“" width="320">
 </p>
 
 <table>
   <tr>
     <td align="center" width="33%"><img src="docs/de/listenansicht.png" alt="Die Listen-Ansicht: Warengruppen auf einer Karte, Kreise zum Abhaken, Abgehaktes bleibt durchgestrichen an seinem Platz" width="250"><br><sub>Liste: Abgehaktes bleibt durchgestrichen stehen</sub></td>
     <td align="center" width="33%"><img src="docs/de/groesse.png" alt="Schrift, Größe und Abstände: Vorschau, darunter Höhe der Einträge und Abstand dazwischen" width="250"><br><sub>Höhe der Einträge und Abstände einstellen</sub></td>
-    <td align="center" width="33%"></td>
+    <td align="center" width="33%"><img src="docs/de/symbol.png" alt="Symbol einer Warengruppe wählen: eigenes Bild, Emoji, Standard oder keins" width="250"><br><sub>Eigenes Symbol je Warengruppe</sub></td>
   </tr>
   <tr>
     <td align="center" width="33%"><img src="docs/de/ohne-konto.png" alt="Die Anmeldeseite mit dem Link „Ohne Konto nutzen, nur auf diesem Gerät“" width="250"><br><sub>Ohne Konto, nur auf dem Gerät</sub></td>
@@ -35,17 +35,17 @@ Wer gar nichts auf einem Server haben will, tippt auf der Anmeldeseite auf **„
   </tr>
   <tr>
     <td align="center" width="33%"><img src="docs/de/abgehakt.png" alt="Abgehaktes bleibt mit Haken und durchgestrichen an seinem Platz, darunter der Knopf „Einkauf fertig“" width="250"><br><sub>Abgehakt und durchgestrichen</sub></td>
-    <td align="center" width="33%"><img src="docs/de/wischen.png" alt="Ein Eintrag im Laden-Modus wird nach links gewischt, dahinter erscheint rot „Löschen“" width="250"><br><sub>Wischen: links löschen, rechts Menge</sub></td>
+    <td align="center" width="33%"><img src="docs/de/wischen.png" alt="Ein Eintrag in der Liste wird nach links gewischt, dahinter erscheint rot „Löschen“" width="250"><br><sub>Wischen: links löschen, rechts Menge</sub></td>
     <td align="center" width="33%"><img src="docs/de/warengruppe.png" alt="Nach langem Halten: Warengruppe wechseln oder neu anlegen" width="250"><br><sub>Halten: Warengruppe wechseln</sub></td>
   </tr>
   <tr>
-    <td align="center" width="33%"><img src="docs/de/laden.png" alt="Laden-Modus mit großen Zeilen zum Abhaken" width="250"><br><sub>Laden-Modus: große Zeilen zum Abhaken</sub></td>
-    <td align="center" width="33%"><img src="docs/de/dunkel.png" alt="Dunkles Design in der kompakten Ansicht" width="250"><br><sub>Dunkel und kompakt</sub></td>
+    <td align="center" width="33%"><img src="docs/de/rechner.png" alt="Am Rechner: die Warengruppen der Liste in zwei Spalten nebeneinander" width="250"><br><sub>Am Rechner: zwei Spalten</sub></td>
+    <td align="center" width="33%"><img src="docs/de/dunkel.png" alt="Dunkles Design in der Kachel-Ansicht" width="250"><br><sub>Dunkel, als Kacheln</sub></td>
     <td align="center" width="33%"><img src="docs/de/mehrere.png" alt="Vorschau, wenn man mehrere Produkte auf einmal eintippt" width="250"><br><sub>Mehrere auf einmal, mit Vorschau</sub></td>
   </tr>
   <tr>
     <td align="center"><img src="docs/de/menge.png" alt="Menge wählen: Zähler, Einheiten, eigene Einheit, Hinweis" width="250"><br><sub>Menge, Einheit und Hinweis</sub></td>
-    <td align="center"><img src="docs/de/faellig.png" alt="Bald wieder fällig: 16 Kacheln mit „vor 6 Tagen“, darunter „Alle anzeigen“" width="250"><br><sub>Bald wieder fällig</sub></td>
+    <td align="center"><img src="docs/de/faellig.png" alt="Bald wieder fällig, darunter der Katalog mit Symbolen" width="250"><br><sub>Bald wieder fällig</sub></td>
     <td align="center"><img src="docs/de/einstellungen.png" alt="Einstellungen: Sprache, Ansicht, Schrift, zehn Designs" width="250"><br><sub>Einstellungen</sub></td>
   </tr>
   <tr>
@@ -93,14 +93,16 @@ Wer gar nichts auf einem Server haben will, tippt auf der Anmeldeseite auf **„
 - **Katalog** mit rund 810 Produkten in 16 Warengruppen, in der Reihenfolge eines typischen Supermarkts. Nur Text, keine Bilder.
 - **Antippen** setzt ein Produkt auf die Liste. Antippen in der Liste hakt es ab: es bleibt mit Haken und durchgestrichen an seinem Platz stehen, wie auf dem Zettel. Zwei Tipps innerhalb von 2 Sekunden holen es zurück, ein einzelner Tipp aus Versehen holt nichts zurück. Wer die Liste teilt, sieht sofort, was schon im Wagen liegt.
 - **Einkauf fertig:** der Knopf unter der Liste nimmt nach einer Sicherheitsfrage alles Abgehakte runter. Was noch zu kaufen ist, bleibt auf der Liste, etwa für einen anderen Laden. Von allein verschwindet nichts.
-- **Wischen wie bei Mails:** einen Eintrag nach links wischen löscht ihn ganz von der Liste (ein paar Sekunden lang mit „Rückgängig“), nach rechts wischen öffnet Menge und Hinweis. Klappt in allen vier Ansichten. Am Rechner geht es mit gedrückter Maus.
+- **Wischen wie bei Mails:** einen Eintrag nach links wischen löscht ihn ganz von der Liste (ein paar Sekunden lang mit „Rückgängig“), nach rechts wischen öffnet Menge und Hinweis. Klappt in beiden Ansichten. Am Rechner geht es mit gedrückter Maus.
 - **Warengruppe mal eben ändern:** einen Eintrag der Liste etwa eine Sekunde halten (am Rechner: Rechtsklick), um ihn wächst dabei ein Ring. Dann eine andere Warengruppe antippen, z. B. Pflaumen im Glas zu den Konserven statt zum Obst. Das gilt nur für diesen Eintrag, auf Wunsch auch dauerhaft im Katalog. Eine neue Warengruppe lässt sich gleich dort anlegen.
 - **Suche** über den ganzen Katalog, in beiden Sprachen: „milk“ findet auch Milch. Gibt es ein Produkt nicht, legt man es direkt aus der Suche an und ordnet es einer Warengruppe zu. Die passende Warengruppe schlägt Kaufen am Wortende vor: „Bergkäse“ landet bei Milch & Käse, „Hundefutter“ bei Tierbedarf.
 - **Mehrere auf einmal, auch per Sprache:** „Milch, 2 kg Äpfel und ein halbes Brot“ ins Suchfeld tippen oder diktieren, Enter, und alles steht auf der Liste. Getrennt wird an Komma, „und“ oder Zeilenende, ohne Kommas („Milch Brot Äpfel Sahne“) zerlegt der Katalog die Wörter. Mengen dürfen davor oder dahinter stehen, in Ziffern oder Worten. Schon beim Tippen zeigt eine Vorschau, was erkannt wurde.
 - **Wann zuletzt gekauft:** was in den letzten zwei Wochen gekauft wurde, sagt es an der Kachel dazu („vor 3 Tagen“), beim langen Drücken mit Datum, wie oft und etwa wie regelmäßig.
 - **Bald wieder fällig:** beim Abhaken lernt Kaufen, wie oft ihr etwas kauft (Milch etwa alle 7 Tage). Schon nach dem zweiten Kauf steht es kurz vor dem nächsten Mal unter der Liste zum Antippen bereit. Bis zu 16 Vorschläge, „Alle anzeigen“ klappt den Rest auf. Ab dem wievielten Kauf vorgeschlagen wird (2., 3. oder 4.), stellt jeder in den Einstellungen ein. Lang drücken auf einen Vorschlag schaltet ihn für dieses Produkt ab. Alles bleibt auf dem eigenen Server.
 - **Regelmäßiges automatisch auf die Liste:** kauft ihr etwas 4 Wochen lang im gleichen Abstand (einstellbar: 4, 8 oder 12 Wochen, oder aus), setzt Kaufen es von allein auf die Liste, sobald es wieder fällig ist, und sagt kurz Bescheid. Pro Kauf nur einmal: wer es wieder löscht, bekommt es erst nach dem nächsten Kauf erneut. Lang drücken auf den Eintrag schaltet das für dieses Produkt ab.
-- **Vier Ansichten:** kleine Kacheln, kompakt, Laden-Modus (große Zeilen fürs Abhaken im Laden) oder Liste (schlichte Zeilen auf einer Karte, je Warengruppe eine Überschrift, links ein Kreis zum Abhaken, die Menge als Pille rechts). Von Haus aus startet Kaufen in der Listen-Ansicht, sie kommt einem Einkaufszettel am nächsten. Umschaltbar mit dem Knopf oben rechts, gemerkt pro Gerät und für jede Liste einzeln. Die Farben kommen wie überall aus dem gewählten Design.
+- **Zwei Ansichten:** Kacheln (mit leichtem Farbverlauf in der Akzentfarbe) oder Liste (schlichte Zeilen auf einer Karte, je Warengruppe eine Überschrift, links ein Kreis zum Abhaken, die Menge als Pille rechts). Am Rechner und auf dem Tablet quer stehen die Warengruppen in zwei Spalten nebeneinander.
+- **Symbole und Zähler an den Warengruppen:** jede mitgelieferte Warengruppe hat ein Symbol (🥦, 🥖, 🧀 …), rechts steht, wie viel dort noch fehlt, ✓ wenn alles abgehakt ist. Unter Menü → Katalog verwalten → Ändern → Symbol lässt sich ein eigenes Bild (aus Fotos oder Dateien, etwa per KI erzeugt, es wird auf 96 × 96 Pixel verkleinert) oder ein Emoji wählen, oder gar keins.
+- **Abhaken mit kleiner Animation:** der Strich zieht sich durch, der Kreis hüpft kurz. Reines CSS, bei „Bewegung reduzieren“ im System aus. Ist die Liste leer, zeigt ein großer Haken „Alles erledigt“. Von Haus aus startet Kaufen in der Listen-Ansicht, sie kommt einem Einkaufszettel am nächsten. Umschaltbar mit dem Knopf oben rechts, gemerkt pro Gerät und für jede Liste einzeln. Die Farben kommen wie überall aus dem gewählten Design.
 - **Ohne Netz weiter einkaufen:** die App startet auch ohne Empfang, Änderungen werden gesammelt und nachgereicht.
 - **Bildschirm bleibt an**, solange die App offen ist (abschaltbar).
 - **Hilfe in der App:** Menü → Hilfe erklärt kurz und knapp Tippen, Wischen und Halten, Mengen, den Einkauf im Laden und was oben und im Menü steckt.
