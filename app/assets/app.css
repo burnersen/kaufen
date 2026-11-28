@@ -77,14 +77,14 @@ svg { width: 1.25rem; height: 1.25rem; flex: none; }
 /* Suchfeld in „Katalog verwalten“: bleibt beim Scrollen oben stehen */
 .csearch { position: sticky; top: 0; z-index: 1; max-width: none; padding: .1rem 0 .6rem; background: var(--bg); }
 .csearch .iconbtn { top: calc(50% - .25rem); }
-#q:focus, .csearch input:focus, .field input:focus, .field select:focus, .field textarea:focus, .login input:focus { border-color: var(--acc); box-shadow: 0 0 0 3px var(--acc-soft); }
+#q:focus, .csearch input:focus, .field input:focus, .field select:focus, .field textarea:focus, .login input:focus { border-color: var(--acc-ink, var(--acc)); box-shadow: 0 0 0 3px var(--acc-soft); }
 
 /* Inhalt */
 #main { padding: .75rem .75rem calc(5rem + env(safe-area-inset-bottom)); }
 h2 { margin: 1.4rem 0 .6rem; font-size: calc(1.25rem * var(--fs-head, 1)); font-weight: 800; letter-spacing: -.01em; display: flex; align-items: center; gap: .55rem; color: var(--head, var(--text)); }
 h2:first-child { margin-top: .25rem; }
 h2 small { font-weight: 700; font-size: .8rem; letter-spacing: 0; }
-h2 small:not(:empty) { padding: .1rem .55rem; border-radius: 1rem; background: var(--acc-soft); color: var(--acc); }
+h2 small:not(:empty) { padding: .1rem .55rem; border-radius: 1rem; background: var(--acc-soft); color: var(--acc-ink, var(--acc)); }
 /* Überschrift einer Warengruppe: kräftige Schrift, dahinter eine feine Linie bis zum Rand */
 .grp { display: flex; align-items: center; gap: .6rem; margin: .95rem 0 .4rem; font-size: calc(.8rem * var(--fs-head, 1)); font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--head, var(--text)); }
 .grp::after { content: ""; flex: 1; height: 1px; background: var(--line); }
@@ -106,7 +106,7 @@ h2 + .grp, h2 + .secs > .sec:first-child > .grp { margin-top: .2rem; }
 .tile .th { font-size: calc(.7rem * var(--fs-hint, 1)); opacity: .9; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .tile .tb { font-size: .68rem; opacity: .8; }
 /* Wann zuletzt gekauft (Katalog, Suche, „Bald wieder fällig“): klein, in Akzentfarbe, fällt auf, ohne zu stören */
-.tile .ta { font-size: .62rem; font-weight: 600; color: var(--acc); line-height: 1.15; hyphens: manual; overflow-wrap: break-word; }
+.tile .ta { font-size: .62rem; font-weight: 600; color: var(--acc-ink, var(--acc)); line-height: 1.15; hyphens: manual; overflow-wrap: break-word; }
 .compact .tile .ta { font-size: .7rem; }
 .tile.on .ta { color: var(--qty, var(--acc-text)); opacity: .9; }
 /* Mehrere auf einmal: großer Knopf unter der Vorschau */
@@ -115,18 +115,18 @@ h2 + .grp, h2 + .secs > .sec:first-child > .grp { margin-top: .2rem; }
 .btn.wide { width: 100%; margin-bottom: .5rem; }
 a.btn { color: inherit; text-decoration: none; }
 .qlabel.gap { margin-top: 1.4rem; }
-.upnew { font-weight: 700; color: var(--acc); }
+.upnew { font-weight: 700; color: var(--acc-ink, var(--acc)); }
 .notes { max-height: 12rem; overflow-y: auto; margin: 0 0 .6rem; padding: .6rem .75rem; border: 1px solid var(--line); border-radius: .8rem; background: var(--card);
          font-size: .85rem; white-space: pre-wrap; overflow-wrap: anywhere; }
-.tile.on { background: var(--acc); border-color: var(--acc); color: var(--acc-text); font-weight: 600; }
+.tile.on { background: var(--acc); border-color: var(--acc-ink, var(--acc)); color: var(--acc-text); font-weight: 600; }
 .tile.on .tt, .tile.on .th { color: var(--qty, var(--acc-text)); }
-.tile.has { border-color: var(--acc); background: var(--acc-soft); }
-.tile.has .tn::before { content: "✓ "; color: var(--acc); font-weight: 700; }
-.tile.new { border-style: dashed; border-color: var(--acc); color: var(--acc); font-weight: 600; }
+.tile.has { border-color: var(--acc-ink, var(--acc)); background: var(--acc-soft); }
+.tile.has .tn::before { content: "✓ "; color: var(--acc-ink, var(--acc)); font-weight: 700; }
+.tile.new { border-style: dashed; border-color: var(--acc-ink, var(--acc)); color: var(--acc-ink, var(--acc)); font-weight: 600; }
 /* Abgehakt: bleibt mit Haken und durchgestrichen an seinem Platz, wie auf dem Zettel */
 .tile.got { background: var(--card); border-color: var(--line); color: var(--mut); box-shadow: none; }
-.tile.got .tn { text-decoration: line-through; text-decoration-thickness: 2px; text-decoration-color: var(--acc); }
-.tile.got .tn::before { content: "✓"; display: inline-block; margin-right: .25em; color: var(--acc); font-weight: 800; }
+.tile.got .tn { text-decoration: line-through; text-decoration-thickness: 2px; text-decoration-color: var(--acc-ink, var(--acc)); }
+.tile.got .tn::before { content: "✓"; display: inline-block; margin-right: .25em; color: var(--acc-ink, var(--acc)); font-weight: 800; }
 /* „Einkauf fertig“: in der Farbe des Designs mit Fortschritt, grün, sobald alles abgehakt ist */
 .finishbtn { display: flex; align-items: center; gap: .85rem; width: 100%; margin: 1rem 0 .5rem; padding: .85rem 1.1rem; border: 0; border-radius: 1.1rem; background: var(--acc);
              background: linear-gradient(135deg, var(--acc), color-mix(in srgb, var(--acc) 78%, #000)); color: var(--acc-text); text-align: left;
@@ -152,19 +152,19 @@ a.btn { color: inherit; text-decoration: none; }
 /* Die Nachfrage dazu */
 .finishdlg { text-align: center; }
 .finishdlg .fbig { display: grid; place-items: center; width: 4.5rem; height: 4.5rem; margin: .4rem auto .6rem; border-radius: 50%;
-                   background: var(--acc-soft); color: var(--acc); }
+                   background: var(--acc-soft); color: var(--acc-ink, var(--acc)); }
 .finishdlg .fbig svg { width: 2.4rem; height: 2.4rem; }
 .finishdlg.all .fbig path { stroke-width: 3.2; }
 .finishdlg .flead { margin: 0 0 .3rem; font-size: 1.2rem; font-weight: 700; }
 .finishdlg .chips { justify-content: center; margin: .6rem 0; }
-.finishdlg .chip.got { text-decoration: line-through; text-decoration-color: var(--acc); color: var(--mut); }
+.finishdlg .chip.got { text-decoration: line-through; text-decoration-color: var(--acc-ink, var(--acc)); color: var(--mut); }
 .finishdlg .btns .btn { min-height: 3.1rem; font-size: 1rem; }
-.btn.fok { background: var(--acc); border-color: var(--acc); color: var(--acc-text); }
+.btn.fok { background: var(--acc); border-color: var(--acc-ink, var(--acc)); color: var(--acc-text); }
 .btn.fok svg { width: 1.2rem; height: 1.2rem; }
 /* „Alle anzeigen“ unter „Bald wieder fällig“ */
 .btn.duemore { margin-top: .6rem; }
 /* Durchgestrichen an Ort und Stelle: der erste Tipp macht scharf, ein zweiter innerhalb von 2 Sekunden holt den Eintrag zurück */
-.tile.got.arm { outline: 2px dashed var(--acc); outline-offset: -4px; background: var(--acc-soft); color: var(--text); }
+.tile.got.arm { outline: 2px dashed var(--acc-ink, var(--acc)); outline-offset: -4px; background: var(--acc-soft); color: var(--text); }
 /* Wischen auf Einträgen der Liste: dahinter ein Schild, rechts rot „Löschen“, links „Menge“. Kräftig, sobald Loslassen auslöst.
    pan-y: hoch und runter rollt die Seite, zur Seite gehört der Finger dem Eintrag. */
 .grid.todo { position: relative; }
@@ -181,7 +181,7 @@ a.btn { color: inherit; text-decoration: none; }
 .swipebg[data-dir="del"] .sw-del, .swipebg[data-dir="qty"] .sw-qty { display: flex; }
 /* Lange halten: um den Eintrag wächst ein Ring, voll ist er, wenn das Menü kommt */
 .tile.holding { animation: hold .75s linear forwards; }   /* fängt nach 250 ms an, voll bei LP_ITEM (1 s) */
-@keyframes hold { from { box-shadow: 0 0 0 0 var(--bg), 0 0 0 0 var(--acc); } to { box-shadow: 0 0 0 3px var(--bg), 0 0 0 6px var(--acc); } }
+@keyframes hold { from { box-shadow: 0 0 0 0 var(--bg), 0 0 0 0 var(--acc-ink, var(--acc)); } to { box-shadow: 0 0 0 3px var(--bg), 0 0 0 6px var(--acc-ink, var(--acc)); } }
 /* Warengruppe wechseln: große Schildchen zum Antippen */
 .catpick { margin-bottom: 1rem; }
 .catpick .chip { min-height: 2.6rem; padding: .45rem .9rem; font-size: .95rem; touch-action: manipulation; }
@@ -198,7 +198,7 @@ a.btn { color: inherit; text-decoration: none; }
 /* Knöpfe */
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; min-height: 2.75rem; padding: .55rem 1rem; border: 1px solid var(--line);
        border-radius: .8rem; background: var(--card); font-weight: 600; text-decoration: none; }
-.btn.primary { background: var(--acc); border-color: var(--acc); color: var(--acc-text); }
+.btn.primary { background: var(--acc); border-color: var(--acc-ink, var(--acc)); color: var(--acc-text); }
 .btn.danger { color: var(--danger); }
 .btn.small { min-height: 2.2rem; padding: .3rem .7rem; font-size: .88rem; }
 .btn:disabled { opacity: .5; cursor: default; }
@@ -234,7 +234,7 @@ a.btn { color: inherit; text-decoration: none; }
 .row { display: flex; align-items: center; gap: .6rem; width: 100%; min-height: 3.2rem; margin-bottom: .45rem; padding: .5rem .85rem; border: 1px solid var(--line);
        border-radius: .9rem; background: var(--card); text-align: left; }
 button.row { font-weight: 600; }
-.row.cur { border-color: var(--acc); background: var(--acc-soft); }
+.row.cur { border-color: var(--acc-ink, var(--acc)); background: var(--acc-soft); }
 .row .grow { flex: 1; min-width: 0; overflow-wrap: anywhere; font-weight: 600; }
 .row .grow small { display: block; font-weight: 400; color: var(--mut); font-size: .82rem; }
 .row .mini { display: grid; place-items: center; width: 2.3rem; height: 2.3rem; border: 0; border-radius: .6rem; background: none; color: var(--mut); font-size: 1.05rem; flex: none; }
@@ -243,29 +243,29 @@ button.row { font-weight: 600; }
 .imp .row { min-height: 2.5rem; margin-bottom: .1rem; padding-top: .2rem; padding-bottom: .2rem; }
 .imp .row.off { opacity: .5; }
 .grip { touch-action: none; cursor: grab; }
-.row.drag { border-color: var(--acc); box-shadow: 0 4px 18px rgba(0, 0, 0, .2); }
-.badge { font-size: .7rem; font-weight: 700; padding: .1rem .45rem; border-radius: 1rem; background: var(--acc-soft); color: var(--acc); margin-left: .35rem; }
+.row.drag { border-color: var(--acc-ink, var(--acc)); box-shadow: 0 4px 18px rgba(0, 0, 0, .2); }
+.badge { font-size: .7rem; font-weight: 700; padding: .1rem .45rem; border-radius: 1rem; background: var(--acc-soft); color: var(--acc-ink, var(--acc)); margin-left: .35rem; }
 
 /* Katalog verwalten */
 .mcat { display: flex; align-items: center; gap: .5rem; margin: 1.1rem 0 .4rem; }
 .mcat h4 { margin: 0; font-size: 1rem; flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .chips { display: flex; flex-wrap: wrap; gap: .35rem; }
 .chip { padding: .35rem .7rem; border: 1px solid var(--line); border-radius: 1rem; background: var(--card); font-size: .88rem; }
-.chip.sel { background: var(--acc); border-color: var(--acc); color: var(--acc-text); font-weight: 600; }
-.chip.add { border-style: dashed; border-color: var(--acc); color: var(--acc); font-weight: 600; }
+.chip.sel { background: var(--acc); border-color: var(--acc-ink, var(--acc)); color: var(--acc-text); font-weight: 600; }
+.chip.add { border-style: dashed; border-color: var(--acc-ink, var(--acc)); color: var(--acc-ink, var(--acc)); font-weight: 600; }
 
 /* Menge wählen: Zähler, Einheiten, Hinweis */
 .qlabel { margin-bottom: .35rem; font-size: .88rem; font-weight: 600; color: var(--mut); }
 .qrow { display: flex; align-items: stretch; gap: .5rem; margin-bottom: .6rem; }
 .qbtn { flex: none; width: 3.4rem; height: 3.2rem; border: 1px solid var(--line); border-radius: .9rem; background: var(--card); box-shadow: var(--shadow); font-size: 1.6rem; font-weight: 600; line-height: 1;
-        color: var(--acc); user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: manipulation; transition: transform .08s; }
+        color: var(--acc-ink, var(--acc)); user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: manipulation; transition: transform .08s; }
 .qbtn:active { transform: scale(.94); background: var(--acc-soft); }
 .qbtn:disabled { opacity: .4; cursor: default; }
 .qbtn.half { width: 2.9rem; font-size: 1.25rem; }
-.qbtn.half[aria-pressed="true"] { background: var(--acc); border-color: var(--acc); color: var(--acc-text); }
+.qbtn.half[aria-pressed="true"] { background: var(--acc); border-color: var(--acc-ink, var(--acc)); color: var(--acc-text); }
 .qrow input { flex: 1; min-width: 0; padding: 0 .5rem; border: 1px solid var(--line); border-radius: .9rem; background: var(--card); outline: none; text-align: center;
               font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-.qrow input:focus { border-color: var(--acc); box-shadow: 0 0 0 3px var(--acc-soft); }
+.qrow input:focus { border-color: var(--acc-ink, var(--acc)); box-shadow: 0 0 0 3px var(--acc-soft); }
 .qty .chips { margin-bottom: .9rem; }
 .qty .chip { min-height: 2.4rem; padding: .4rem .85rem; touch-action: manipulation; }
 .info.units { margin-top: .5rem; }
@@ -277,10 +277,10 @@ button.row { font-weight: 600; }
 .pal span:last-child { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pal .dot { display: grid; place-items: center; width: 2.1rem; height: 2.1rem; border-radius: 50%; background: var(--card); border: 1px solid var(--line); }
 .pal .dot i { width: 1.15rem; height: 1.15rem; border-radius: 50%; background: var(--acc); }
-.pal[aria-checked="true"] { border-color: var(--acc); box-shadow: 0 0 0 2px var(--acc-soft); }
+.pal[aria-checked="true"] { border-color: var(--acc-ink, var(--acc)); box-shadow: 0 0 0 2px var(--acc-soft); }
 
 .pal.empty { border-style: dashed; }
-.pal .dot svg { width: 1.1rem; height: 1.1rem; color: var(--acc); }
+.pal .dot svg { width: 1.1rem; height: 1.1rem; color: var(--acc-ink, var(--acc)); }
 
 /* Farbmischer fürs eigene Design */
 .prev { position: sticky; top: 0; z-index: 1; margin-bottom: .8rem; padding: .7rem .75rem .75rem; border: 1px solid var(--line); border-radius: 1rem; background: var(--bg); color: var(--text);
@@ -295,7 +295,11 @@ button.row { font-weight: 600; }
 .seg { display: flex; flex-direction: column; align-items: center; gap: .25rem; min-width: 0; padding: .5rem .1rem .4rem; border: 2px solid var(--line); border-radius: .9rem; background: var(--card);
        font-size: .75rem; font-weight: 600; text-align: center; line-height: 1.15; overflow-wrap: anywhere; hyphens: auto; }
 .seg i { width: 1.7rem; height: 1.7rem; border-radius: 50%; background: var(--c); border: 1px solid var(--line); }
-.seg[aria-pressed="true"] { border-color: var(--acc); background: var(--acc-soft); }
+.seg[aria-pressed="true"] { border-color: var(--acc-ink, var(--acc)); background: var(--acc-soft); }
+/* „A“ oben rechts: diese Farbe stimmt Kaufen automatisch auf den Akzent ab */
+.seg { position: relative; }
+.seg.isauto::after { content: "A"; position: absolute; top: .2rem; right: .3rem; font-size: .62rem; font-weight: 800; color: var(--acc-ink, var(--acc)); }
+.btns.autos { margin-top: .4rem; }
 .sl { display: block; margin-bottom: .7rem; font-size: .82rem; font-weight: 600; color: var(--mut); }
 .sl input { -webkit-appearance: none; appearance: none; display: block; width: 100%; height: 1.9rem; margin: .3rem 0 0; padding: 0; border: 1px solid var(--line); border-radius: 1rem;
             background: var(--track); outline: none; cursor: pointer; touch-action: pan-y; }
@@ -305,19 +309,19 @@ button.row { font-weight: 600; }
                                   box-shadow: 0 0 0 1px rgba(0, 0, 0, .55), inset 0 0 0 1px rgba(0, 0, 0, .55); }
 .sl input::-moz-range-thumb { box-sizing: border-box; width: 1.8rem; height: 1.8rem; border-radius: 50%; border: 3px solid #fff; background: transparent;
                               box-shadow: 0 0 0 1px rgba(0, 0, 0, .55), inset 0 0 0 1px rgba(0, 0, 0, .55); }
-.sl input:focus-visible { box-shadow: 0 0 0 3px var(--acc-soft); border-color: var(--acc); }
+.sl input:focus-visible { box-shadow: 0 0 0 3px var(--acc-soft); border-color: var(--acc-ink, var(--acc)); }
 .sl.hue { --track: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00); }
 .sl.sat { --track: linear-gradient(to right, hsl(var(--h) 0% var(--l)), hsl(var(--h) 100% var(--l))); }
 .sl.lig { --track: linear-gradient(to right, #000, hsl(var(--h) var(--s) 50%), #fff); }
 .pick { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; margin: .2rem 0 .8rem; }
 .pick input[type="color"] { width: 2rem; height: 2rem; padding: 0; border: 1px solid var(--line); border-radius: .5rem; background: none; cursor: pointer; }
 .pick .hex { flex: 1; min-width: 6.5rem; padding: .6rem .8rem; border: 1px solid var(--line); border-radius: .8rem; background: var(--card); outline: none; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .95rem; }
-.pick .hex:focus { border-color: var(--acc); box-shadow: 0 0 0 3px var(--acc-soft); }
+.pick .hex:focus { border-color: var(--acc-ink, var(--acc)); box-shadow: 0 0 0 3px var(--acc-soft); }
 /* Knopf „Schriftfarben automatisch abstimmen“: gedrückt, solange Listenschrift und Menge dem Akzent folgen */
 .btn.match { width: 100%; }
 .btn.match + .info { margin: .4rem 0 .8rem; }
-.auto[aria-pressed="true"] { border-color: var(--acc); background: var(--acc-soft); }
-.auto[aria-pressed="true"]::before { content: "✓"; color: var(--acc); font-weight: 700; }
+.auto[aria-pressed="true"] { border-color: var(--acc-ink, var(--acc)); background: var(--acc-soft); }
+.auto[aria-pressed="true"]::before { content: "✓"; color: var(--acc-ink, var(--acc)); font-weight: 700; }
 /* Schriftgrößen: Regler mit Prozentangabe */
 .fontbtn { width: 100%; margin-bottom: .9rem; }
 /* Beim Ziehen die echte Liste zeigen: Fenster und Abdunklung verschwinden, nur der angefasste Regler bleibt als Leiste stehen.
@@ -342,7 +346,7 @@ button.row { font-weight: 600; }
 .login .langsw { margin: 1rem 0 0; font-size: .88rem; }
 /* „Ohne Konto nutzen“: lokaler Modus, alles bleibt auf dem Gerät */
 .login .localsw { margin: 1.1rem 0 0; font-size: .92rem; font-weight: 600; }
-.login .localsw a { color: var(--acc); }
+.login .localsw a { color: var(--acc-ink, var(--acc)); }
 .login .langsw a { color: var(--mut); }
 .row.danger { color: var(--danger); }
 
@@ -374,7 +378,7 @@ button.row { font-weight: 600; }
 .shop .todo .th { flex: 1 0 100%; padding-left: 1.95rem; font-size: calc(.9rem * var(--fs-hint, 1)); font-weight: 400; -webkit-line-clamp: unset; }
 .shop .todo .tb { flex: 1 0 100%; padding-left: 1.95rem; font-size: .78rem; font-weight: 400; }
 .shop .grp { margin: 1.1rem 0 .45rem; font-size: calc(.88rem * var(--fs-head, 1)); }
-.shop .todo .tile.got::before { content: "✓"; display: grid; place-items: center; border-color: var(--acc); background: var(--acc); color: var(--acc-text);
+.shop .todo .tile.got::before { content: "✓"; display: grid; place-items: center; border-color: var(--acc-ink, var(--acc)); background: var(--acc); color: var(--acc-text);
                                 font-size: .85rem; font-weight: 800; line-height: 1; opacity: 1; }
 .shop .tile.got .tn::before { content: none; }
 .shop .swipebg { padding: 0 1.1rem; font-size: .95rem; }
@@ -393,16 +397,16 @@ button.row { font-weight: 600; }
                     color: var(--text); box-shadow: none; font-size: 1.12rem; font-weight: 400; text-align: left; hyphens: manual; }
 .list .todo .tile + .tile { border-top: 1px solid var(--line); }
 .list .todo .tile:active { transform: none; background: var(--acc-soft); }
-.list .todo .tile::before { content: ""; flex: none; width: 1.45rem; height: 1.45rem; border: 2px solid var(--acc); border-radius: 50%; }
+.list .todo .tile::before { content: ""; flex: none; width: 1.45rem; height: 1.45rem; border: 2px solid var(--acc-ink, var(--acc)); border-radius: 50%; }
 .list .todo .tn { flex: 1 1 0; min-width: 0; }
-.list .todo .tt { flex: none; max-width: 50%; padding: .12rem .7rem; border-radius: 1rem; background: var(--acc-soft); color: var(--acc);
+.list .todo .tt { flex: none; max-width: 50%; padding: .12rem .7rem; border-radius: 1rem; background: var(--acc-soft); color: var(--acc-ink, var(--acc));
                   font-size: calc(.92rem * var(--fs-qty, 1)); font-weight: 600; text-align: right; }
 .list .todo .tt.cnt { font-size: calc(1.05rem * var(--fs-cnt, 1)); font-weight: var(--fw-cnt, 800); }
 .list .todo .th, .list .todo .tb { flex: 1 0 100%; padding-left: 2.3rem; color: var(--mut); font-weight: 400; opacity: 1; }
 .list .todo .th { font-size: calc(.9rem * var(--fs-hint, 1)); -webkit-line-clamp: unset; }
 .list .todo .tb { font-size: .78rem; }
 .list .todo .tile.got { color: var(--mut); }
-.list .todo .tile.got::before { content: "✓"; display: grid; place-items: center; border-color: var(--acc); background: var(--acc); color: var(--acc-text);
+.list .todo .tile.got::before { content: "✓"; display: grid; place-items: center; border-color: var(--acc-ink, var(--acc)); background: var(--acc); color: var(--acc-text);
                                 font-size: .9rem; font-weight: 800; line-height: 1; }
 .list .tile.got .tn::before { content: none; }
 .list .todo .tile.got .tt { opacity: .6; }
@@ -437,17 +441,17 @@ button.row { font-weight: 600; }
 .demofoot { margin: 2.2rem 0 .5rem; padding-top: 1.2rem; border-top: 1px solid var(--line); text-align: center; color: var(--mut); font-size: .88rem; line-height: 1.45; }
 .demofoot p { margin: 0 0 .8rem; }
 .demofoot .links { display: flex; flex-wrap: wrap; justify-content: center; gap: .6rem; margin-bottom: .8rem; }
-.demofoot .btn { flex: 1 1 12rem; max-width: 18rem; min-height: 3rem; border-color: var(--acc); color: var(--text); font-size: 1rem; font-weight: 700; }
-.demofoot .btn svg { color: var(--acc); }
+.demofoot .btn { flex: 1 1 12rem; max-width: 18rem; min-height: 3rem; border-color: var(--acc-ink, var(--acc)); color: var(--text); font-size: 1rem; font-weight: 700; }
+.demofoot .btn svg { color: var(--acc-ink, var(--acc)); }
 
 /* Hilfe: kurze Abschnitte, Gesten als zweispaltige Tabelle auf einer Karte */
 .help h2 { margin: 1.1rem 0 .45rem; font-size: 1.02rem; }
 .help h2:first-child { margin-top: .2rem; }
 .help p { margin: 0 0 .55rem; font-size: .92rem; line-height: 1.45; }
-.help p a { color: var(--acc); font-weight: 600; }
+.help p a { color: var(--acc-ink, var(--acc)); font-weight: 600; }
 .help dl { display: grid; grid-template-columns: fit-content(42%) 1fr; gap: .45rem .85rem; margin: 0 0 .55rem; padding: .65rem .85rem;
            border: 1px solid var(--line); border-radius: .8rem; background: var(--card); font-size: .92rem; line-height: 1.4; }
 .help dt { font-weight: 700; }
 .help dt svg { width: 1.1rem; height: 1.1rem; margin-right: .3rem; vertical-align: -.2rem; }
 .help dd { margin: 0; }
-.info a { color: var(--acc); }
+.info a { color: var(--acc-ink, var(--acc)); }

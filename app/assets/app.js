@@ -1788,12 +1788,15 @@ const PALS = {
     dark: [['lagune', 'Lagune'], ['mitternacht', 'Nacht'], ['glut', 'Glut'], ['aubergine', 'Pflaume'], ['schwarz', 'Schwarz']],
 };
 const darkMq = window.matchMedia('(prefers-color-scheme: dark)');
-/** Die vier Grundfarben, die man selbst einstellen muss. Linien und zarter Akzent werden daraus abgeleitet, die Schriftfarben aus TPARTS auch, solange man sie nicht selbst setzt. */
+/** Die vier Grundfarben, die jedes eigene Design gespeichert hat. Ab 1.22 wählt man nur den Akzent, der Rest kommt aus autoColors, solange man ihn nicht selbst einstellt. */
 const PARTS = [['bg', 'Hintergrund'], ['card', 'Kacheln'], ['text', 'Schrift'], ['acc', 'Akzent']];
-/** Weitere Schriftfarben, freiwillig. Fehlt eine, wird sie wie bisher ausgerechnet. Dazu die CSS-Variable, die sie setzt. */
+/** Weitere Farben. Fehlt eine (Design von vor 1.22), rechnet derive sie wie früher aus. Dazu die CSS-Variable, die sie setzt. */
 const TPARTS = [['head', 'Überschriften', '--head'], ['mut', 'Nebentext', '--mut'], ['at', 'Listenschrift', '--acc-text'], ['qty', 'Menge', '--qty'], ['ok', 'Fertig-Haken', '--ok']];
 const isHex = v => /^#[0-9a-f]{6}$/.test(v);
-const okCols = c => c && PARTS.every(([k]) => isHex(c[k])) ? Object.fromEntries([...PARTS, ...TPARTS].filter(([k]) => isHex(c[k])).map(([k]) => [k, c[k]])) : null;
+/** Alles außer dem Akzent kann automatisch sein. m im eigenen Design: was davon selbst eingestellt ist (fehlt m, ist es ein Design von vor 1.22) */
+const AUTO_KEYS = ['bg', 'card', 'text', 'head', 'mut', 'at', 'qty', 'ok'];
+const okCols = c => c && PARTS.every(([k]) => isHex(c[k])) ? Object.assign(Object.fromEntries([...PARTS, ...TPARTS].filter(([k]) => isHex(c[k])).map(([k]) => [k, c[k]])),
+    Array.isArray(c.m) ? { m: AUTO_KEYS.filter(k => c.m.includes(k)) } : {}) : null;
 const okUnit = u => typeof u === 'string' && u.split('/').length <= 2 && u.split('/').every(x => UWORD.test(x));
 /** Was pro Liste gelten kann: hell oder dunkel, Design für hell und dunkel, eigene Farben */
 const LOOKC = ['mode', 'l', 'd', 'cl', 'cd'];
@@ -1887,13 +1890,50 @@ function okAuto(acc) {
     }
     return textOn(acc);
 }
+/**
+ * Alle Farben eines eigenen Designs aus der Akzentfarbe, für hell oder dunkel.
+ * Hintergrund und Kacheln bekommen einen Hauch vom Farbton des Akzents (bei grauem Akzent neutral), hell fast Weiß, dunkel ein tiefes, nicht ganz schwarzes Blau-Grau
+ * im Ton des Akzents. Schrift fast Schwarz bzw. fast Weiß mit demselben Hauch, Überschriften einen Tick kräftiger. Nebentext gedämpft, aber gut lesbar (mindestens 4,5).
+ * Listenschrift und Menge auf dem Akzent wie matchText, der Fertig-Haken wie okAuto.
+ */
+function autoColors(acc, dark) {
+    const [ah, as] = hex2hsl(acc), t = as < 12 ? 0 : 1;   // t = 0: grauer Akzent, dann alles neutral
+    const c = (s, l) => hsl2hex([ah, t * s, l]);
+    const o = dark
+        ? { bg: c(24, 8), card: c(20, 13), text: c(14, 92), head: c(22, 96) }
+        : { bg: c(18, 96), card: c(30, 99.5), text: c(25, 12), head: c(35, 15) };
+    // Nebentext: zwischen Schrift und Kacheln, so weit Richtung Hintergrund wie es die Lesbarkeit erlaubt
+    for (let f = .5; f >= 0; f -= .02) { o.mut = mix(o.text, o.card, f); if (contrast(o.mut, o.card) >= 4.6 && contrast(o.mut, o.bg) >= 4.6) break; }
+    const m = matchText(acc);
+    return { ...o, at: m.at, qty: m.qty, ok: okAuto(acc) };
+}
+/** Eigenes Design vervollständigen: was nicht selbst eingestellt ist (m), kommt aus dem Akzent */
+function fillAuto(c, dark) {
+    const a = autoColors(c.acc, dark), m = c.m || [], out = { ...c, m: [...m] };
+    for (const k of AUTO_KEYS) if (!m.includes(k) || !isHex(out[k])) out[k] = a[k];
+    return out;
+}
+/**
+ * Akzent als Schrift, Haken, Rand oder Linie auf Hintergrund und Kacheln (--acc-ink): derselbe Farbton, nur so viel dunkler (hell) bzw. heller (dunkel),
+ * dass er sich abhebt (Kontrast 3,5). Ein sehr heller Akzent im hellen Design oder ein sehr dunkler im dunklen bleibt so trotzdem sichtbar.
+ * Flächen in Akzentfarbe (Knöpfe, Kacheln auf der Liste) behalten genau den gewählten Ton.
+ */
+function inkOf(acc, card, bg) {
+    if (Math.min(contrast(acc, card), contrast(acc, bg)) >= 3.5) return acc;
+    const [ah, as, al] = hex2hsl(acc), up = lum(card) < .2;
+    for (let l = al; l >= 0 && l <= 100; l += up ? 2 : -2) {
+        const c = hsl2hex([ah, as, l]);
+        if (Math.min(contrast(c, card), contrast(c, bg)) >= 3.5) return c;
+    }
+    return textOn(card);
+}
 /** Aus den gewählten Farben alle Farben der Oberfläche. Ohne eigene Wahl wird die Schrift auf dem Akzent so gewählt, dass sie lesbar bleibt. */
 function derive(c) {
     const dark = lum(c.bg) < .2;
     const at = c.at || textOn(c.acc), ok = c.ok || okAuto(c.acc);
     return {
         '--bg': c.bg, '--card': c.card, '--text': c.text, '--acc': c.acc, '--mut': c.mut || mix(c.text, c.bg, .4), '--line': mix(c.text, c.bg, .85),
-        '--head': c.head || c.text, '--qty': c.qty || at, '--ok': ok,
+        '--head': c.head || c.text, '--qty': c.qty || at, '--ok': ok, '--acc-ink': inkOf(c.acc, c.card, c.bg),
         '--acc-text': at, '--acc-soft': mix(c.acc, c.card, .82),
         '--danger': dark ? '#ff8a7a' : '#b42318', '--shadow': dark ? 'none' : '0 1px 2px rgba(0, 0, 0, .08)', 'color-scheme': dark ? 'dark' : 'light',
     };
@@ -1954,8 +1994,9 @@ function applyTheme() {
     root.dataset.pal = pal;
     setVars(root, pal === 'eigen' ? a[mode === 'dark' ? 'cd' : 'cl'] : null);
     if (pal !== 'eigen') {   // fertige Designs: der Fertig-Haken passend zum Akzent aus app.css
-        const acc = getComputedStyle(root).getPropertyValue('--acc').trim().toLowerCase();
+        const cs = getComputedStyle(root), v = k => cs.getPropertyValue(k).trim().toLowerCase(), acc = v('--acc');
         if (isHex(acc)) root.style.setProperty('--ok', okAuto(acc));
+        if (isHex(acc) && isHex(v('--card')) && isHex(v('--bg'))) root.style.setProperty('--acc-ink', inkOf(acc, v('--card'), v('--bg')));
     }
     const meta = $('meta[name=theme-color]');
     if (meta) meta.content = getComputedStyle(root).getPropertyValue(mode === 'dark' ? '--bg' : '--acc').trim() || meta.content;
@@ -2135,87 +2176,92 @@ function applyLang() {
     applyView();
 }
 
-/** Farbmischer fürs eigene Design: vier Grundfarben, vier freiwillige Schriftfarben und die Farbe des Fertig-Hakens, je drei Regler oder der Farbwähler des Geräts,
-    oben eine Vorschau, die sofort mitgeht. Eine Schriftfarbe auf „Automatisch“ wird aus den anderen ausgerechnet. */
+/**
+ * Farbmischer fürs eigene Design. Gewählt wird nur die Akzentfarbe, alles andere stimmt Kaufen darauf ab (autoColors), für hell und dunkel je eigens.
+ * Jede Farbe lässt sich trotzdem einzeln ändern, dann steht sie fest (col.m = selbst eingestellt). „Automatisch“ holt eine zurück, „Alles automatisch“ alle.
+ * Oben eine Vorschau, die sofort mitgeht, je drei Regler oder der Farbwähler des Geräts.
+ */
 function editLook(mode, redraw) {
-    const ck = mode === 'dark' ? 'cd' : 'cl';
-    const start = { ...lk()[ck] };
+    const ck = mode === 'dark' ? 'cd' : 'cl', dark = mode === 'dark';
+    const raw = lk()[ck];
+    // Eigenes Design von vor 1.22 (ohne m): alles gilt als selbst eingestellt, so sieht es genauso aus wie bisher
+    const legacy = c => { const d = derive(c), out = { ...c, m: [...AUTO_KEYS] }; for (const [k, , v] of TPARTS) if (!out[k]) out[k] = d[v]; return out; };
+    const start = raw.m ? fillAuto(raw, dark) : legacy(raw);
     const col = { ...start }, hsl = {};
-    const ALL = [...PARTS, ...TPARTS], tvar = Object.fromEntries(TPARTS.map(([k, , v]) => [k, v]));
-    const eff = k => col[k] || derive(col)[tvar[k]];   // die Farbe, die gerade gilt, auch wenn sie automatisch ist
-    for (const [k] of ALL) hsl[k] = hex2hsl(eff(k));
+    let man = new Set(start.m);
+    const ALL = [['acc', 'Akzent'], ...PARTS.filter(([k]) => k !== 'acc'), ...TPARTS];
+    const name = k => tr(ALL.find(x => x[0] === k)[1]);
     let part = 'acc';
-    // Abgestimmt (Knopf): Listenschrift und Menge gehen mit dem Akzent mit, bis man eine der beiden selbst einstellt
-    const matched = () => { const m = matchText(col.acc); return col.at === m.at && col.qty === m.qty; };
-    let follow = matched();
-    const edited = () => { if (part === 'at' || part === 'qty') follow = false; };
-    const sh = sheet(mode === 'dark' ? tr('Eigenes Design für dunkel') : tr('Eigenes Design für hell'), { onclose: () => { saveLook(); redraw(); } });
-    const demo = (cls, name, note) => h('span', { class: 'tile ' + cls }, h('span', { class: 'tn' }, name), note && h('span', { class: 'tt' }, note));
+    const recompute = () => { Object.assign(col, fillAuto({ ...col, m: [...man] }, dark)); col.m = [...man]; for (const [k] of ALL) if (k !== part) hsl[k] = hex2hsl(col[k]); };
+    const set = hex => { col[part] = hex; if (part !== 'acc') man.add(part); recompute(); show(); };
+    for (const [k] of ALL) hsl[k] = hex2hsl(col[k]);
+    const sh = sheet(dark ? tr('Eigenes Design für dunkel') : tr('Eigenes Design für hell'), { onclose: () => { saveLook(); redraw(); } });
+    const demo = (cls, nm, note) => h('span', { class: 'tile ' + cls }, h('span', { class: 'tn' }, nm), note && h('span', { class: 'tt' }, note));
     const prev = h('div', { class: 'prev', 'aria-hidden': 'true' },
         h('h2', null, tr('Noch zu kaufen'), h('small', null, '1')),
         h('div', { class: 'grp' }, dc('Milch & Käse')),
         h('div', { class: 'grid' }, demo('on', dn('Milch'), dnote('2 Liter')), demo('has', dn('Brot')), demo('', dn('Butter')), demo('new', tr('+ Neu'))),
+        h('p', { class: 'info' }, tr('Nebentext, etwa ein Hinweis')),
         h('div', { class: 'cat' }, dc('Getränke'), h('small', null, '12'), icon(I.down)),
         h('div', { class: 'btns' }, h('span', { class: 'btn' }, tr('Knopf')), h('span', { class: 'btn primary' }, tr('Speichern'))),
         h('span', { class: 'finishbtn all mini' }, h('span', { class: 'fi' }, icon(I.check)), h('span', { class: 'ft' }, h('b', null, tr('Alles abgehakt, Einkauf fertig')))));
-    const tabs = ALL.map(([k, name]) => h('button', { class: 'seg', type: 'button', onclick: () => { part = k; show(); } }, h('i'), tr(name)));
+    const tabs = ALL.map(([k, nm]) => h('button', { class: 'seg', type: 'button', onclick: () => { part = k; show(); } }, h('i'), tr(nm)));
     // Beim Ziehen mit freiem Blick: die echte Seite zeigt genau die Farben, an denen gedreht wird, auch wenn das Gerät gerade die andere Seite (hell/dunkel) zeigt
     let peeking = false;
     const peek = on => { peeking = on; if (on) setVars(document.documentElement, col); else applyTheme(); };
     const range = (cls, label, max, i) => {
-        const r = h('input', { type: 'range', min: '0', max: String(max), step: '1', 'aria-label': label, oninput: () => { hsl[part][i] = +r.value; col[part] = hsl2hex(hsl[part]); edited(); show(); } });
+        const r = h('input', { type: 'range', min: '0', max: String(max), step: '1', 'aria-label': label, oninput: () => { hsl[part][i] = +r.value; set(hsl2hex(hsl[part])); } });
         peekOnDrag(r, peek);
         return [h('label', { class: 'sl ' + cls }, label, r), r];
     };
     const [hueL, hue] = range('hue', tr('Farbton'), 360, 0), [satL, sat] = range('sat', tr('Sättigung'), 100, 1), [ligL, lig] = range('lig', tr('Helligkeit'), 100, 2);
     const sliders = h('div', { class: 'sliders' }, hueL, satL, ligL);
-    const picker = h('input', { type: 'color', 'aria-label': tr('Farbwähler'), oninput: () => { col[part] = picker.value.toLowerCase(); hsl[part] = hex2hsl(col[part]); edited(); show(); } });
+    const picker = h('input', { type: 'color', 'aria-label': tr('Farbwähler'), oninput: () => { hsl[part] = hex2hsl(picker.value.toLowerCase()); set(picker.value.toLowerCase()); } });
     // Farbcode zum Eintippen oder Einfügen: #7c3aed, 7c3aed oder kurz #73e
     const code = h('input', { type: 'text', class: 'hex', maxlength: 7, spellcheck: 'false', autocomplete: 'off', autocapitalize: 'none', 'aria-label': tr('Farbcode'), enterkeyhint: 'done',
         onchange: () => {
             let v = code.value.trim().toLowerCase().replace(/^#/, '');
             if (/^[0-9a-f]{3}$/.test(v)) v = v.replace(/./g, '$&$&');
-            if (/^[0-9a-f]{6}$/.test(v) && col[part] !== '#' + v) { col[part] = '#' + v; hsl[part] = hex2hsl(col[part]); edited(); }
+            if (/^[0-9a-f]{6}$/.test(v) && col[part] !== '#' + v) { hsl[part] = hex2hsl('#' + v); set('#' + v); }
             show();
         },
         onkeydown: e => { if (e.key === 'Enter') { e.preventDefault(); code.blur(); } } });
-    const load = c => { for (const [k] of TPARTS) delete col[k]; Object.assign(col, c); follow = matched(); for (const [k] of ALL) hsl[k] = hex2hsl(eff(k)); show(); };
-    // Ein Knopf für alle Schriftfarben: Listenschrift und Menge passend zum Akzent, Überschriften und Nebentext wieder wie die Schrift
-    const matchBtn = h('button', { class: 'btn auto match', type: 'button', onclick: () => { delete col.head; delete col.mut; follow = true; show(); } },
-        tr('Schriftfarben automatisch abstimmen'));
-    // Fertig-Haken zurück auf automatisch (eine Farbe, die sich gut vom Akzent abhebt)
-    const okAutoBtn = h('button', { class: 'btn auto match', type: 'button', onclick: () => { delete col.ok; show(); } }, tr('Fertig-Haken automatisch'));
-    const base = h('select', { 'aria-label': tr('Fertiges Design als Ausgangspunkt'), onchange: () => { if (base.value) load(palColors(base.value)); base.value = ''; } },
+    // Diese eine Farbe wieder automatisch, oder alle außer dem Akzent
+    const autoBtn = h('button', { class: 'btn auto', type: 'button', onclick: () => { man.delete(part); recompute(); hsl[part] = hex2hsl(col[part]); show(); } });
+    const allBtn = h('button', { class: 'btn auto', type: 'button', onclick: () => { man = new Set(); recompute(); hsl[part] = hex2hsl(col[part]); show(); } }, tr('Alles automatisch'));
+    const load = (c, m) => { Object.assign(col, c); man = new Set(m); recompute(); for (const [k] of ALL) hsl[k] = hex2hsl(col[k]); show(); };
+    const base = h('select', { 'aria-label': tr('Fertiges Design als Ausgangspunkt'), onchange: () => { if (base.value) load(palColors(base.value), ['bg', 'card', 'text']); base.value = ''; } },
         h('option', { value: '' }, tr('Von einem fertigen Design ausgehen …')),
-        [['Hell', PALS.light], ['Dunkel', PALS.dark]].map(([g, list]) => h('optgroup', { label: tr(g) }, list.map(([id, name]) => h('option', { value: id }, tr(name))))));
+        [['Hell', PALS.light], ['Dunkel', PALS.dark]].map(([g, list]) => h('optgroup', { label: tr(g) }, list.map(([id, nm]) => h('option', { value: id }, tr(nm))))));
     const warn = h('p', { class: 'err', hidden: true });
-    // Welche Schrift auf welchem Untergrund steht. Geprüft werden die Schrift und alles, was selbst eingestellt ist.
-    const pairs = [['text', ['bg', 'card']], ['head', ['bg']], ['mut', ['bg', 'card']], ['at', ['acc']], ['qty', ['acc']], ['ok', ['acc']]];
+    // Welche Farbe auf welchem Untergrund steht: Schrift braucht 4,5, Nebentext, Menge und Haken 3. Der Akzent selbst darf alles, Schrift und Ränder in Akzentfarbe hebt --acc-ink ab.
+    const pairs = [['text', ['bg', 'card'], 4.5], ['head', ['bg'], 4.5], ['mut', ['bg', 'card'], 3], ['at', ['acc'], 4.5], ['qty', ['acc'], 3], ['ok', ['acc'], 3]];
     function show() {
-        if (follow) { Object.assign(col, matchText(col.acc)); hsl.at = hex2hsl(col.at); hsl.qty = hex2hsl(col.qty); }
-        for (const [k] of TPARTS) if (!col[k]) hsl[k] = hex2hsl(eff(k));   // automatische gehen mit den Grundfarben mit
+        recompute();
         setVars(prev, col);
-        setLook({ [ck]: { ...col } }, true);   // die App dahinter färbt sich gleich mit, zum Konto geht es beim Schließen
+        setLook({ [ck]: { ...col, m: [...man] } }, true);   // die App dahinter färbt sich gleich mit, zum Konto geht es beim Schließen
         if (peeking) setVars(document.documentElement, col);
-        tabs.forEach((t, i) => { const k = ALL[i][0]; t.firstChild.style.setProperty('--c', eff(k)); t.setAttribute('aria-pressed', String(k === part)); });
+        tabs.forEach((t, i) => { const k = ALL[i][0]; t.firstChild.style.setProperty('--c', col[k]); t.setAttribute('aria-pressed', String(k === part)); t.classList.toggle('isauto', k !== 'acc' && !man.has(k)); });
         const [a, b, c] = hsl[part];
         hue.value = a; sat.value = b; lig.value = c;
         sliders.style.setProperty('--h', a); sliders.style.setProperty('--s', b + '%'); sliders.style.setProperty('--l', c + '%');
-        picker.value = eff(part);
-        code.value = eff(part);
-        matchBtn.setAttribute('aria-pressed', String(follow));
-        okAutoBtn.hidden = part !== 'ok';
-        okAutoBtn.setAttribute('aria-pressed', String(!col.ok));
-        const bad = pairs.filter(([k, on]) => col[k] && on.some(u => contrast(col[k], col[u]) < 3)).map(([k]) => tr(ALL.find(x => x[0] === k)[1]));
-        warn.textContent = tr('Schwer zu lesen: {0}', bad.join(', '));
+        picker.value = col[part];
+        code.value = col[part];
+        autoBtn.hidden = part === 'acc';
+        fill(autoBtn, man.has(part) ? tr('{0} wieder automatisch', name(part)) : tr('{0}: automatisch', name(part)));
+        autoBtn.setAttribute('aria-pressed', String(!man.has(part)));
+        allBtn.setAttribute('aria-pressed', String(!man.size));
+        const bad = pairs.filter(([k, on, min]) => man.has(k) && on.some(u => contrast(col[k], col[u]) < min)).map(([k]) => name(k));   // automatisch ist schon das Beste, was geht
+        warn.textContent = tr('Schwer zu erkennen: {0}', bad.join(', '));
         warn.hidden = !bad.length;
     }
     put(sh.body, prev, h('div', { class: 'segs' }, tabs), peekOption(), sliders,
-        h('div', { class: 'pick' }, h('label', { class: 'btn' }, picker, tr('Farbwähler')), code), okAutoBtn, matchBtn,
-        h('p', { class: 'info' }, tr('Wählt zur Akzentfarbe eine gut lesbare Listenschrift und eine Mengenfarbe aus dem Farbkreis, die sich davon abhebt. Bleibt dran, wenn du den Akzent änderst.')), warn,
+        h('div', { class: 'pick' }, h('label', { class: 'btn' }, picker, tr('Farbwähler')), code),
+        h('p', { class: 'info' }, tr('Wähl nur die Akzentfarbe, alles andere stimmt Kaufen darauf ab, gut lesbar und in sich stimmig. Jede Farbe lässt sich trotzdem ändern, „A“ heißt automatisch.')),
+        h('div', { class: 'btns autos' }, autoBtn, allBtn), warn,
         h('label', { class: 'field' }, base),
         h('div', { class: 'btns' },
-            h('button', { class: 'btn', type: 'button', onclick: () => load(start) }, tr('Zurücksetzen')),
+            h('button', { class: 'btn', type: 'button', onclick: () => load(start, start.m) }, tr('Zurücksetzen')),
             h('button', { class: 'btn primary', type: 'button', onclick: () => sh.close() }, tr('Fertig'))));
     show();
 }
@@ -2271,7 +2317,7 @@ function showSettings(top) {
         const draw = () => {
             const a = lk();
             const own = h('button', { class: 'pal' + (a[ck] ? '' : ' empty'), type: 'button', role: 'radio', 'aria-checked': String(palOf(mode) === 'eigen'), data: { pal: 'eigen' },
-                onclick: () => { setLook({ [ck]: a[ck] || palColors(palOf(mode)), [pk]: 'eigen' }); draw(); editLook(mode, draw); } },
+                onclick: () => { setLook({ [ck]: a[ck] || fillAuto({ acc: palColors(palOf(mode)).acc, m: [] }, mode === 'dark'), [pk]: 'eigen' }); draw(); editLook(mode, draw); } },
                 h('span', { class: 'dot' }, a[ck] ? h('i') : icon(I.edit)), h('span', null, tr('Eigenes')));
             if (a[ck]) setVars(own, a[ck]);
             fill(row, PALS[mode].map(([id, name]) => h('button', { class: 'pal', type: 'button', role: 'radio', 'aria-checked': String(palOf(mode) === id), data: { pal: id },
