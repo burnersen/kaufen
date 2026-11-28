@@ -1791,7 +1791,7 @@ const darkMq = window.matchMedia('(prefers-color-scheme: dark)');
 /** Die vier Grundfarben, die man selbst einstellen muss. Linien und zarter Akzent werden daraus abgeleitet, die Schriftfarben aus TPARTS auch, solange man sie nicht selbst setzt. */
 const PARTS = [['bg', 'Hintergrund'], ['card', 'Kacheln'], ['text', 'Schrift'], ['acc', 'Akzent']];
 /** Weitere Schriftfarben, freiwillig. Fehlt eine, wird sie wie bisher ausgerechnet. Dazu die CSS-Variable, die sie setzt. */
-const TPARTS = [['head', 'Überschriften', '--head'], ['mut', 'Nebentext', '--mut'], ['at', 'Listenschrift', '--acc-text'], ['qty', 'Menge', '--qty'], ['ok', 'Fertig-Knopf', '--ok']];
+const TPARTS = [['head', 'Überschriften', '--head'], ['mut', 'Nebentext', '--mut'], ['at', 'Listenschrift', '--acc-text'], ['qty', 'Menge', '--qty'], ['ok', 'Fertig-Haken', '--ok']];
 const isHex = v => /^#[0-9a-f]{6}$/.test(v);
 const okCols = c => c && PARTS.every(([k]) => isHex(c[k])) ? Object.fromEntries([...PARTS, ...TPARTS].filter(([k]) => isHex(c[k])).map(([k]) => [k, c[k]])) : null;
 const okUnit = u => typeof u === 'string' && u.split('/').length <= 2 && u.split('/').every(x => UWORD.test(x));
@@ -1872,21 +1872,28 @@ const textOn = c => contrast(c, '#ffffff') >= contrast(c, '#101418') ? '#ffffff'
 /** Abstand zweier Farbtöne im Farbkreis (0 bis 180) */
 const hueDist = (a, b) => { const d = Math.abs(a - b) % 360; return Math.min(d, 360 - d); };
 /**
- * Farbe für „Alles abgehakt, Einkauf fertig“, solange man sie nicht selbst wählt: am liebsten Grün,
- * liegt der Akzent aber selbst im Grün (etwa Türkis), dann ein Ton, der sich klar abhebt (Gold, Blau, Violett, Rosa).
+ * Farbe des dicken Hakens auf dem Knopf „Alles abgehakt, Einkauf fertig“ (der Knopf selbst bleibt in der Akzentfarbe), solange man sie nicht selbst wählt.
+ * Am liebsten Grün, liegt der Akzent selbst im Grün (etwa Türkis), dann Gold, Blau, Violett oder Rosa. Heller oder dunkler als der Akzent,
+ * je nachdem wo mehr Platz ist, bis der Kontrast zum Akzent mindestens 3 ist. Klappt das mit keiner Farbe, Weiß oder fast Schwarz.
  */
-function okAuto(acc, dark) {
-    const [ah, as] = hex2hsl(acc);
-    const hue = [142, 40, 215, 275, 330].find(x => as < 15 || hueDist(x, ah) >= 50);
-    return hsl2hex([hue, hue === 40 ? 85 : 65, dark ? 45 : 36]);
+function okAuto(acc) {
+    const [ah, as] = hex2hsl(acc), up = contrast(acc, '#ffffff') >= contrast(acc, '#101418');
+    for (const hue of [142, 50, 205, 280, 330]) {
+        if (as >= 15 && hueDist(hue, ah) < 50) continue;
+        for (let l = 50; l >= 5 && l <= 95; l += up ? 2 : -2) {
+            const c = hsl2hex([hue, 78, l]);
+            if (contrast(c, acc) >= 3) return hsl2hex([hue, 78, Math.max(5, Math.min(95, l + (up ? 4 : -4)))]);
+        }
+    }
+    return textOn(acc);
 }
 /** Aus den gewählten Farben alle Farben der Oberfläche. Ohne eigene Wahl wird die Schrift auf dem Akzent so gewählt, dass sie lesbar bleibt. */
 function derive(c) {
     const dark = lum(c.bg) < .2;
-    const at = c.at || textOn(c.acc), ok = c.ok || okAuto(c.acc, dark);
+    const at = c.at || textOn(c.acc), ok = c.ok || okAuto(c.acc);
     return {
         '--bg': c.bg, '--card': c.card, '--text': c.text, '--acc': c.acc, '--mut': c.mut || mix(c.text, c.bg, .4), '--line': mix(c.text, c.bg, .85),
-        '--head': c.head || c.text, '--qty': c.qty || at, '--ok': ok, '--ok-text': textOn(ok),
+        '--head': c.head || c.text, '--qty': c.qty || at, '--ok': ok,
         '--acc-text': at, '--acc-soft': mix(c.acc, c.card, .82),
         '--danger': dark ? '#ff8a7a' : '#b42318', '--shadow': dark ? 'none' : '0 1px 2px rgba(0, 0, 0, .08)', 'color-scheme': dark ? 'dark' : 'light',
     };
@@ -1946,9 +1953,9 @@ function applyTheme() {
     root.dataset.theme = mode;
     root.dataset.pal = pal;
     setVars(root, pal === 'eigen' ? a[mode === 'dark' ? 'cd' : 'cl'] : null);
-    if (pal !== 'eigen') {   // fertige Designs: die Fertig-Farbe passend zum Akzent aus app.css
+    if (pal !== 'eigen') {   // fertige Designs: der Fertig-Haken passend zum Akzent aus app.css
         const acc = getComputedStyle(root).getPropertyValue('--acc').trim().toLowerCase();
-        if (isHex(acc)) { const ok = okAuto(acc, mode === 'dark'); root.style.setProperty('--ok', ok); root.style.setProperty('--ok-text', textOn(ok)); }
+        if (isHex(acc)) root.style.setProperty('--ok', okAuto(acc));
     }
     const meta = $('meta[name=theme-color]');
     if (meta) meta.content = getComputedStyle(root).getPropertyValue(mode === 'dark' ? '--bg' : '--acc').trim() || meta.content;
@@ -2128,7 +2135,7 @@ function applyLang() {
     applyView();
 }
 
-/** Farbmischer fürs eigene Design: vier Grundfarben, vier freiwillige Schriftfarben und die Farbe des Fertig-Knopfs, je drei Regler oder der Farbwähler des Geräts,
+/** Farbmischer fürs eigene Design: vier Grundfarben, vier freiwillige Schriftfarben und die Farbe des Fertig-Hakens, je drei Regler oder der Farbwähler des Geräts,
     oben eine Vorschau, die sofort mitgeht. Eine Schriftfarbe auf „Automatisch“ wird aus den anderen ausgerechnet. */
 function editLook(mode, redraw) {
     const ck = mode === 'dark' ? 'cd' : 'cl';
@@ -2176,14 +2183,14 @@ function editLook(mode, redraw) {
     // Ein Knopf für alle Schriftfarben: Listenschrift und Menge passend zum Akzent, Überschriften und Nebentext wieder wie die Schrift
     const matchBtn = h('button', { class: 'btn auto match', type: 'button', onclick: () => { delete col.head; delete col.mut; follow = true; show(); } },
         tr('Schriftfarben automatisch abstimmen'));
-    // Fertig-Knopf zurück auf automatisch (eine Farbe, die sich vom Akzent abhebt)
-    const okAutoBtn = h('button', { class: 'btn auto match', type: 'button', onclick: () => { delete col.ok; show(); } }, tr('Fertig-Knopf automatisch'));
+    // Fertig-Haken zurück auf automatisch (eine Farbe, die sich gut vom Akzent abhebt)
+    const okAutoBtn = h('button', { class: 'btn auto match', type: 'button', onclick: () => { delete col.ok; show(); } }, tr('Fertig-Haken automatisch'));
     const base = h('select', { 'aria-label': tr('Fertiges Design als Ausgangspunkt'), onchange: () => { if (base.value) load(palColors(base.value)); base.value = ''; } },
         h('option', { value: '' }, tr('Von einem fertigen Design ausgehen …')),
         [['Hell', PALS.light], ['Dunkel', PALS.dark]].map(([g, list]) => h('optgroup', { label: tr(g) }, list.map(([id, name]) => h('option', { value: id }, tr(name))))));
     const warn = h('p', { class: 'err', hidden: true });
     // Welche Schrift auf welchem Untergrund steht. Geprüft werden die Schrift und alles, was selbst eingestellt ist.
-    const pairs = [['text', ['bg', 'card']], ['head', ['bg']], ['mut', ['bg', 'card']], ['at', ['acc']], ['qty', ['acc']]];
+    const pairs = [['text', ['bg', 'card']], ['head', ['bg']], ['mut', ['bg', 'card']], ['at', ['acc']], ['qty', ['acc']], ['ok', ['acc']]];
     function show() {
         if (follow) { Object.assign(col, matchText(col.acc)); hsl.at = hex2hsl(col.at); hsl.qty = hex2hsl(col.qty); }
         for (const [k] of TPARTS) if (!col[k]) hsl[k] = hex2hsl(eff(k));   // automatische gehen mit den Grundfarben mit
@@ -2200,11 +2207,8 @@ function editLook(mode, redraw) {
         okAutoBtn.hidden = part !== 'ok';
         okAutoBtn.setAttribute('aria-pressed', String(!col.ok));
         const bad = pairs.filter(([k, on]) => col[k] && on.some(u => contrast(col[k], col[u]) < 3)).map(([k]) => tr(ALL.find(x => x[0] === k)[1]));
-        // Fertig-Knopf fast im selben Ton wie der Akzent: dann sieht man nicht, dass alles abgehakt ist
-        const [oh, os] = hex2hsl(eff('ok')), [ah, as] = hex2hsl(col.acc);
-        const same = col.ok && os >= 15 && as >= 15 && hueDist(oh, ah) < 30;
-        warn.textContent = [bad.length && tr('Schwer zu lesen: {0}', bad.join(', ')), same && tr('Der Fertig-Knopf hat fast denselben Farbton wie der Akzent, so fällt „alles abgehakt“ kaum auf.')].filter(Boolean).join(' ');
-        warn.hidden = !bad.length && !same;
+        warn.textContent = tr('Schwer zu lesen: {0}', bad.join(', '));
+        warn.hidden = !bad.length;
     }
     put(sh.body, prev, h('div', { class: 'segs' }, tabs), peekOption(), sliders,
         h('div', { class: 'pick' }, h('label', { class: 'btn' }, picker, tr('Farbwähler')), code), okAutoBtn, matchBtn,
