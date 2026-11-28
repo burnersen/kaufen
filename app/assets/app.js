@@ -2072,17 +2072,12 @@ function fillAuto(c, dark) {
 }
 /**
  * Akzent als Schrift, Haken, Rand oder Linie auf Hintergrund und Kacheln (--acc-ink): derselbe Farbton, nur so viel dunkler (hell) bzw. heller (dunkel),
- * dass er sich abhebt (Kontrast 3,5). Ein sehr heller Akzent im hellen Design oder ein sehr dunkler im dunklen bleibt so trotzdem sichtbar.
+ * dass er sich abhebt (Kontrast 4,5, auch auf dem zart getönten Grund). Ein sehr heller Akzent im hellen Design oder ein sehr dunkler im dunklen bleibt so trotzdem sichtbar.
  * Flächen in Akzentfarbe (Knöpfe, Kacheln auf der Liste) behalten genau den gewählten Ton.
  */
 function inkOf(acc, card, bg) {
-    if (Math.min(contrast(acc, card), contrast(acc, bg)) >= 3.5) return acc;
-    const [ah, as, al] = hex2hsl(acc), up = lum(card) < .2;
-    for (let l = al; l >= 0 && l <= 100; l += up ? 2 : -2) {
-        const c = hsl2hex([ah, as, l]);
-        if (Math.min(contrast(c, card), contrast(c, bg)) >= 3.5) return c;
-    }
-    return textOn(card);
+    // auch auf dem zart getönten Grund (--acc-soft: Zähler, Mengen-Pillen, Markiertes) soll es gut lesbar sein, deshalb 4,5 auf allen dreien
+    return readableOn(acc, [card, bg, mix(acc, card, .82)], 4.5);
 }
 /**
  * Leichter Farbverlauf für Flächen in Akzentfarbe (--acc-g1 oben links, --acc-g2 unten rechts): der Farbton ein Stück nach links und rechts im Farbkreis,
@@ -2100,10 +2095,14 @@ function accGrad(acc, at) {
 /** Aus den gewählten Farben alle Farben der Oberfläche. Ohne eigene Wahl wird die Schrift auf dem Akzent so gewählt, dass sie lesbar bleibt. */
 function derive(c) {
     const dark = lum(c.bg) < .2;
-    const at = c.at || textOn(c.acc), ok = c.ok || okAuto(c.acc);
+    const at = readableOn(c.at || textOn(c.acc), [c.acc], 4.5), ok = c.ok || okAuto(c.acc), mut = c.mut || mix(c.text, c.bg, .4);
+    // Schrift und Nebentext je Untergrund: auf dem Hintergrund (Seite, Menüs, Fenster) und auf den Kacheln (Einträge, Knöpfe, Felder).
+    // Was nicht gut genug zu lesen ist, rückt in der Helligkeit nach (Farbton bleibt), so klappt es mit jedem Design, auch mit alten.
+    const textBg = readableOn(c.text, [c.bg], 7), mutBg = readableOn(mut, [c.bg], 4.5);
     return {
-        '--bg': c.bg, '--card': c.card, '--text': c.text, '--acc': c.acc, '--mut': c.mut || mix(c.text, c.bg, .4), '--line': mix(c.text, c.bg, .85),
-        '--head': c.head || c.text, '--qty': c.qty || at, '--ok': ok, '--acc-ink': inkOf(c.acc, c.card, c.bg), '--acc-g1': accGrad(c.acc, at)[0], '--acc-g2': accGrad(c.acc, at)[1],
+        '--bg': c.bg, '--card': c.card, '--text': textBg, '--acc': c.acc, '--mut': mutBg, '--line': mix(c.text, c.bg, .85),
+        '--text-bg': textBg, '--text-card': readableOn(c.text, [c.card], 7), '--mut-bg': mutBg, '--mut-card': readableOn(mut, [c.card], 4.5),
+        '--head': readableOn(c.head || c.text, [c.bg], 7), '--qty': readableOn(c.qty || at, [c.acc], 3.5), '--ok': ok, '--acc-ink': inkOf(c.acc, c.card, c.bg), '--acc-g1': accGrad(c.acc, at)[0], '--acc-g2': accGrad(c.acc, at)[1],
         '--acc-text': at, '--acc-soft': mix(c.acc, c.card, .82),
         // „Löschen“ bleibt auf jedem Untergrund lesbar
         '--danger': readableOn(dark ? '#ff8a7a' : '#b42318', [c.card, c.bg], 4.5), '--shadow': dark ? 'none' : '0 1px 2px rgba(0, 0, 0, .08)', 'color-scheme': dark ? 'dark' : 'light',
