@@ -42,6 +42,7 @@ const I = {
     trash: 'M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3',
     tiles: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z', compact: 'M3 6h8M14 6h7M3 12h5M11 12h10M3 18h9M15 18h6', shop: 'M3 4h18v6H3zM3 14h18v6H3z',
     list: 'M4 6h.01M4 12h.01M4 18h.01M9 6h11M9 12h11M9 18h11',
+    cart: 'M3 4h2.2l2.3 10.5h10.8L20.5 7H6.3M9.5 19.5h.01M17 19.5h.01', check: 'M5 12.5l4.5 4.5L19 7.5',
     globe: 'M12 3a9 9 0 100 18 9 9 0 000-18zM3 12h18M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9s1.2-6.5 3.6-9z', code: 'M8 7l-5 5 5 5M16 7l5 5-5 5M14 4l-4 16',
 };
 
@@ -864,8 +865,7 @@ function viewHome(l) {
     }
     if (secs.length) out.push(h('div', { class: 'secs' }, secs));
     // „Einkauf fertig“ nimmt alles Abgehakte von der Liste
-    if (bask.length) out.push(h('button', { class: 'btn wide finish' + (todo.length ? '' : ' primary'), type: 'button', onclick: finishShopping },
-        tr('Einkauf fertig ({0} abgehakt)', bask.length)));
+    if (bask.length) out.push(finishButton(bask.length, todo.length));
 
     const open = LS.get('open', {});
     // Bald wieder fällig: von Anfang an aufgeklappt, zuklappen wird gemerkt. Bis zu DUE_MAX, „Alle anzeigen“ klappt den Rest auf (gemerkt pro Gerät).
@@ -1130,15 +1130,37 @@ function delItem(it) {
     op({ t: 'remove', uid: it.uid });
     toast(tr('{0} gelöscht', dn(it.n)), tr('Rückgängig'), () => op({ t: 'back', uid: it.uid, n: it.n, c: it.c, note: it.note, by: it.by, at: it.at, got: it.got || 0 }));
 }
-/** „Einkauf fertig“: nach einer Sicherheitsfrage alles Abgehakte von der Liste nehmen. Was noch zu kaufen ist, bleibt drauf. */
+/** Der Knopf „Einkauf fertig“ unter der Liste: in der Farbe des Designs mit Fortschritt, grün, sobald alles abgehakt ist */
+function finishButton(got, left) {
+    const all = !left, pct = Math.round(got / (got + left) * 100);
+    return h('button', { class: 'finishbtn' + (all ? ' all' : ''), type: 'button', onclick: finishShopping },
+        h('span', { class: 'fi' }, icon(all ? I.check : I.cart)),
+        h('span', { class: 'ft' },
+            h('b', null, all ? tr('Alles abgehakt, Einkauf fertig') : tr('Einkauf fertig')),
+            h('small', null, all ? (got === 1 ? tr('1 Sache im Wagen') : tr('{0} Sachen im Wagen', got)) : tr('{0} von {1} abgehakt', got, got + left)),
+            !all && h('span', { class: 'fbar', 'aria-hidden': 'true' }, h('i', { style: 'width:' + pct + '%' }))));
+}
+/** „Einkauf fertig“: ein eigenes Fenster fragt nach, zeigt was gekauft ist und was bleibt. Erst dann geht das Abgehakte von der Liste und zählt als gekauft. */
 function finishShopping() {
-    const left = openItems().length;
-    confirmDlg(tr('Einkauf fertig?'), tr('Ist alles Abgehakte wirklich gekauft? Dann wird es von der Liste genommen.')
-        + (left === 1 ? ' ' + tr('Das eine, was noch zu kaufen ist, bleibt drauf.') : left ? ' ' + tr('Die {0} Sachen, die noch zu kaufen sind, bleiben drauf.', left) : ''),
-        tr('Ja, von der Liste nehmen'), () => {
-            const bask = basketItems();
-            if (bask.length) { op(bask.map(it => ({ t: 'buy', uid: it.uid }))); toast(tr('Abgehaktes von der Liste genommen')); }
-        });
+    const bask = basketItems(), left = openItems().length, all = !left;
+    if (!bask.length) return;
+    const sh = sheet(tr('Einkauf abschließen'));
+    const MAX = 12, names = bask.map(it => dn(it.n)).sort((a, b) => a.localeCompare(b, lang));
+    const done = () => {
+        const now = basketItems();
+        sh.close();
+        if (now.length) { op(now.map(it => ({ t: 'buy', uid: it.uid }))); toast(now.length === 1 ? tr('Einkauf abgeschlossen, 1 Sache gekauft') : tr('Einkauf abgeschlossen, {0} Sachen gekauft', now.length)); }
+    };
+    put(sh.body, h('div', { class: 'finishdlg' + (all ? ' all' : '') },
+        h('div', { class: 'fbig' }, icon(all ? I.check : I.cart)),
+        h('p', { class: 'flead' }, all ? tr('Alles erledigt, prima!') : tr('{0} von {1} abgehakt', bask.length, bask.length + left)),
+        h('p', { class: 'info' }, tr('Das Abgehakte kommt von der Liste und zählt als gekauft:')),
+        h('div', { class: 'chips' }, names.slice(0, MAX).map(n => h('span', { class: 'chip got' }, n)),
+            names.length > MAX && h('span', { class: 'chip' }, tr('und {0} weitere', names.length - MAX))),
+        left > 0 && h('p', { class: 'info fleft' }, left === 1 ? tr('Das eine, was noch zu kaufen ist, bleibt drauf.') : tr('Die {0} Sachen, die noch zu kaufen sind, bleiben drauf.', left)),
+        h('div', { class: 'btns' },
+            h('button', { class: 'btn', type: 'button', onclick: () => sh.close() }, tr('Noch nicht')),
+            h('button', { class: 'btn fok', type: 'button', onclick: done }, icon(I.check), tr('Ja, Einkauf abschließen')))));
 }
 function tapProd(n, c) {
     const it = itemByName(n);
