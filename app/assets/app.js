@@ -853,10 +853,40 @@ function render() {
     renderLater = false;
     if (gest) { stopHold(); gest = null; }   // die Kachel unter dem Finger wird gleich ersetzt: Halten gilt nicht mehr
     const q = norm(qInput.value.trim());
+    const anchor = scrollAnchor();
     main.replaceChildren(...(q ? viewSearch(q) : [demoBanner(), helpHint(), ...viewHome(l), demoFoot()].filter(Boolean)));
+    keepAnchor(anchor);
     if (!q) setTimeout(autoAdd, 0);   // regelmäßig Gekauftes von allein auf die Liste, sobald es fällig ist (nicht mitten im Zeichnen)
 }
 setInterval(() => { if (!document.hidden) render(); }, 15 * 60 * 1000);   // fällig wird es auch, während Kaufen offen ist
+
+/* ---------- Nicht verrutschen: wer weiter unten im Katalog antippt, behält seinen Platz, auch wenn oben die Liste wächst ----------
+   Vor dem Neuzeichnen wird ein Eintrag gemerkt (der gerade angetippte, sonst der oberste sichtbare) und seine Lage auf dem Bildschirm.
+   Danach wird genau so weit nachgescrollt, dass er wieder an derselben Stelle steht. Ganz oben (unter 40 px) bleibt alles, wie es ist,
+   dann sieht man die Liste wachsen. Die Scroll-Verankerung der Browser ist dafür aus (overflow-anchor), damit es überall gleich läuft. */
+let tapped = null;
+/** Woran ein Eintrag nach dem Neuzeichnen wiederzuerkennen ist: Eintrag auf der Liste (auch abgehakt), Produkt (samt Bereich) oder Warengruppe */
+const anchorKey = t => { const d = t.dataset; return d.uid ? 'u:' + d.uid : d.n ? 'n:' + low(d.n) + '|' + (d.src || '') + '|' + (d.k || '') : d.id ? 'c:' + d.k + ':' + d.id : ''; };
+function scrollAnchor() {
+    if (window.scrollY < 40) return null;
+    const top = $('#top').getBoundingClientRect().bottom, vh = window.innerHeight;
+    const vis = r => r.bottom > top && r.top < vh;
+    const all = main.querySelectorAll('[data-k]');
+    if (tapped && Date.now() - tapped.at < 4000) {
+        for (const t of all) if (anchorKey(t) === tapped.key) { const r = t.getBoundingClientRect(); if (vis(r)) return { key: tapped.key, y: r.top }; break; }
+    }
+    for (const t of all) { const r = t.getBoundingClientRect(), k = anchorKey(t); if (k && r.top >= top && vis(r)) return { key: k, y: r.top }; }
+    return null;
+}
+function keepAnchor(a) {
+    if (!a) return;
+    for (const t of main.querySelectorAll('[data-k]')) {
+        if (anchorKey(t) !== a.key) continue;
+        const d = t.getBoundingClientRect().top - a.y;
+        if (Math.abs(d) >= 1) window.scrollTo(0, window.scrollY + d);
+        return;
+    }
+}
 
 function viewHome(l) {
     const out = [];
@@ -1411,6 +1441,7 @@ main.addEventListener('click', e => {
     if (lpFired) { lpFired = false; return; }
     const t = e.target.closest('[data-k]');
     if (!t || !L) return;
+    tapped = { key: anchorKey(t), at: Date.now() };   // dieser Eintrag bleibt beim Neuzeichnen unter dem Finger
     const d = t.dataset;
     if (d.k === 'item') tapItem(d.uid);
     else if (d.k === 'got') tapGot(d.uid);
