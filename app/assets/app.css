@@ -107,7 +107,6 @@ h2 + .grp, h2 + .secs > .sec:first-child > .grp { margin-top: .2rem; }
 .tile .tb { font-size: .68rem; opacity: .8; }
 /* Wann zuletzt gekauft (Katalog, Suche, „Bald wieder fällig“): klein, in Akzentfarbe, fällt auf, ohne zu stören */
 .tile .ta { font-size: .62rem; font-weight: 600; color: var(--acc-ink, var(--acc)); line-height: 1.15; hyphens: manual; overflow-wrap: break-word; }
-.compact .tile .ta { font-size: .7rem; }
 .tile.on .ta { color: var(--qty, var(--acc-text)); opacity: .9; }
 /* Mehrere auf einmal: großer Knopf unter der Vorschau */
 .multigo { width: 100%; margin: .8rem 0 .5rem; }
@@ -118,7 +117,7 @@ a.btn { color: inherit; text-decoration: none; }
 .upnew { font-weight: 700; color: var(--acc-ink, var(--acc)); }
 .notes { max-height: 12rem; overflow-y: auto; margin: 0 0 .6rem; padding: .6rem .75rem; border: 1px solid var(--line); border-radius: .8rem; background: var(--card);
          font-size: .85rem; white-space: pre-wrap; overflow-wrap: anywhere; }
-.tile.on { background: var(--acc); border-color: var(--acc-ink, var(--acc)); color: var(--acc-text); font-weight: 600; }
+.tile.on { background: var(--acc); border-color: var(--acc-ink, var(--acc)); color: var(--acc-text); font-weight: 600;  background-image: linear-gradient(135deg, var(--acc-g1, var(--acc)), var(--acc-g2, var(--acc))); }
 .tile.on .tt, .tile.on .th { color: var(--qty, var(--acc-text)); }
 .tile.has { border-color: var(--acc-ink, var(--acc)); background: var(--acc-soft); }
 .tile.has .tn::before { content: "✓ "; color: var(--acc-ink, var(--acc)); font-weight: 700; }
@@ -126,10 +125,12 @@ a.btn { color: inherit; text-decoration: none; }
 /* Abgehakt: bleibt mit Haken und durchgestrichen an seinem Platz, wie auf dem Zettel */
 .tile.got { background: var(--card); border-color: var(--line); color: var(--mut); box-shadow: none; }
 .tile.got .tn { text-decoration: line-through; text-decoration-thickness: 2px; text-decoration-color: var(--acc-ink, var(--acc)); }
-.tile.got .tn::before { content: "✓"; display: inline-block; margin-right: .25em; color: var(--acc-ink, var(--acc)); font-weight: 800; }
+/* Kacheln: Abgehaktes ohne Haken, nur blass und durchgestrichen. Die Liste zeigt dafür den gefüllten Kreis links. */
+.tile.got { opacity: .62; }
+.list .todo .tile.got, .tile.got.arm { opacity: 1; }
 /* „Einkauf fertig“: in der Farbe des Designs mit Fortschritt, grün, sobald alles abgehakt ist */
 .finishbtn { display: flex; align-items: center; gap: .85rem; width: 100%; margin: 1rem 0 .5rem; padding: .85rem 1.1rem; border: 0; border-radius: 1.1rem; background: var(--acc);
-             background: linear-gradient(135deg, var(--acc), color-mix(in srgb, var(--acc) 78%, #000)); color: var(--acc-text); text-align: left;
+             background-image: linear-gradient(135deg, var(--acc-g1, var(--acc)), var(--acc-g2, var(--acc))); color: var(--acc-text); text-align: left;
              box-shadow: 0 6px 18px color-mix(in srgb, var(--acc) 35%, transparent); transition: transform .12s, box-shadow .12s; }
 .finishbtn:active { transform: scale(.98); }
 .finishbtn .fi { flex: none; display: grid; place-items: center; width: 2.6rem; height: 2.6rem; border-radius: 50%; background: rgba(255, 255, 255, .2); }
@@ -159,7 +160,7 @@ a.btn { color: inherit; text-decoration: none; }
 .finishdlg .chips { justify-content: center; margin: .6rem 0; }
 .finishdlg .chip.got { text-decoration: line-through; text-decoration-color: var(--acc-ink, var(--acc)); color: var(--mut); }
 .finishdlg .btns .btn { min-height: 3.1rem; font-size: 1rem; }
-.btn.fok { background: var(--acc); border-color: var(--acc-ink, var(--acc)); color: var(--acc-text); }
+.btn.fok { background: var(--acc); border-color: var(--acc-ink, var(--acc)); color: var(--acc-text);  background-image: linear-gradient(135deg, var(--acc-g1, var(--acc)), var(--acc-g2, var(--acc))); }
 .btn.fok svg { width: 1.2rem; height: 1.2rem; }
 /* „Alle anzeigen“ unter „Bald wieder fällig“ */
 .btn.duemore { margin-top: .6rem; }
@@ -198,7 +199,7 @@ a.btn { color: inherit; text-decoration: none; }
 /* Knöpfe */
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; min-height: 2.75rem; padding: .55rem 1rem; border: 1px solid var(--line);
        border-radius: .8rem; background: var(--card); font-weight: 600; text-decoration: none; }
-.btn.primary { background: var(--acc); border-color: var(--acc-ink, var(--acc)); color: var(--acc-text); }
+.btn.primary { background: var(--acc); border-color: var(--acc-ink, var(--acc)); color: var(--acc-text);  background-image: linear-gradient(135deg, var(--acc-g1, var(--acc)), var(--acc-g2, var(--acc))); }
 .btn.danger { color: var(--danger); }
 .btn.small { min-height: 2.2rem; padding: .3rem .7rem; font-size: .88rem; }
 .btn:disabled { opacity: .5; cursor: default; }
@@ -251,7 +252,7 @@ button.row { font-weight: 600; }
 .mcat h4 { margin: 0; font-size: 1rem; flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .chips { display: flex; flex-wrap: wrap; gap: .35rem; }
 .chip { padding: .35rem .7rem; border: 1px solid var(--line); border-radius: 1rem; background: var(--card); font-size: .88rem; }
-.chip.sel { background: var(--acc); border-color: var(--acc-ink, var(--acc)); color: var(--acc-text); font-weight: 600; }
+.chip.sel { background: var(--acc); border-color: var(--acc-ink, var(--acc)); color: var(--acc-text); font-weight: 600;  background-image: linear-gradient(135deg, var(--acc-g1, var(--acc)), var(--acc-g2, var(--acc))); }
 .chip.add { border-style: dashed; border-color: var(--acc-ink, var(--acc)); color: var(--acc-ink, var(--acc)); font-weight: 600; }
 
 /* Menge wählen: Zähler, Einheiten, Hinweis */
@@ -350,39 +351,8 @@ button.row { font-weight: 600; }
 .login .langsw a { color: var(--mut); }
 .row.danger { color: var(--danger); }
 
-/* Kompakte Ansicht: Produkte als schmale Schildchen nebeneinander, so breit wie ihr Name */
-.compact .grid { display: flex; flex-wrap: wrap; gap: calc(.3rem * var(--fs-gap, 1)); }
-.compact .tile { flex-direction: row; flex-wrap: wrap; align-items: center; align-content: center; column-gap: .35rem; min-height: calc(2.25rem * var(--fs-row, 1)); padding: calc(.3rem * var(--fs-row, 1)) .7rem; border-radius: 1.2rem;
-                 font-size: .9rem; hyphens: manual; text-align: left; max-width: 100%; }
-.compact .tile .tt { font-size: calc(.8rem * var(--fs-qty, 1)); }
-.compact .tile .tt.cnt { font-size: calc(1rem * var(--fs-cnt, 1)); }
-.compact .tile .th { display: block; max-width: 8rem; white-space: nowrap; text-overflow: ellipsis; }
-.compact .grp { margin: .7rem 0 .3rem; }
-.compact .cat { padding: .55rem .85rem; margin-top: .3rem; }
-.compact .cat + .grid { margin: .35rem 0 .6rem; }
-.compact h2 { margin-top: 1rem; }
-.compact .swipebg { padding: 0 .6rem; }
-.compact .swipebg b { display: none; }
-
 /* Eingabefelder nie kleiner als 16px: darunter zoomt das iPhone beim Antippen in die Seite hinein */
 .field input, .field select, .field textarea, .login input, .pick .hex, .sheet select, .sheet textarea, #q, .csearch input { font-size: max(16px, 1rem); }
-
-/* Laden-Modus: die Einkaufsliste als große Zeilen zum Abhaken. Am Handy eine Spalte, auf breiten Bildschirmen mehrere nebeneinander. */
-.shop .todo { grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr)); gap: calc(.45rem * var(--fs-gap, 1)); }
-.shop .todo .tile { flex-direction: row; flex-wrap: wrap; justify-content: flex-start; align-items: center; column-gap: .6rem; min-height: calc(3.6rem * var(--fs-row, 1)); padding: calc(.6rem * var(--fs-row, 1)) 1rem;
-                    font-size: 1.15rem; text-align: left; hyphens: manual; }
-.shop .todo .tile::before { content: ""; flex: none; width: 1.35rem; height: 1.35rem; border: 2px solid currentColor; border-radius: 50%; opacity: .75; }
-.shop .todo .tn { flex: 1 1 0; min-width: 0; }
-.shop .todo .tt { flex: none; max-width: 50%; font-size: calc(1rem * var(--fs-qty, 1)); font-weight: 500; text-align: right; }
-.shop .todo .tt.cnt { font-size: calc(1.35rem * var(--fs-cnt, 1)); font-weight: var(--fw-cnt, 800); }
-.shop .todo .th { flex: 1 0 100%; padding-left: 1.95rem; font-size: calc(.9rem * var(--fs-hint, 1)); font-weight: 400; -webkit-line-clamp: unset; }
-.shop .todo .tb { flex: 1 0 100%; padding-left: 1.95rem; font-size: .78rem; font-weight: 400; }
-.shop .grp { margin: 1.1rem 0 .45rem; font-size: calc(.88rem * var(--fs-head, 1)); }
-.shop .todo .tile.got::before { content: "✓"; display: grid; place-items: center; border-color: var(--acc-ink, var(--acc)); background: var(--acc); color: var(--acc-text);
-                                font-size: .85rem; font-weight: 800; line-height: 1; opacity: 1; }
-.shop .tile.got .tn::before { content: none; }
-.shop .swipebg { padding: 0 1.1rem; font-size: .95rem; }
-.shop .swipebg span { flex-direction: row; gap: .45rem; }
 
 /* Liste: alle Warengruppen auf einer Karte, je eine Überschrift als Band, darunter schlichte Zeilen mit feinen Linien.
    Links ein Kreis zum Abhaken, die Menge als Pille rechts, der Hinweis klein darunter. Farben aus dem Design (Kacheln, Schrift, Akzent, Überschriften, Nebentext). */
@@ -455,3 +425,56 @@ button.row { font-weight: 600; }
 .help dt svg { width: 1.1rem; height: 1.1rem; margin-right: .3rem; vertical-align: -.2rem; }
 .help dd { margin: 0; }
 .info a { color: var(--acc-ink, var(--acc)); }
+
+/* ---------- 1.23: Symbole und Zähler an den Warengruppen, leere Liste, Abhak-Animation, mehr Platz am Rechner ---------- */
+/* Symbol vor dem Namen der Warengruppe: Emoji oder kleines eigenes Bild */
+.ci { flex: none; display: inline-grid; place-items: center; width: 1.45em; height: 1.45em; font-size: 1.1em; line-height: 1; letter-spacing: 0; text-transform: none; }
+.ci.img { width: 1.6em; height: 1.6em; border-radius: .35em; object-fit: cover; }
+.grp .gn { min-width: 0; }
+/* Zähler rechts: wie viel in der Warengruppe noch fehlt, ✓ wenn alles abgehakt ist */
+.grp .gc { order: 3; flex: none; min-width: 1.6rem; padding: .05rem .5rem; border-radius: 1rem; background: var(--acc-soft); color: var(--acc-ink, var(--acc));
+           font-size: .78rem; font-weight: 800; letter-spacing: 0; text-align: center; }
+.grp .gc.done { background: none; }
+.list .secs .grp { display: flex; align-items: center; gap: .55rem; }
+.list .secs .grp .gc { margin-left: auto; }
+.cat .ci { margin-right: -.1rem; }
+.cat .cn { flex: 1; min-width: 0; text-align: left; }
+.row .ci { margin-right: .1rem; }
+.mcat h4 { display: flex; align-items: center; gap: .4rem; }
+/* Symbol wählen */
+.cidlg .cibig { display: grid; place-items: center; margin: .3rem 0 .6rem; }
+.cbig { display: grid; place-items: center; width: 5rem; height: 5rem; border: 1px solid var(--line); border-radius: 1.1rem; background: var(--card); font-size: 2.8rem; line-height: 1; }
+.cbig.img { padding: 0; object-fit: cover; }
+.cbig.none { color: var(--mut); font-size: 1.6rem; }
+.cidlg .row2 { display: flex; gap: .5rem; margin-top: .3rem; }
+.cidlg .row2 input { flex: 1; min-width: 0; font-size: max(16px, 1.3rem); }
+.vh { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; pointer-events: none; }
+/* Leere Liste */
+.empty { display: flex; flex-direction: column; align-items: center; gap: .35rem; margin: .6rem 0 1rem; padding: 1.4rem 1rem; border: 1px dashed var(--line); border-radius: 1.1rem; text-align: center; }
+.empty .ebig { display: grid; place-items: center; width: 3.6rem; height: 3.6rem; border-radius: 50%; background: var(--acc-soft); color: var(--acc-ink, var(--acc)); }
+.empty .ebig svg { width: 2rem; height: 2rem; }
+.empty .ebig path { stroke-width: 3; }
+.empty b { font-size: 1.15rem; }
+.empty p { margin: 0; color: var(--mut); font-size: .92rem; }
+/* Abhaken: der Strich zieht sich von links nach rechts durch, bei Kacheln wird sie blass, in der Liste hüpft der Kreis. Nur CSS-Animationen. */
+@keyframes kfStrike { 0% { background-size: 0 2px; text-decoration-color: transparent; } 85% { background-size: 100% 2px; text-decoration-color: transparent; }
+                      100% { background-size: 100% 0; text-decoration-color: var(--acc-ink, var(--acc)); } }
+@keyframes kfFade { 0% { opacity: 1; transform: scale(1); } 40% { transform: scale(.95); } 100% { opacity: .62; transform: scale(1); } }
+@keyframes kfPop { 0% { transform: scale(.55); } 60% { transform: scale(1.18); } 100% { transform: scale(1); } }
+.tile.got.justgot .tn { background-image: linear-gradient(var(--acc-ink, var(--acc)), var(--acc-ink, var(--acc))); background-repeat: no-repeat; background-position: 0 56%;
+                        animation: kfStrike .4s ease-out var(--jd, 0s) both; }
+.tile.got.justgot { animation: kfFade .4s ease-out var(--jd, 0s) both; }
+.list .todo .tile.got.justgot { animation: none; }
+.list .todo .tile.got.justgot::before { animation: kfPop .4s ease-out var(--jd, 0s) both; }
+.list .todo .tile.got.justgot .tn { flex: 0 1 auto; margin-right: auto; }
+@media (prefers-reduced-motion: reduce) { .tile.got.justgot, .tile.got.justgot .tn, .list .todo .tile.got.justgot::before { animation: none; background-image: none; } }
+/* Am Rechner und auf dem Tablet quer: Warengruppen in zwei Spalten nebeneinander (in Ladenreihenfolge erst links runter, dann rechts) */
+@media (min-width: 56rem) {
+    .list .secs { columns: 2; column-gap: 1rem; border: 0; background: none; box-shadow: none; overflow: visible; }
+    .list .sec { break-inside: avoid; -webkit-column-break-inside: avoid; display: inline-block; width: 100%; margin-bottom: 1rem;
+                 border: 1px solid var(--line); border-radius: 1rem; background: var(--card); box-shadow: var(--shadow); overflow: hidden; }
+    .list .sec + .sec { border-top: 1px solid var(--line); }
+    main:not(.list) .secs { columns: 2; column-gap: 1.5rem; }
+    main:not(.list) .sec { break-inside: avoid; -webkit-column-break-inside: avoid; display: inline-block; width: 100%; margin-bottom: .9rem; }
+    main:not(.list) .sec > .grp { margin-top: 0; }   /* beide Spalten fangen auf gleicher Höhe an */
+}

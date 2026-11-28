@@ -2,7 +2,7 @@
 /* Kaufen – Datenordner, Datenbank (SQLite), Einstellungen */
 defined('KF_VERSION') || exit;
 
-define('KF_SCHEMA', 8);
+define('KF_SCHEMA', 9);
 
 function kfFatal(string $msg): void {
     http_response_code(500);
@@ -130,6 +130,10 @@ function kfMigrate(PDO $pdo, int $from): void {
         // am = beim Kauf mit diesem last_at schon automatisch auf die Liste gesetzt (-1 = nie automatisch)
         $pdo->exec("ALTER TABLE usage ADD COLUMN rs INTEGER NOT NULL DEFAULT 0");
         $pdo->exec("ALTER TABLE usage ADD COLUMN am INTEGER NOT NULL DEFAULT 0");
+    }
+    if ($from < 9) {
+        // Symbol der Warengruppe: '' = das mitgelieferte (nach dem Namen), '-' = keins, sonst ein Emoji oder ein kleines Bild als data:-Adresse
+        $pdo->exec("ALTER TABLE cats ADD COLUMN icon TEXT NOT NULL DEFAULT ''");
     }
     $pdo->exec('PRAGMA user_version = ' . KF_SCHEMA);
     $pdo->commit();

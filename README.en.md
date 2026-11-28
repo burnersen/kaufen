@@ -19,14 +19,14 @@ Upload `kaufen-install.php`, open it in the browser, create the first account. T
 If you do not want anything on a server at all, tap **“Use without an account, on this device only”** on the sign-in page. All lists then stay on your own phone or computer, see [Local mode](#on-this-device-only-local-mode).
 
 <p align="center">
-  <img src="docs/en/list.png" alt="The shopping list with quantities, notes, who added what, and “Due again soon” below" width="320">
+  <img src="docs/en/list.png" alt="The shopping list as tiles with a gradient, a symbol and counter per category, quantities, notes and “Due again soon” below" width="320">
 </p>
 
 <table>
   <tr>
     <td align="center" width="33%"><img src="docs/en/list-view.png" alt="The list view: categories on one card, circles for ticking off, ticked items stay struck through in place" width="250"><br><sub>List: ticked items stay struck through</sub></td>
     <td align="center" width="33%"><img src="docs/en/size.png" alt="Text, size and spacing: preview, below it entry height and space between" width="250"><br><sub>Set entry height and spacing</sub></td>
-    <td align="center" width="33%"></td>
+    <td align="center" width="33%"><img src="docs/en/symbol.png" alt="Choosing a category symbol: own picture, emoji, default or none" width="250"><br><sub>Your own symbol per category</sub></td>
   </tr>
   <tr>
     <td align="center" width="33%"><img src="docs/en/no-account.png" alt="The sign-in page with the link “Use without an account, on this device only”" width="250"><br><sub>No account, on this device only</sub></td>
@@ -35,17 +35,17 @@ If you do not want anything on a server at all, tap **“Use without an account,
   </tr>
   <tr>
     <td align="center" width="33%"><img src="docs/en/checked.png" alt="Checked-off items stay where they are, ticked and crossed out, with the “Done shopping” button below" width="250"><br><sub>Ticked and crossed out</sub></td>
-    <td align="center" width="33%"><img src="docs/en/swipe.png" alt="An item in shopping mode being swiped to the left, with a red “Delete” behind it" width="250"><br><sub>Swipe: left deletes, right sets quantity</sub></td>
+    <td align="center" width="33%"><img src="docs/en/swipe.png" alt="An item in the list being swiped to the left, with a red “Delete” behind it" width="250"><br><sub>Swipe: left deletes, right sets quantity</sub></td>
     <td align="center" width="33%"><img src="docs/en/category.png" alt="After holding an item: change its category or create a new one" width="250"><br><sub>Hold: change the category</sub></td>
   </tr>
   <tr>
-    <td align="center" width="33%"><img src="docs/en/store.png" alt="Shopping mode with large rows for ticking off" width="250"><br><sub>Shopping mode: large rows for ticking off</sub></td>
-    <td align="center" width="33%"><img src="docs/en/dark.png" alt="Dark theme in the compact view" width="250"><br><sub>Dark and compact</sub></td>
+    <td align="center" width="33%"><img src="docs/en/desktop.png" alt="On a computer: the list categories in two columns side by side" width="250"><br><sub>On a computer: two columns</sub></td>
+    <td align="center" width="33%"><img src="docs/en/dark.png" alt="Dark theme in the tile view" width="250"><br><sub>Dark, as tiles</sub></td>
     <td align="center" width="33%"><img src="docs/en/several.png" alt="Preview when typing several products at once" width="250"><br><sub>Several at once, with preview</sub></td>
   </tr>
   <tr>
     <td align="center"><img src="docs/en/quantity.png" alt="Quantity picker: counter, units, custom unit, note" width="250"><br><sub>Quantity, unit and note</sub></td>
-    <td align="center"><img src="docs/en/due.png" alt="Due again soon: 16 tiles with “6 days ago”, “Show all” below" width="250"><br><sub>Due again soon</sub></td>
+    <td align="center"><img src="docs/en/due.png" alt="Due again soon, with the catalog and its symbols below" width="250"><br><sub>Due again soon</sub></td>
     <td align="center"><img src="docs/en/settings.png" alt="Settings: language, view, text, ten themes" width="250"><br><sub>Settings</sub></td>
   </tr>
   <tr>
@@ -93,14 +93,16 @@ If you do not want anything on a server at all, tap **“Use without an account,
 - **Catalog** with about 810 products in 16 categories, in the order of a typical supermarket. Text only, no images.
 - **Tap** to put a product on the list. Tap it in the list to check it off: it stays where it is, ticked and crossed out, just like on paper. Two taps within 2 seconds bring it back, a single accidental tap brings nothing back. Everyone who shares the list sees right away what is already in the cart.
 - **Done shopping:** the button below the list takes everything checked off away after asking once more. Anything still to buy stays on the list, for example for another store. Nothing disappears by itself.
-- **Swipe like in your mail app:** swipe an item to the left to delete it from the list completely (with “Undo” for a few seconds), swipe it to the right to open quantity and note. Works in all four views. On a computer, drag with the mouse.
+- **Swipe like in your mail app:** swipe an item to the left to delete it from the list completely (with “Undo” for a few seconds), swipe it to the right to open quantity and note. Works in both views. On a computer, drag with the mouse.
 - **Change the category on the spot:** hold an item on the list for about one second (on a computer: right-click), a ring grows around it meanwhile. Then tap another category, for example jarred plums to canned goods instead of fruit. This only applies to that item, or permanently in the catalog if you like. You can create a new category right there too.
 - **Search** across the whole catalog, in both languages: "milch" finds Milk as well. If a product does not exist, you create it right from the search and assign it to a category. Kaufen suggests the category from the end of the word: German compounds like “Bergkäse” land in dairy, “Hundefutter” in pet supplies.
 - **Several at once, also by voice:** type or dictate “milk, 2 kg apples and half a bread” into the search field, press Enter, and everything is on the list. Items are split at commas, “and” or line breaks; without commas (“milk bread apples cream”) the catalog splits the words. Quantities may come before or after, in digits or words. While you type, a preview shows what was recognized.
 - **When last bought:** what was bought in the last two weeks says so on the tile (“3 days ago”), a long-press shows the date, how often and roughly how regularly.
 - **Due again soon:** when you tick things off, Kaufen learns how often you buy them (milk about every 7 days). From the second purchase on, it waits below the list, ready to tap, shortly before it is due. Up to 16 suggestions, “Show all” opens the rest. From which purchase on items are suggested (2nd, 3rd or 4th) is up to each user in the settings. Long-press a suggestion to turn it off for that product. Everything stays on your own server.
 - **Regular items on the list automatically:** if you buy something at the same interval for 4 weeks (adjustable: 4, 8 or 12 weeks, or off), Kaufen puts it on the list by itself as soon as it is due again and lets you know. Only once per purchase: delete it and it comes back only after the next purchase. Long-press the item to turn this off for that product.
-- **Four views:** small tiles, compact, shopping mode (large rows for ticking off in the store) or list (plain rows on one card, a heading per category, a circle for ticking off on the left, the quantity as a pill on the right). By default Kaufen starts in the list view, the closest to a paper shopping list. Switched with the button at the top right, remembered per device and for each list separately. Colors come from the chosen theme, as everywhere.
+- **Two views:** tiles (with a subtle gradient in the accent color) or list (plain rows on one card, a heading per category, a circle for ticking off on the left, the quantity as a pill on the right). On a computer or a tablet in landscape the categories sit in two columns side by side.
+- **Symbols and counters on the categories:** every built-in category has a symbol (🥦, 🥖, 🧀 …), on the right it shows how much is still missing there, ✓ when everything is checked off. Under Menu → Manage catalog → Edit → Symbol you can choose your own picture (from photos or files, for example made by an AI, it is scaled down to 96 × 96 pixels) or an emoji, or none at all.
+- **Ticking off with a small animation:** the line draws through, the circle bounces briefly. Pure CSS, off when the system asks for reduced motion. When the list is empty, a big check mark says “All done”. By default Kaufen starts in the list view, the closest to a paper shopping list. Switched with the button at the top right, remembered per device and for each list separately. Colors come from the chosen theme, as everywhere.
 - **Keep shopping without a signal:** the app starts without reception, changes are collected and sent later.
 - **Screen stays on** while the app is open (can be turned off).
 - **Help in the app:** Menu → Help briefly explains tapping, swiping and holding, quantities, shopping in the store and what is at the top and in the menu.
