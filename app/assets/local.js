@@ -143,7 +143,7 @@
             const k = String(op.t || ''), uid = String(op.uid || ''), ok = uidOk(uid);
             const name = clean(op.n, 60), cat = Math.max(0, +op.c || 0), note = clean(op.note, 80);
             const open = n => l.items.find(i => !i.got && same(i.n, n));
-            const dropBasket = n => { l.items = l.items.filter(i => !(i.got && same(i.n, n))); };
+            const dropBasket = n => { for (const it of l.items.filter(i => i.got && same(i.n, n))) { l.items = l.items.filter(i => i !== it); usageBought(l, it, Math.min(t, it.got)); } };
             if (k === 'auto' && ok && name) {   // automatisch auf die Liste, pro Kauf nur einmal (wie auf dem Server)
                 if (findUid(uid)) continue;
                 const u = l.usage.find(x => same(x.n, name));
@@ -167,17 +167,21 @@
                     changed = true;
                 }
                 if (k === 'restore') usageUndo(l, name);
-            } else if (k === 'got' && ok) {
+            } else if (k === 'got' && ok) {   // abgehakt, gekauft zählt es erst mit „Einkauf fertig“ (buy)
                 const it = l.items.find(i => i.uid === uid && !i.got);
                 if (!it) continue;
                 it.got = t;
-                usageBought(l, it, t);
                 changed = true;
             } else if (k === 'ungot' && ok) {
                 const it = l.items.find(i => i.uid === uid && i.got);
                 if (!it) continue;
                 it.got = 0;
-                usageUndo(l, it.n);
+                changed = true;
+            } else if (k === 'buy' && ok) {   // „Einkauf fertig“: gekauft zum Zeitpunkt des Abhakens, weg von der Liste
+                const it = l.items.find(i => i.uid === uid && i.got);
+                if (!it) continue;
+                l.items = l.items.filter(i => i !== it);
+                usageBought(l, it, Math.min(t, it.got));
                 changed = true;
             } else if (k === 'back' && ok && name) {
                 if (findUid(uid) || open(name)) continue;

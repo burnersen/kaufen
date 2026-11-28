@@ -256,7 +256,12 @@ function usageUndo(n) {
     else if (u && --u.cnt <= 0) L.usage = L.usage.filter(x => x !== u);
 }
 /** Ist es schon abgehakt und kommt wieder auf die Liste, wird es eben noch einmal gebraucht: das Abgehakte ist gekauft und fällt weg */
-const dropBasket = n => { L.items = L.items.filter(i => !(i.got && low(i.n) === low(n))); };
+const dropBasket = n => { for (const it of L.items.filter(i => i.got && low(i.n) === low(n))) buyItem(it); };
+/** Gekauft: geht von der Liste und zählt (zum Zeitpunkt des Abhakens). Nur so, mit „Einkauf fertig“, zählt etwas als gekauft. */
+function buyItem(it) {
+    L.items = L.items.filter(i => i !== it);
+    usageBought(it, Math.min(Math.floor(Date.now() / 1000), it.got || Infinity));
+}
 
 function applyLocal(o) {
     const now = Math.floor(Date.now() / 1000);
@@ -266,16 +271,15 @@ function applyLocal(o) {
         if (same) { if (o.note) same.note = o.note; }
         else { dropBasket(o.n); L.items.push({ uid: o.uid, n: o.n, c: o.c || 0, note: o.note || '', by: o.by || S.me.id, at: now, got: 0 }); }
         if (o.t === 'restore') usageUndo(o.n);
-    } else if (o.t === 'got') {   // abgehakt: bleibt durchgestrichen stehen
+    } else if (o.t === 'got') {   // abgehakt: bleibt durchgestrichen stehen, gekauft zählt es erst mit „Einkauf fertig“
         const it = L.items.find(i => i.uid === o.uid && !i.got);
-        if (!it) return;
-        it.got = now;
-        usageBought(it, now);
+        if (it) it.got = now;
     } else if (o.t === 'ungot') {   // Abgehaktes zurück auf die Liste
         const it = L.items.find(i => i.uid === o.uid && i.got);
-        if (!it) return;
-        it.got = 0;
-        usageUndo(it.n);
+        if (it) it.got = 0;
+    } else if (o.t === 'buy') {   // „Einkauf fertig“
+        const it = L.items.find(i => i.uid === o.uid && i.got);
+        if (it) buyItem(it);
     } else if (o.t === 'back') {   // Löschen rückgängig: genau so wieder hin
         if (L.items.some(i => i.uid === o.uid) || itemByName(o.n)) return;
         if (!o.got) dropBasket(o.n);
@@ -800,7 +804,7 @@ const dueNow = (u, now) => u.g >= DAY / 2 && now - u.last >= u.g * .9 && now - u
 function dueList() {
     if (!look.due || !L) return [];
     const now = Date.now() / 1000;
-    return L.usage.filter(u => u.gn >= look.dn - 1 && dueNow(u, now) && !itemByName(u.n))
+    return L.usage.filter(u => u.gn >= look.dn - 1 && dueNow(u, now) && !itemByName(u.n) && !inBasket(u.n))
         .sort((a, b) => (now - b.last) / b.g - (now - a.last) / a.g);
 }
 /** So viele zeigt „Bald wieder fällig“, der Rest kommt mit „Alle anzeigen“ */
@@ -813,7 +817,7 @@ function autoAdd() {
     if (!L || !S || !look.auto || !cur) return;
     const now = Date.now() / 1000;
     const due = L.usage.filter(u => u.gn >= 2 && (u.am || 0) >= 0 && u.am !== u.last && u.rs > 0 && u.last - u.rs >= look.auto * DAY - DAY / 2
-        && dueNow(u, now) && !itemByName(u.n));
+        && dueNow(u, now) && !itemByName(u.n) && !inBasket(u.n));
     if (!due.length) return;
     op(due.map(u => ({ t: 'auto', uid: newUid(), n: u.n, c: hasCat(u.c) ? u.c : 0, note: memOf(u.n) })));
     toast(tr('Automatisch auf die Liste: {0}', due.map(u => dn(u.n)).join(', ')));
@@ -1133,7 +1137,7 @@ function finishShopping() {
         + (left === 1 ? ' ' + tr('Das eine, was noch zu kaufen ist, bleibt drauf.') : left ? ' ' + tr('Die {0} Sachen, die noch zu kaufen sind, bleiben drauf.', left) : ''),
         tr('Ja, von der Liste nehmen'), () => {
             const bask = basketItems();
-            if (bask.length) { op(bask.map(it => ({ t: 'remove', uid: it.uid }))); toast(tr('Abgehaktes von der Liste genommen')); }
+            if (bask.length) { op(bask.map(it => ({ t: 'buy', uid: it.uid }))); toast(tr('Abgehaktes von der Liste genommen')); }
         });
 }
 function tapProd(n, c) {
