@@ -1784,7 +1784,7 @@ const darkMq = window.matchMedia('(prefers-color-scheme: dark)');
 /** Die vier Grundfarben, die man selbst einstellen muss. Linien und zarter Akzent werden daraus abgeleitet, die Schriftfarben aus TPARTS auch, solange man sie nicht selbst setzt. */
 const PARTS = [['bg', 'Hintergrund'], ['card', 'Kacheln'], ['text', 'Schrift'], ['acc', 'Akzent']];
 /** Weitere Schriftfarben, freiwillig. Fehlt eine, wird sie wie bisher ausgerechnet. Dazu die CSS-Variable, die sie setzt. */
-const TPARTS = [['head', 'Überschriften', '--head'], ['mut', 'Nebentext', '--mut'], ['at', 'Listenschrift', '--acc-text'], ['qty', 'Menge', '--qty']];
+const TPARTS = [['head', 'Überschriften', '--head'], ['mut', 'Nebentext', '--mut'], ['at', 'Listenschrift', '--acc-text'], ['qty', 'Menge', '--qty'], ['ok', 'Fertig-Knopf', '--ok']];
 const isHex = v => /^#[0-9a-f]{6}$/.test(v);
 const okCols = c => c && PARTS.every(([k]) => isHex(c[k])) ? Object.fromEntries([...PARTS, ...TPARTS].filter(([k]) => isHex(c[k])).map(([k]) => [k, c[k]])) : null;
 const okUnit = u => typeof u === 'string' && u.split('/').length <= 2 && u.split('/').every(x => UWORD.test(x));
@@ -1860,13 +1860,26 @@ function hex2hsl(x) {
     if (d) hh = ((mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4) * 60 + 360) % 360;
     return [Math.round(hh), Math.round((d ? d / (1 - Math.abs(2 * l - 1)) : 0) * 100), Math.round(l * 100)];
 }
+/** Gut lesbare Schrift auf einer Farbe: Weiß oder fast Schwarz */
+const textOn = c => contrast(c, '#ffffff') >= contrast(c, '#101418') ? '#ffffff' : '#101418';
+/** Abstand zweier Farbtöne im Farbkreis (0 bis 180) */
+const hueDist = (a, b) => { const d = Math.abs(a - b) % 360; return Math.min(d, 360 - d); };
+/**
+ * Farbe für „Alles abgehakt, Einkauf fertig“, solange man sie nicht selbst wählt: am liebsten Grün,
+ * liegt der Akzent aber selbst im Grün (etwa Türkis), dann ein Ton, der sich klar abhebt (Gold, Blau, Violett, Rosa).
+ */
+function okAuto(acc, dark) {
+    const [ah, as] = hex2hsl(acc);
+    const hue = [142, 40, 215, 275, 330].find(x => as < 15 || hueDist(x, ah) >= 50);
+    return hsl2hex([hue, hue === 40 ? 85 : 65, dark ? 45 : 36]);
+}
 /** Aus den gewählten Farben alle Farben der Oberfläche. Ohne eigene Wahl wird die Schrift auf dem Akzent so gewählt, dass sie lesbar bleibt. */
 function derive(c) {
     const dark = lum(c.bg) < .2;
-    const at = c.at || (contrast(c.acc, '#ffffff') >= contrast(c.acc, '#101418') ? '#ffffff' : '#101418');
+    const at = c.at || textOn(c.acc), ok = c.ok || okAuto(c.acc, dark);
     return {
         '--bg': c.bg, '--card': c.card, '--text': c.text, '--acc': c.acc, '--mut': c.mut || mix(c.text, c.bg, .4), '--line': mix(c.text, c.bg, .85),
-        '--head': c.head || c.text, '--qty': c.qty || at,
+        '--head': c.head || c.text, '--qty': c.qty || at, '--ok': ok, '--ok-text': textOn(ok),
         '--acc-text': at, '--acc-soft': mix(c.acc, c.card, .82),
         '--danger': dark ? '#ff8a7a' : '#b42318', '--shadow': dark ? 'none' : '0 1px 2px rgba(0, 0, 0, .08)', 'color-scheme': dark ? 'dark' : 'light',
     };
@@ -1926,6 +1939,10 @@ function applyTheme() {
     root.dataset.theme = mode;
     root.dataset.pal = pal;
     setVars(root, pal === 'eigen' ? a[mode === 'dark' ? 'cd' : 'cl'] : null);
+    if (pal !== 'eigen') {   // fertige Designs: die Fertig-Farbe passend zum Akzent aus app.css
+        const acc = getComputedStyle(root).getPropertyValue('--acc').trim().toLowerCase();
+        if (isHex(acc)) { const ok = okAuto(acc, mode === 'dark'); root.style.setProperty('--ok', ok); root.style.setProperty('--ok-text', textOn(ok)); }
+    }
     const meta = $('meta[name=theme-color]');
     if (meta) meta.content = getComputedStyle(root).getPropertyValue(mode === 'dark' ? '--bg' : '--acc').trim() || meta.content;
     // Merkzettel für boot.js: so sieht dieses Gerät beim nächsten Start sofort richtig aus, auch auf der Anmeldeseite
@@ -2104,7 +2121,7 @@ function applyLang() {
     applyView();
 }
 
-/** Farbmischer fürs eigene Design: vier Grundfarben und vier freiwillige Schriftfarben, je drei Regler oder der Farbwähler des Geräts,
+/** Farbmischer fürs eigene Design: vier Grundfarben, vier freiwillige Schriftfarben und die Farbe des Fertig-Knopfs, je drei Regler oder der Farbwähler des Geräts,
     oben eine Vorschau, die sofort mitgeht. Eine Schriftfarbe auf „Automatisch“ wird aus den anderen ausgerechnet. */
 function editLook(mode, redraw) {
     const ck = mode === 'dark' ? 'cd' : 'cl';
@@ -2125,7 +2142,8 @@ function editLook(mode, redraw) {
         h('div', { class: 'grp' }, dc('Milch & Käse')),
         h('div', { class: 'grid' }, demo('on', dn('Milch'), dnote('2 Liter')), demo('has', dn('Brot')), demo('', dn('Butter')), demo('new', tr('+ Neu'))),
         h('div', { class: 'cat' }, dc('Getränke'), h('small', null, '12'), icon(I.down)),
-        h('div', { class: 'btns' }, h('span', { class: 'btn' }, tr('Knopf')), h('span', { class: 'btn primary' }, tr('Speichern'))));
+        h('div', { class: 'btns' }, h('span', { class: 'btn' }, tr('Knopf')), h('span', { class: 'btn primary' }, tr('Speichern'))),
+        h('span', { class: 'finishbtn all mini' }, h('span', { class: 'fi' }, icon(I.check)), h('span', { class: 'ft' }, h('b', null, tr('Alles abgehakt, Einkauf fertig')))));
     const tabs = ALL.map(([k, name]) => h('button', { class: 'seg', type: 'button', onclick: () => { part = k; show(); } }, h('i'), tr(name)));
     // Beim Ziehen mit freiem Blick: die echte Seite zeigt genau die Farben, an denen gedreht wird, auch wenn das Gerät gerade die andere Seite (hell/dunkel) zeigt
     let peeking = false;
@@ -2151,6 +2169,8 @@ function editLook(mode, redraw) {
     // Ein Knopf für alle Schriftfarben: Listenschrift und Menge passend zum Akzent, Überschriften und Nebentext wieder wie die Schrift
     const matchBtn = h('button', { class: 'btn auto match', type: 'button', onclick: () => { delete col.head; delete col.mut; follow = true; show(); } },
         tr('Schriftfarben automatisch abstimmen'));
+    // Fertig-Knopf zurück auf automatisch (eine Farbe, die sich vom Akzent abhebt)
+    const okAutoBtn = h('button', { class: 'btn auto match', type: 'button', onclick: () => { delete col.ok; show(); } }, tr('Fertig-Knopf automatisch'));
     const base = h('select', { 'aria-label': tr('Fertiges Design als Ausgangspunkt'), onchange: () => { if (base.value) load(palColors(base.value)); base.value = ''; } },
         h('option', { value: '' }, tr('Von einem fertigen Design ausgehen …')),
         [['Hell', PALS.light], ['Dunkel', PALS.dark]].map(([g, list]) => h('optgroup', { label: tr(g) }, list.map(([id, name]) => h('option', { value: id }, tr(name))))));
@@ -2170,12 +2190,17 @@ function editLook(mode, redraw) {
         picker.value = eff(part);
         code.value = eff(part);
         matchBtn.setAttribute('aria-pressed', String(follow));
+        okAutoBtn.hidden = part !== 'ok';
+        okAutoBtn.setAttribute('aria-pressed', String(!col.ok));
         const bad = pairs.filter(([k, on]) => col[k] && on.some(u => contrast(col[k], col[u]) < 3)).map(([k]) => tr(ALL.find(x => x[0] === k)[1]));
-        warn.textContent = tr('Schwer zu lesen: {0}', bad.join(', '));
-        warn.hidden = !bad.length;
+        // Fertig-Knopf fast im selben Ton wie der Akzent: dann sieht man nicht, dass alles abgehakt ist
+        const [oh, os] = hex2hsl(eff('ok')), [ah, as] = hex2hsl(col.acc);
+        const same = col.ok && os >= 15 && as >= 15 && hueDist(oh, ah) < 30;
+        warn.textContent = [bad.length && tr('Schwer zu lesen: {0}', bad.join(', ')), same && tr('Der Fertig-Knopf hat fast denselben Farbton wie der Akzent, so fällt „alles abgehakt“ kaum auf.')].filter(Boolean).join(' ');
+        warn.hidden = !bad.length && !same;
     }
     put(sh.body, prev, h('div', { class: 'segs' }, tabs), peekOption(), sliders,
-        h('div', { class: 'pick' }, h('label', { class: 'btn' }, picker, tr('Farbwähler')), code), matchBtn,
+        h('div', { class: 'pick' }, h('label', { class: 'btn' }, picker, tr('Farbwähler')), code), okAutoBtn, matchBtn,
         h('p', { class: 'info' }, tr('Wählt zur Akzentfarbe eine gut lesbare Listenschrift und eine Mengenfarbe aus dem Farbkreis, die sich davon abhebt. Bleibt dran, wenn du den Akzent änderst.')), warn,
         h('label', { class: 'field' }, base),
         h('div', { class: 'btns' },
