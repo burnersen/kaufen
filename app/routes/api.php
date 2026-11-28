@@ -363,8 +363,8 @@ try {
                 if (!is_string($c) || !preg_match('/^#[0-9a-f]{6}$/', $c)) return null;
                 $out[$k] = $c;
             }
-            // Schriftfarben sind freiwillig: Überschriften, Nebentext, Schrift auf dem Akzent, Menge. Fehlen sie, rechnet die App sie aus.
-            foreach (['head', 'mut', 'at', 'qty'] as $k) {
+            // Freiwillig: Überschriften, Nebentext, Schrift auf dem Akzent, Menge, Fertig-Knopf. Fehlen sie, rechnet die App sie aus.
+            foreach (['head', 'mut', 'at', 'qty', 'ok'] as $k) {
                 $c = $v[$k] ?? '';
                 if (is_string($c) && preg_match('/^#[0-9a-f]{6}$/', $c)) $out[$k] = $c;
             }
