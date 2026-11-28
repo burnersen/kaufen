@@ -1130,15 +1130,22 @@ function delItem(it) {
     op({ t: 'remove', uid: it.uid });
     toast(tr('{0} gelöscht', dn(it.n)), tr('Rückgängig'), () => op({ t: 'back', uid: it.uid, n: it.n, c: it.c, note: it.note, by: it.by, at: it.at, got: it.got || 0 }));
 }
+let finishPct = null;   // zuletzt gezeigter Fortschritt
 /** Der Knopf „Einkauf fertig“ unter der Liste: in der Farbe des Designs mit Fortschritt, grün, sobald alles abgehakt ist */
 function finishButton(got, left) {
-    const all = !left, pct = Math.round(got / (got + left) * 100);
+    const all = !left, pct = Math.floor(got / (got + left) * 100);
+    // Breite per Skript, nicht als style-Attribut: das verbietet die Content-Security-Policy (style-src 'self')
+    // Er wächst vom letzten Stand aus weiter, so sieht man beim Abhaken, wie es vorangeht
+    const fill = h('i');
+    fill.style.width = (finishPct == null ? pct : finishPct) + '%';
+    if (finishPct != null && finishPct !== pct) requestAnimationFrame(() => requestAnimationFrame(() => { fill.style.width = pct + '%'; }));
+    finishPct = pct;
     return h('button', { class: 'finishbtn' + (all ? ' all' : ''), type: 'button', onclick: finishShopping },
         h('span', { class: 'fi' }, icon(all ? I.check : I.cart)),
         h('span', { class: 'ft' },
             h('b', null, all ? tr('Alles abgehakt, Einkauf fertig') : tr('Einkauf fertig')),
             h('small', null, all ? (got === 1 ? tr('1 Sache im Wagen') : tr('{0} Sachen im Wagen', got)) : tr('{0} von {1} abgehakt', got, got + left)),
-            !all && h('span', { class: 'fbar', 'aria-hidden': 'true' }, h('i', { style: 'width:' + pct + '%' }))));
+            !all && h('span', { class: 'fbar', role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-valuenow': String(pct) }, fill)));
 }
 /** „Einkauf fertig“: ein eigenes Fenster fragt nach, zeigt was gekauft ist und was bleibt. Erst dann geht das Abgehakte von der Liste und zählt als gekauft. */
 function finishShopping() {
