@@ -401,6 +401,17 @@ try {
         // „Bald wieder fällig“ ab dem wievielten Kauf (2 bis 4), automatisch auf die Liste nach so vielen Tagen regelmäßigem Kauf (0 = aus)
         $look['dn'] = in_array($src('dn'), [2, 3, 4], true) ? $src('dn') : 2;
         $look['auto'] = in_array($src('auto'), [0, 28, 56, 84], true) ? $src('auto') : 28;
+        // Meine Designs: gespeicherte Farbsätze mit Namen, je hell oder dunkel (dk), höchstens 30. Die Nummer (my + 8 Buchstaben) steht in l/d, wenn eins gewählt ist.
+        $look['my'] = [];
+        foreach ((array)$src('my') as $d) {
+            if (count($look['my']) >= 30) break;
+            if (!is_array($d) || !is_string($d['id'] ?? null) || !preg_match('/^my[a-z]{8}$/', $d['id'])) continue;
+            $c = $cols($d['c'] ?? null);
+            $n = kfClean($d['n'] ?? '', 40);
+            if ($c === null || $n === '') continue;
+            foreach ($look['my'] as $x) if ($x['id'] === $d['id']) continue 2;
+            $look['my'][] = ['id' => $d['id'], 'n' => $n, 'dk' => !empty($d['dk']), 'c' => $c];
+        }
         // Eigene Einheiten als „Kiste/Kisten“ (Einzahl/Mehrzahl) oder nur „Eimer“. Schickt ein älteres Gerät nur die Einzahl, bleibt die gespeicherte Mehrzahl.
         $oldUnits = (array)($old['units'] ?? []);
         $look['units'] = [];

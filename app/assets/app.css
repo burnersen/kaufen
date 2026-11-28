@@ -478,3 +478,11 @@ button.row { font-weight: 600; }
     main:not(.list) .sec { break-inside: avoid; -webkit-column-break-inside: avoid; display: inline-block; width: 100%; margin-bottom: .9rem; }
     main:not(.list) .sec > .grp { margin-top: 0; }   /* beide Spalten fangen auf gleicher Höhe an */
 }
+
+/* Meine Designs */
+.btns.mydesigns { margin: -.3rem 0 1rem; }
+.pal.mine span:last-child { font-style: italic; }
+.row.mydesign { flex-wrap: wrap; gap: .6rem; }
+.row.mydesign .grow small { display: block; }
+.row.mydesign .acts { display: flex; flex-wrap: wrap; gap: .35rem; width: 100%; }
+.pal.mine.mini { display: inline-flex; padding: 0; border: 0; background: none; box-shadow: none; }
