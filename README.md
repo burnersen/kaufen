@@ -12,7 +12,7 @@
 
 Gemeinsame Einkaufslisten zum Selbsthosten. Auf dem Server laufen PHP und SQLite, im Browser schlichtes JavaScript und CSS. Keine Frameworks, keine Abhängigkeiten, kein Build-Schritt, kein MySQL. Läuft auf einfachem Webspace und wird mit einer einzigen Datei installiert.
 
-Produkte tippt man aus einem fertigen Katalog an, sortiert nach Warengruppen. Im Laden tippt man sie wieder an, dann wandern sie abgehakt in den Einkaufskorb, und zwar bei allen, die die Liste teilen.
+Produkte tippt man aus einem fertigen Katalog an, sortiert nach Warengruppen. Im Laden tippt man sie wieder an, dann bleiben sie abgehakt und durchgestrichen stehen, und zwar bei allen, die die Liste teilen. Was ihr regelmäßig kauft, schlägt Kaufen rechtzeitig wieder vor oder setzt es auf Wunsch von allein auf die Liste.
 
 `kaufen-install.php` hochladen, im Browser öffnen, erstes Konto anlegen. Das ist die ganze Installation.
 
@@ -34,7 +34,7 @@ Wer gar nichts auf einem Server haben will, tippt auf der Anmeldeseite auf **„
     <td align="center" width="33%"><img src="docs/de/drucken.png" alt="Drucken und Teilen: Vorschau des Zettels, darunter Schriftart, Schriftgröße, Zeilenabstand und Spalten" width="250"><br><sub>Zettel einstellen, mit Vorschau</sub></td>
   </tr>
   <tr>
-    <td align="center" width="33%"><img src="docs/de/korb.png" alt="Abgehaktes liegt mit Haken und durchgestrichen im Einkaufskorb, darunter der Knopf „Einkauf fertig“" width="250"><br><sub>Einkaufskorb: abgehakt und durchgestrichen</sub></td>
+    <td align="center" width="33%"><img src="docs/de/abgehakt.png" alt="Abgehaktes bleibt mit Haken und durchgestrichen an seinem Platz, darunter der Knopf „Einkauf fertig“" width="250"><br><sub>Abgehakt und durchgestrichen</sub></td>
     <td align="center" width="33%"><img src="docs/de/wischen.png" alt="Ein Eintrag im Laden-Modus wird nach links gewischt, dahinter erscheint rot „Löschen“" width="250"><br><sub>Wischen: links löschen, rechts Menge</sub></td>
     <td align="center" width="33%"><img src="docs/de/warengruppe.png" alt="Nach langem Halten: Warengruppe wechseln oder neu anlegen" width="250"><br><sub>Halten: Warengruppe wechseln</sub></td>
   </tr>
@@ -45,7 +45,7 @@ Wer gar nichts auf einem Server haben will, tippt auf der Anmeldeseite auf **„
   </tr>
   <tr>
     <td align="center"><img src="docs/de/menge.png" alt="Menge wählen: Zähler, Einheiten, eigene Einheit, Hinweis" width="250"><br><sub>Menge, Einheit und Hinweis</sub></td>
-    <td align="center"><img src="docs/de/zuletzt.png" alt="Zuletzt gekauft, mit „vor 3 Tagen“ an den Kacheln" width="250"><br><sub>Zuletzt gekauft</sub></td>
+    <td align="center"><img src="docs/de/faellig.png" alt="Bald wieder fällig: 16 Kacheln mit „vor 6 Tagen“, darunter „Alle anzeigen“" width="250"><br><sub>Bald wieder fällig</sub></td>
     <td align="center"><img src="docs/de/einstellungen.png" alt="Einstellungen: Sprache, Ansicht, Schrift, zehn Designs" width="250"><br><sub>Einstellungen</sub></td>
   </tr>
   <tr>
@@ -71,12 +71,12 @@ Wer gar nichts auf einem Server haben will, tippt auf der Anmeldeseite auf **„
 ## So funktioniert's
 
 1. **Auf die Liste:** Produkte im Katalog antippen oder oben eintippen, auch mehrere auf einmal („Milch, 2 kg Äpfel und Brot“). Alle, die die Liste teilen, sehen es nach ein paar Sekunden.
-2. **Im Laden abhaken:** Eintrag antippen, dann bleibt er mit Haken durchgestrichen an seinem Platz stehen, wie auf dem Zettel. Vertippt? Zwei Tipps innerhalb von 2 Sekunden holen ihn zurück. Wer mag, lässt Abgehaktes stattdessen in einen Einkaufskorb unter der Liste wandern, dort reicht ein Tipp zum Zurückholen.
-3. **Fertig:** „Einkauf fertig“ unter dem Korb leert ihn nach einer Sicherheitsfrage. Was noch fehlt, bleibt für den nächsten Laden auf der Liste.
+2. **Im Laden abhaken:** Eintrag antippen, dann bleibt er mit Haken durchgestrichen an seinem Platz stehen, wie auf dem Zettel. Vertippt? Zwei Tipps innerhalb von 2 Sekunden holen ihn zurück.
+3. **Fertig:** „Einkauf fertig“ unter der Liste nimmt nach einer Sicherheitsfrage alles Abgehakte runter. Was noch fehlt, bleibt für den nächsten Laden auf der Liste.
 
-| Geste | Auf der Liste und im Korb | Im Katalog |
+| Geste | Auf der Liste | Im Katalog |
 |---|---|---|
-| Antippen | abhaken, ab in den Korb oder durchgestrichen (im Korb: zurückholen, durchgestrichen: zweimal tippen) | auf die Liste setzen oder wieder runternehmen |
+| Antippen | abhaken, es bleibt durchgestrichen stehen (zurückholen: zweimal tippen) | auf die Liste setzen oder wieder runternehmen |
 | Nach links wischen | ganz löschen, ein paar Sekunden lang mit „Rückgängig“ | |
 | Nach rechts wischen | Menge und Hinweis | |
 | Halten | Warengruppe wechseln (etwa eine Sekunde, ein Ring zeigt es an) | Menge und Hinweis (eine halbe Sekunde) |
@@ -91,19 +91,19 @@ Wer gar nichts auf einem Server haben will, tippt auf der Anmeldeseite auf **„
 ### Einkaufen
 
 - **Katalog** mit rund 810 Produkten in 16 Warengruppen, in der Reihenfolge eines typischen Supermarkts. Nur Text, keine Bilder.
-- **Antippen** setzt ein Produkt auf die Liste. Antippen in der Liste hakt es ab: es wandert mit Haken und durchgestrichen in den **Einkaufskorb** darunter, wie auf dem Zettel. Nochmal antippen holt es wieder hoch. Wer die Liste teilt, sieht sofort, was schon im Wagen liegt.
-- **Einkauf fertig:** der Knopf unter dem Korb leert ihn nach einer Sicherheitsfrage. Was noch zu kaufen ist, bleibt auf der Liste, etwa für einen anderen Laden. Von allein leert sich der Korb nie.
+- **Antippen** setzt ein Produkt auf die Liste. Antippen in der Liste hakt es ab: es bleibt mit Haken und durchgestrichen an seinem Platz stehen, wie auf dem Zettel. Zwei Tipps innerhalb von 2 Sekunden holen es zurück, ein einzelner Tipp aus Versehen holt nichts zurück. Wer die Liste teilt, sieht sofort, was schon im Wagen liegt.
+- **Einkauf fertig:** der Knopf unter der Liste nimmt nach einer Sicherheitsfrage alles Abgehakte runter. Was noch zu kaufen ist, bleibt auf der Liste, etwa für einen anderen Laden. Von allein verschwindet nichts.
 - **Wischen wie bei Mails:** einen Eintrag nach links wischen löscht ihn ganz von der Liste (ein paar Sekunden lang mit „Rückgängig“), nach rechts wischen öffnet Menge und Hinweis. Klappt in allen vier Ansichten. Am Rechner geht es mit gedrückter Maus.
 - **Warengruppe mal eben ändern:** einen Eintrag der Liste etwa eine Sekunde halten (am Rechner: Rechtsklick), um ihn wächst dabei ein Ring. Dann eine andere Warengruppe antippen, z. B. Pflaumen im Glas zu den Konserven statt zum Obst. Das gilt nur für diesen Eintrag, auf Wunsch auch dauerhaft im Katalog. Eine neue Warengruppe lässt sich gleich dort anlegen.
 - **Suche** über den ganzen Katalog, in beiden Sprachen: „milk“ findet auch Milch. Gibt es ein Produkt nicht, legt man es direkt aus der Suche an und ordnet es einer Warengruppe zu. Die passende Warengruppe schlägt Kaufen am Wortende vor: „Bergkäse“ landet bei Milch & Käse, „Hundefutter“ bei Tierbedarf.
 - **Mehrere auf einmal, auch per Sprache:** „Milch, 2 kg Äpfel und ein halbes Brot“ ins Suchfeld tippen oder diktieren, Enter, und alles steht auf der Liste. Getrennt wird an Komma, „und“ oder Zeilenende, ohne Kommas („Milch Brot Äpfel Sahne“) zerlegt der Katalog die Wörter. Mengen dürfen davor oder dahinter stehen, in Ziffern oder Worten. Schon beim Tippen zeigt eine Vorschau, was erkannt wurde.
-- **Zuletzt gekauft:** die jüngsten und häufigsten Produkte, zum Aufklappen wie die Warengruppen. Was in den letzten zwei Wochen gekauft wurde, sagt es an der Kachel dazu („vor 3 Tagen“), beim langen Drücken mit Datum und wie oft.
-- **Bald wieder fällig:** beim Abhaken lernt Kaufen, wie oft ihr etwas kauft (Milch etwa alle 5 Tage). Ist es wieder so weit, steht es unter der Liste zum Antippen bereit. Ein Produkt braucht dafür ein paar Einkäufe. Alles bleibt auf dem eigenen Server, abschaltbar pro Konto oder pro Produkt.
+- **Wann zuletzt gekauft:** was in den letzten zwei Wochen gekauft wurde, sagt es an der Kachel dazu („vor 3 Tagen“), beim langen Drücken mit Datum, wie oft und etwa wie regelmäßig.
+- **Bald wieder fällig:** beim Abhaken lernt Kaufen, wie oft ihr etwas kauft (Milch etwa alle 7 Tage). Schon nach dem zweiten Kauf steht es kurz vor dem nächsten Mal unter der Liste zum Antippen bereit. Bis zu 16 Vorschläge, „Alle anzeigen“ klappt den Rest auf. Ab dem wievielten Kauf vorgeschlagen wird (2., 3. oder 4.), stellt jeder in den Einstellungen ein. Lang drücken auf einen Vorschlag schaltet ihn für dieses Produkt ab. Alles bleibt auf dem eigenen Server.
+- **Regelmäßiges automatisch auf die Liste:** kauft ihr etwas 4 Wochen lang im gleichen Abstand (einstellbar: 4, 8 oder 12 Wochen, oder aus), setzt Kaufen es von allein auf die Liste, sobald es wieder fällig ist, und sagt kurz Bescheid. Pro Kauf nur einmal: wer es wieder löscht, bekommt es erst nach dem nächsten Kauf erneut. Lang drücken auf den Eintrag schaltet das für dieses Produkt ab.
 - **Vier Ansichten:** kleine Kacheln, kompakt, Laden-Modus (große Zeilen fürs Abhaken im Laden) oder Liste (schlichte Zeilen auf einer Karte, je Warengruppe eine Überschrift, links ein Kreis zum Abhaken, die Menge als Pille rechts). Von Haus aus startet Kaufen in der Listen-Ansicht, sie kommt einem Einkaufszettel am nächsten. Umschaltbar mit dem Knopf oben rechts, gemerkt pro Gerät und für jede Liste einzeln. Die Farben kommen wie überall aus dem gewählten Design.
-- **Durchstreichen oder Korb:** Abgehaktes bleibt von Haus aus mit Haken und durchgestrichen an seinem Platz stehen. In den Einstellungen pro Gerät wählbar: immer durchstreichen, immer in den Einkaufskorb, oder nur in der Listen-Ansicht durchstreichen. Zurück auf die Liste geht es mit zwei Tipps innerhalb von 2 Sekunden, ein einzelner Tipp aus Versehen holt nichts zurück. „Einkauf fertig“ nimmt danach alles Abgehakte von der Liste. Wer die Liste teilt und lieber den Korb mag, sieht dieselben Einträge bei sich im Korb.
 - **Ohne Netz weiter einkaufen:** die App startet auch ohne Empfang, Änderungen werden gesammelt und nachgereicht.
 - **Bildschirm bleibt an**, solange die App offen ist (abschaltbar).
-- **Hilfe in der App:** Menü → Hilfe erklärt kurz und knapp Tippen, Wischen und Halten, Mengen, den Einkauf im Laden und was oben und im Menü steckt. Die Hilfe passt sich an: wer durchstreicht statt Korb, liest es so.
+- **Hilfe in der App:** Menü → Hilfe erklärt kurz und knapp Tippen, Wischen und Halten, Mengen, den Einkauf im Laden und was oben und im Menü steckt.
 
 ### Mengen und Hinweise
 
@@ -121,7 +121,7 @@ Wer gar nichts auf einem Server haben will, tippt auf der Anmeldeseite auf **„
 - **Mitteilungen aufs Handy:** wer möchte, bekommt eine Mitteilung, wenn jemand etwas auf eine geteilte Liste setzt. Jedes Konto schaltet das pro Gerät in den Einstellungen ein oder aus. Gebündelt statt einzeln: drei Produkte ergeben eine Mitteilung, und zwar in dem Moment, in dem der andere Kaufen verlässt. Abhaken im Laden meldet nichts.
 - **Einkaufszettel als PDF:** für die Tage, an denen das Handy zu Hause bleibt. Nach Warengruppen in der Reihenfolge des eigenen Ladens, vor jedem Eintrag ein Kästchen zum Abhaken mit dem Kuli. Schlicht schwarzweiß, druckt also auf jedem Drucker gut. Unten auf Wunsch leere Zeilen „Noch dazu“ zum Dazuschreiben, eine leere Liste ergibt einen leeren Zettel. Am Handy geht das PDF übers Teilen direkt zum Drucker. Erstellt wird es im Browser, ohne fremde Bibliothek und auch ohne Netz.
 - **Zettel nach Wunsch:** Schriftart (Klar, Klassisch oder Schreibmaschine), Schriftgröße, Zeilenabstand von eng bis weit und 2 oder 3 Spalten. Oben im Fenster zeigt eine Vorschau genau, was aus dem Drucker kommt, und ändert sich beim Einstellen sofort mit. Antippen macht sie groß. Eng und mit 3 Spalten passt ein großer Wocheneinkauf auf eine halbe Seite. Gemerkt wird das pro Gerät.
-- **Liste als Text:** was noch zu kaufen ist, geht als schlichter Text an WhatsApp, Mail und Co., in die Zwischenablage oder als Textdatei, für Leute ohne Konto. Beides steht unter Menü → Drucken und Teilen. Was schon im Einkaufskorb liegt, bleibt bei Zettel und Text draußen.
+- **Liste als Text:** was noch zu kaufen ist, geht als schlichter Text an WhatsApp, Mail und Co., in die Zwischenablage oder als Textdatei, für Leute ohne Konto. Beides steht unter Menü → Drucken und Teilen. Was schon abgehakt ist, bleibt bei Zettel und Text draußen.
 - **Aus Text einfügen:** Text reinkopieren oder eine Textdatei öffnen, und alles landet auf der offenen Liste. Kaufen versteht den eigenen Export, Listen mit Spiegelstrichen, Kästchen oder Nummern und freien Text wie „Milch, 2 kg Äpfel und Brot“. Vorher zeigt eine Vorschau, was erkannt wurde. Was schon auf der Liste steht, kommt nicht doppelt drauf, abgehakte Zeilen ([x]) bleiben weg.
 - **Reihenfolge im Laden:** die Warengruppen lassen sich pro Liste so sortieren, wie der eigene Laden aufgebaut ist.
 - **Vorlagen:** „Grillen“ oder „Frühstück“ setzt mit einem Tipp mehrere Produkte auf die Liste. Auch die aktuelle Liste lässt sich als Vorlage speichern.
@@ -272,8 +272,8 @@ Die Dateien in `app/` tun nichts, wenn man sie direkt aufruft, alles läuft übe
 - **Lokaler Modus am iPhone:** unbedingt über „Zum Home-Bildschirm“ installieren. Safari räumt die Daten von Webseiten, die eine Woche nicht benutzt wurden, sonst von selbst weg. Installierte Apps sind davon ausgenommen. Eine Sicherung als Datei schadet trotzdem nie.
 - **Mitteilungen:** auf dem iPhone gehen sie nur, wenn Kaufen über „Zum Home-Bildschirm“ installiert ist (ab iOS 16.4), auf Android und am Rechner auch im Browser. Beim Einschalten schickt der Server eine Probe, so sieht man sofort, ob er den Mitteilungsdienst erreicht. Meldet sich ein Gerät beim Verlassen nicht ab (Funkloch), geht die Mitteilung rund drei Minuten nach der letzten Änderung raus, sobald irgendein Gerät Kaufen das nächste Mal offen hat.
 - **Sprache:** der mitgelieferte Katalog liegt deutsch in der Datenbank und wird für englische Konten nur bei der Anzeige übersetzt. Selbst angelegte Produkte, Warengruppen und Vorlagen bleiben so, wie sie getippt wurden.
-- **Einkaufskorb:** gehört zur Liste und gilt für alle, die sie teilen. Abhaken zählt als gekauft (für „Zuletzt gekauft“ und „Bald wieder fällig“), zurückholen aus dem Korb nimmt das wieder zurück. Löschen per Wischen zählt nicht als gekauft.
-- **Was wem gehört:** die gemerkten Mengen gehören zur Liste und gelten für alle, die sie teilen. Sprache, „Menge merken“, „Wer war's“, eigene Einheiten und das Aussehen gehören zum Konto. Ansicht, Abhaken (Korb oder durchstreichen), Schriftgrößen und Abstände gelten nur für das jeweilige Gerät.
+- **Abgehaktes:** gehört zur Liste und gilt für alle, die sie teilen. Abhaken zählt als gekauft (für „vor 3 Tagen“, „Bald wieder fällig“ und das automatische Draufsetzen), zurückholen nimmt das wieder zurück. Löschen per Wischen zählt nicht als gekauft.
+- **Was wem gehört:** die gemerkten Mengen gehören zur Liste und gelten für alle, die sie teilen. Sprache, „Menge merken“, „Wer war's“, „Bald wieder fällig“ samt Automatik, eigene Einheiten und das Aussehen gehören zum Konto. Ansicht, Schriftgrößen und Abstände gelten nur für das jeweilige Gerät.
 - **Katalog und Vorlagen** gelten für alle Konten und alle Listen. Einzelne Produkte und Warengruppen darf jedes Konto ändern, „Alles löschen“, „Standard wiederherstellen“, Export und Import sowie die Sicherungen sind dem Administrator vorbehalten.
 - **Listen** sehen nur ihre Mitglieder. Teilen, umbenennen und löschen kann nur, wer die Liste angelegt hat. Wird ein Konto gelöscht, gehen seine Listen an den Administrator, damit nichts verloren geht.
 - **Anmeldung:** ein Gerät bleibt 180 Tage angemeldet, solange es benutzt wird. Wer sein Passwort ändert, meldet alle anderen Geräte ab. Setzt der Administrator das Passwort eines Kontos neu, werden alle Geräte dieses Kontos abgemeldet. Beim Umbenennen bleiben sie angemeldet.

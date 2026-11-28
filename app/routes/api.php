@@ -389,6 +389,9 @@ try {
         $look['keep'] = $src('keep') !== false;
         $look['who'] = $src('who') !== false;
         $look['due'] = $src('due') !== false;
+        // „Bald wieder fällig“ ab dem wievielten Kauf (2 bis 4), automatisch auf die Liste nach so vielen Tagen regelmäßigem Kauf (0 = aus)
+        $look['dn'] = in_array($src('dn'), [2, 3, 4], true) ? $src('dn') : 2;
+        $look['auto'] = in_array($src('auto'), [0, 28, 56, 84], true) ? $src('auto') : 28;
         // Eigene Einheiten als „Kiste/Kisten“ (Einzahl/Mehrzahl) oder nur „Eimer“. Schickt ein älteres Gerät nur die Einzahl, bleibt die gespeicherte Mehrzahl.
         $oldUnits = (array)($old['units'] ?? []);
         $look['units'] = [];

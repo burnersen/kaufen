@@ -142,12 +142,14 @@ function kfListData(int $lid): array {
                     'got' => (int)$r['got_at']];
     }
     // Gekauftes: die 80 jüngsten immer, dazu alles aus den letzten 120 Tagen (für „vor 3 Tagen“ und „Bald wieder fällig“).
-    // g = mittlerer Abstand zwischen zwei Käufen in Sekunden, gn = wie viele Abstände eingeflossen sind (-1 = nicht vorschlagen)
+    // g = mittlerer Abstand zwischen zwei Käufen in Sekunden, gn = wie viele Abstände eingeflossen sind (negativ = nicht vorschlagen),
+    // rs = seit wann regelmäßig gekauft, am = schon automatisch auf die Liste gesetzt (= last) oder nie (-1)
     $usage = [];
     $since = time() - 120 * 86400;
-    foreach (kfQ('SELECT name, cat_id, cnt, last_at, gap, gn FROM usage WHERE list_id = ? ORDER BY last_at DESC LIMIT 800', [$lid]) as $i => $r) {
+    foreach (kfQ('SELECT name, cat_id, cnt, last_at, gap, gn, rs, am FROM usage WHERE list_id = ? ORDER BY last_at DESC LIMIT 800', [$lid]) as $i => $r) {
         if ($i >= 80 && (int)$r['last_at'] < $since) break;
-        $usage[] = ['n' => $r['name'], 'c' => (int)$r['cat_id'], 'cnt' => (int)$r['cnt'], 'last' => (int)$r['last_at'], 'g' => (int)$r['gap'], 'gn' => (int)$r['gn']];
+        $usage[] = ['n' => $r['name'], 'c' => (int)$r['cat_id'], 'cnt' => (int)$r['cnt'], 'last' => (int)$r['last_at'], 'g' => (int)$r['gap'], 'gn' => (int)$r['gn'],
+                    'rs' => (int)$r['rs'], 'am' => (int)$r['am']];
     }
     $order = [];
     foreach (kfQ('SELECT cat_id FROM list_order WHERE list_id = ? ORDER BY pos', [$lid]) as $r) $order[] = (int)$r['cat_id'];
@@ -193,28 +195,36 @@ function kfState(array $me): array {
  * Gekauft: Zähler und Kaufrhythmus lernen. Abstand zum letzten Kauf, geglättet. Unter 12 Stunden ist es derselbe Einkauf,
  * ein Ausreißer (Urlaub) zählt höchstens dreimal so viel wie der bisherige Abstand. Der Stand davor kommt nach prev,
  * damit Rückgängig (kfUsageUndo) ihn zurückholen kann. Die Menge am Eintrag wird fürs nächste Mal gemerkt.
+ * Regelmäßig (rs): weicht der neue Abstand höchstens 35 % vom bisherigen ab, läuft die Reihe weiter, sonst fängt sie beim letzten Kauf neu an.
+ * gn zählt die Abstände. Negativ heißt „nicht mehr vorschlagen“, gezählt wird dann weiter nach unten (-1 - gn), damit „wieder vorschlagen“ den Stand kennt.
  */
 function kfUsageBought(int $lid, array $row, int $now): void {
-    $u = kfQ('SELECT last_at, gap, gn FROM usage WHERE list_id = ? AND name = ?', [$lid, $row['name']])->fetch();
+    $u = kfQ('SELECT last_at, gap, gn, rs FROM usage WHERE list_id = ? AND name = ?', [$lid, $row['name']])->fetch();
     $gap = $u ? (int)$u['gap'] : 0;
     $gn = $u ? (int)$u['gn'] : 0;
+    $rs = $u ? (int)$u['rs'] : 0;
     $d = $u ? $now - (int)$u['last_at'] : 0;
     if ($u && $d >= 43200) {
+        $last = (int)$u['last_at'];
+        if ($gap <= 0) $rs = $last;
+        elseif (abs($d - $gap) > .35 * $gap) $rs = $last;
+        elseif ($rs <= 0) $rs = $last;
         if ($gap > 0) $d = min($d, 3 * $gap);
         $gap = $gap > 0 ? (int)round($gap * .6 + $d * .4) : $d;
-        if ($gn >= 0) $gn++;
+        $gn = $gn >= 0 ? $gn + 1 : $gn - 1;
     }
-    kfQ('INSERT INTO usage (list_id, name, cat_id, cnt, last_at, note, gap, gn, prev) VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?)
+    kfQ('INSERT INTO usage (list_id, name, cat_id, cnt, last_at, note, gap, gn, rs, prev) VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(list_id, name) DO UPDATE SET cnt = cnt + 1, last_at = excluded.last_at, cat_id = excluded.cat_id, note = excluded.note,
-         gap = excluded.gap, gn = excluded.gn, prev = excluded.prev',
-        [$lid, $row['name'], (int)$row['cat_id'], $now, (string)$row['note'], $gap, $gn, $u ? $u['last_at'] . ',' . $u['gap'] . ',' . $u['gn'] : '']);
+         gap = excluded.gap, gn = excluded.gn, rs = excluded.rs, prev = excluded.prev',
+        [$lid, $row['name'], (int)$row['cat_id'], $now, (string)$row['note'], $gap, $gn, $rs, $u ? $u['last_at'] . ',' . $u['gap'] . ',' . $u['gn'] . ',' . $u['rs'] : '']);
 }
 
 /** Abhaken rückgängig: Zähler und Kaufrhythmus wie vorher, ohne gemerkten Stand nur einen weniger */
 function kfUsageUndo(int $lid, string $name): void {
     $u = kfQ('SELECT prev FROM usage WHERE list_id = ? AND name = ?', [$lid, $name])->fetch();
     $p = $u ? explode(',', (string)$u['prev']) : [];
-    if (count($p) === 3) kfQ("UPDATE usage SET cnt = cnt - 1, last_at = ?, gap = ?, gn = ?, prev = '' WHERE list_id = ? AND name = ?", [(int)$p[0], (int)$p[1], (int)$p[2], $lid, $name]);
+    if (count($p) >= 3) kfQ("UPDATE usage SET cnt = cnt - 1, last_at = ?, gap = ?, gn = ?, rs = ?, prev = '' WHERE list_id = ? AND name = ?",
+        [(int)$p[0], (int)$p[1], (int)$p[2], (int)($p[3] ?? 0), $lid, $name]);
     else kfQ('UPDATE usage SET cnt = cnt - 1 WHERE list_id = ? AND name = ?', [$lid, $name]);
     kfQ('DELETE FROM usage WHERE list_id = ? AND name = ? AND cnt <= 0', [$lid, $name]);
 }
@@ -237,7 +247,22 @@ function kfApplyOps(array $me, int $lid, array $ops): void {
         $cat = max(0, (int)($op['c'] ?? 0));
         $note = kfClean($op['note'] ?? '', 80);
 
-        if (($t === 'add' || $t === 'restore') && $uidOk && $name !== '') {
+        if ($t === 'auto' && $uidOk && $name !== '') {
+            // Automatisch auf die Liste (regelmäßig Gekauftes): pro Kauf nur einmal, auch wenn mehrere Geräte es gleichzeitig schicken.
+            // Wird der Eintrag danach gelöscht, kommt er erst nach dem nächsten Kauf wieder.
+            if (kfQ('SELECT 1 FROM items WHERE uid = ?', [$uid])->fetchColumn()) continue;
+            $u = kfQ('SELECT last_at, am FROM usage WHERE list_id = ? AND name = ?', [$lid, $name])->fetch();
+            if (!$u || (int)$u['am'] < 0 || (int)$u['am'] === (int)$u['last_at']) continue;
+            kfQ('UPDATE usage SET am = last_at WHERE list_id = ? AND name = ?', [$lid, $name]);
+            $changed = true;
+            if (kfQ('SELECT 1 FROM items WHERE list_id = ? AND name = ? AND got_at = 0', [$lid, $name])->fetchColumn()) continue;
+            kfQ('DELETE FROM items WHERE list_id = ? AND name = ? AND got_at > 0', [$lid, $name]);
+            kfQ('INSERT INTO items (uid, list_id, name, cat_id, note, added_by, added_at) VALUES (?, ?, ?, ?, ?, ?, ?)', [$uid, $lid, $name, $cat, $note, $me['id'], $now]);
+        } elseif (($t === 'noauto' || $t === 'reauto') && $name !== '') {   // dieses Produkt nie mehr automatisch auf die Liste, oder wieder
+            $st = $t === 'noauto' ? kfQ('UPDATE usage SET am = -1 WHERE list_id = ? AND name = ? AND am >= 0', [$lid, $name])
+                                  : kfQ('UPDATE usage SET am = 0 WHERE list_id = ? AND name = ? AND am < 0', [$lid, $name]);
+            $changed = $changed || $st->rowCount() > 0;
+        } elseif (($t === 'add' || $t === 'restore') && $uidOk && $name !== '') {
             if (kfQ('SELECT 1 FROM items WHERE uid = ?', [$uid])->fetchColumn()) continue;
             $same = kfQ('SELECT uid FROM items WHERE list_id = ? AND name = ? AND got_at = 0', [$lid, $name])->fetchColumn();
             if ($same !== false) {
@@ -288,8 +313,9 @@ function kfApplyOps(array $me, int $lid, array $ops): void {
             $st = kfQ('DELETE FROM usage WHERE list_id = ? AND name = ?', [$lid, $name]);
             $changed = $changed || $st->rowCount() > 0;
         } elseif (($t === 'nodue' || $t === 'redue') && $name !== '') {   // „Bald wieder fällig“ für dieses Produkt aus oder wieder an
-            $st = $t === 'nodue' ? kfQ('UPDATE usage SET gn = -1 WHERE list_id = ? AND name = ? AND gn >= 0', [$lid, $name])
-                                 : kfQ('UPDATE usage SET gn = CASE WHEN gap > 0 THEN 2 ELSE 0 END WHERE list_id = ? AND name = ? AND gn < 0', [$lid, $name]);
+            // Aus: gn wird -1 - gn (die Zahl der Abstände bleibt erhalten). Wieder an: zurückgerechnet, ein altes -1 (vor 1.21) wird 2.
+            $st = $t === 'nodue' ? kfQ('UPDATE usage SET gn = -1 - gn WHERE list_id = ? AND name = ? AND gn >= 0', [$lid, $name])
+                                 : kfQ('UPDATE usage SET gn = CASE WHEN gn < -1 THEN -1 - gn WHEN gap > 0 THEN 2 ELSE 0 END WHERE list_id = ? AND name = ? AND gn < 0', [$lid, $name]);
             $changed = $changed || $st->rowCount() > 0;
         } elseif ($t === 'unmem' && $name !== '') {   // gemerkte Menge vergessen, „Zuletzt gekauft“ bleibt
             $st = kfQ("UPDATE usage SET note = '' WHERE list_id = ? AND name = ? AND note <> ''", [$lid, $name]);
