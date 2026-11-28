@@ -127,7 +127,34 @@ a.btn { color: inherit; text-decoration: none; }
 .tile.got { background: var(--card); border-color: var(--line); color: var(--mut); box-shadow: none; }
 .tile.got .tn { text-decoration: line-through; text-decoration-thickness: 2px; text-decoration-color: var(--acc); }
 .tile.got .tn::before { content: "✓"; display: inline-block; margin-right: .25em; color: var(--acc); font-weight: 800; }
-.btn.finish { margin-top: .8rem; }
+/* „Einkauf fertig“: in der Farbe des Designs mit Fortschritt, grün, sobald alles abgehakt ist */
+.finishbtn { display: flex; align-items: center; gap: .85rem; width: 100%; margin: 1rem 0 .5rem; padding: .85rem 1.1rem; border: 0; border-radius: 1.1rem; background: var(--acc);
+             background: linear-gradient(135deg, var(--acc), color-mix(in srgb, var(--acc) 78%, #000)); color: var(--acc-text); text-align: left;
+             box-shadow: 0 6px 18px color-mix(in srgb, var(--acc) 35%, transparent); transition: transform .12s, box-shadow .12s; }
+.finishbtn:active { transform: scale(.98); }
+.finishbtn .fi { flex: none; display: grid; place-items: center; width: 2.6rem; height: 2.6rem; border-radius: 50%; background: rgba(255, 255, 255, .2); }
+.finishbtn .fi svg { width: 1.5rem; height: 1.5rem; }
+.finishbtn .ft { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .15rem; }
+.finishbtn b { font-size: 1.08rem; }
+.finishbtn small { font-size: .85rem; opacity: .9; }
+.finishbtn .fbar { display: block; height: .35rem; margin-top: .3rem; border-radius: 1rem; background: rgba(255, 255, 255, .28); overflow: hidden; }
+.finishbtn .fbar i { display: block; height: 100%; border-radius: 1rem; background: currentColor; transition: width .3s; }
+.finishbtn.all { background: linear-gradient(135deg, #22c55e, #15803d); color: #fff; box-shadow: 0 6px 20px rgba(22, 163, 74, .4); animation: fpop .5s ease-out; }
+@keyframes fpop { 0% { transform: scale(.96); } 60% { transform: scale(1.02); } 100% { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .finishbtn.all { animation: none; } }
+/* Die Nachfrage dazu */
+.finishdlg { text-align: center; }
+.finishdlg .fbig { display: grid; place-items: center; width: 4.5rem; height: 4.5rem; margin: .4rem auto .6rem; border-radius: 50%;
+                   background: var(--acc-soft); color: var(--acc); }
+.finishdlg .fbig svg { width: 2.4rem; height: 2.4rem; }
+.finishdlg.all .fbig { background: rgba(34, 197, 94, .16); color: #16a34a; }
+.finishdlg .flead { margin: 0 0 .3rem; font-size: 1.2rem; font-weight: 700; }
+.finishdlg .chips { justify-content: center; margin: .6rem 0; }
+.finishdlg .chip.got { text-decoration: line-through; text-decoration-color: var(--acc); color: var(--mut); }
+.finishdlg .btns .btn { min-height: 3.1rem; font-size: 1rem; }
+.btn.fok { background: var(--acc); border-color: var(--acc); color: var(--acc-text); }
+.finishdlg.all .btn.fok { background: #16a34a; border-color: #16a34a; color: #fff; }
+.btn.fok svg { width: 1.2rem; height: 1.2rem; }
 /* „Alle anzeigen“ unter „Bald wieder fällig“ */
 .btn.duemore { margin-top: .6rem; }
 /* Durchgestrichen an Ort und Stelle: der erste Tipp macht scharf, ein zweiter innerhalb von 2 Sekunden holt den Eintrag zurück */
