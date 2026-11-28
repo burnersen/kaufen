@@ -826,6 +826,7 @@ function viewHome(l) {
     const secs = [];
     for (const [id, items] of groups) {
         if (!items.length) continue;
+        items.sort((x, y) => dn(x.n).localeCompare(dn(y.n), lang));   // innerhalb der Warengruppe alphabetisch, wie bei der Auswahl unten
         secs.push(h('div', { class: 'sec' }, h('div', { class: 'grp' }, catName(id)),
             h('div', { class: 'grid todo' }, items.map(it => it.got ? gotTile(it) : tile('on', { k: 'item', uid: it.uid }, dn(it.n), it.note, shared && look.who && it.by !== S.me.id && userName(it.by))))));
     }
