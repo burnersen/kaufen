@@ -123,12 +123,13 @@ a.btn { color: inherit; text-decoration: none; }
 .tile.has { border-color: var(--acc); background: var(--acc-soft); }
 .tile.has .tn::before { content: "✓ "; color: var(--acc); font-weight: 700; }
 .tile.new { border-style: dashed; border-color: var(--acc); color: var(--acc); font-weight: 600; }
-/* Einkaufskorb: abgehakt, mit Haken und durchgestrichen wie auf dem Zettel */
-h2.basket { margin-top: 1.8rem; }
+/* Abgehakt: bleibt mit Haken und durchgestrichen an seinem Platz, wie auf dem Zettel */
 .tile.got { background: var(--card); border-color: var(--line); color: var(--mut); box-shadow: none; }
 .tile.got .tn { text-decoration: line-through; text-decoration-thickness: 2px; text-decoration-color: var(--acc); }
 .tile.got .tn::before { content: "✓"; display: inline-block; margin-right: .25em; color: var(--acc); font-weight: 800; }
 .btn.finish { margin-top: .8rem; }
+/* „Alle anzeigen“ unter „Bald wieder fällig“ */
+.btn.duemore { margin-top: .6rem; }
 /* Durchgestrichen an Ort und Stelle: der erste Tipp macht scharf, ein zweiter innerhalb von 2 Sekunden holt den Eintrag zurück */
 .tile.got.arm { outline: 2px dashed var(--acc); outline-offset: -4px; background: var(--acc-soft); color: var(--text); }
 /* Wischen auf Einträgen der Liste: dahinter ein Schild, rechts rot „Löschen“, links „Menge“. Kräftig, sobald Loslassen auslöst.

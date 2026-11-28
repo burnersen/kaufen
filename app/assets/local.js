@@ -89,7 +89,7 @@
     function listData(l) {
         const since = now() - 120 * 86400;
         const usage = l.usage.slice().sort((a, b) => b.last - a.last).slice(0, 800).filter((u, i) => i < 80 || u.last >= since)
-            .map(u => ({ n: u.n, c: u.c, cnt: u.cnt, last: u.last, g: u.g, gn: u.gn }));
+            .map(u => ({ n: u.n, c: u.c, cnt: u.cnt, last: u.last, g: u.g, gn: u.gn, rs: u.rs || 0, am: u.am || 0 }));
         const mem = l.usage.filter(u => u.note).sort((a, b) => b.last - a.last).slice(0, 2000).map(u => [u.n, u.note]);
         const items = l.items.slice().sort((a, b) => a.at - b.at || (a.uid < b.uid ? -1 : 1))
             .map(i => ({ uid: i.uid, n: i.n, c: i.c, note: i.note, by: i.by, at: i.at, got: i.got || 0 }));
@@ -108,25 +108,26 @@
         }, extra || {});
     }
 
-    /* Gekauft: Zähler und Kaufrhythmus lernen, genau wie kfUsageBought auf dem Server */
+    /* Gekauft: Zähler, Kaufrhythmus und ob regelmäßig (rs) lernen, genau wie kfUsageBought auf dem Server */
     function usageBought(l, it, t) {
         const u = l.usage.find(x => same(x.n, it.n));
-        let gap = u ? u.g : 0, gn = u ? u.gn : 0, d = u ? t - u.last : 0;
+        let gap = u ? u.g : 0, gn = u ? u.gn : 0, rs = u ? u.rs || 0 : 0, d = u ? t - u.last : 0;
         if (u && d >= 43200) {
+            if (gap <= 0 || Math.abs(d - gap) > .35 * gap || rs <= 0) rs = u.last;
             if (gap > 0) d = Math.min(d, 3 * gap);
             gap = gap > 0 ? Math.round(gap * .6 + d * .4) : d;
-            if (gn >= 0) gn++;
+            gn = gn >= 0 ? gn + 1 : gn - 1;
         }
-        const prev = u ? u.last + ',' + u.g + ',' + u.gn : '';
-        if (u) Object.assign(u, { cnt: u.cnt + 1, last: t, c: it.c, note: it.note, g: gap, gn, prev });
-        else l.usage.push({ n: it.n, c: it.c, cnt: 1, last: t, note: it.note, g: gap, gn, prev });
+        const prev = u ? u.last + ',' + u.g + ',' + u.gn + ',' + (u.rs || 0) : '';
+        if (u) Object.assign(u, { cnt: u.cnt + 1, last: t, c: it.c, note: it.note, g: gap, gn, rs, prev });
+        else l.usage.push({ n: it.n, c: it.c, cnt: 1, last: t, note: it.note, g: gap, gn, rs, am: 0, prev });
     }
     /* Abhaken rückgängig: Zähler und Kaufrhythmus wie vorher (kfUsageUndo) */
     function usageUndo(l, name) {
         const u = l.usage.find(x => same(x.n, name));
         if (!u) return;
         const p = String(u.prev || '').split(',');
-        if (p.length === 3) Object.assign(u, { cnt: u.cnt - 1, last: +p[0], g: +p[1], gn: +p[2], prev: '' });
+        if (p.length >= 3) Object.assign(u, { cnt: u.cnt - 1, last: +p[0], g: +p[1], gn: +p[2], rs: +(p[3] || 0), prev: '' });
         else u.cnt--;
         if (u.cnt <= 0) l.usage = l.usage.filter(x => x !== u);
     }
@@ -143,7 +144,20 @@
             const name = clean(op.n, 60), cat = Math.max(0, +op.c || 0), note = clean(op.note, 80);
             const open = n => l.items.find(i => !i.got && same(i.n, n));
             const dropBasket = n => { l.items = l.items.filter(i => !(i.got && same(i.n, n))); };
-            if ((k === 'add' || k === 'restore') && ok && name) {
+            if (k === 'auto' && ok && name) {   // automatisch auf die Liste, pro Kauf nur einmal (wie auf dem Server)
+                if (findUid(uid)) continue;
+                const u = l.usage.find(x => same(x.n, name));
+                if (!u || (u.am || 0) < 0 || u.am === u.last) continue;
+                u.am = u.last;
+                changed = true;
+                if (open(name)) continue;
+                dropBasket(name);
+                l.items.push({ uid, n: name, c: cat, note, by: db.me.id, at: t, got: 0 });
+            } else if ((k === 'noauto' || k === 'reauto') && name) {
+                const u = l.usage.find(x => same(x.n, name));
+                if (u && k === 'noauto' && (u.am || 0) >= 0) { u.am = -1; changed = true; }
+                if (u && k === 'reauto' && (u.am || 0) < 0) { u.am = 0; changed = true; }
+            } else if ((k === 'add' || k === 'restore') && ok && name) {
                 if (findUid(uid)) continue;
                 const s = open(name);
                 if (s) { if (note) { s.note = note; changed = true; } }
@@ -188,8 +202,8 @@
                 changed = changed || l.usage.length !== n;
             } else if ((k === 'nodue' || k === 'redue') && name) {
                 const u = l.usage.find(x => same(x.n, name));
-                if (u && k === 'nodue' && u.gn >= 0) { u.gn = -1; changed = true; }
-                if (u && k === 'redue' && u.gn < 0) { u.gn = u.g > 0 ? 2 : 0; changed = true; }
+                if (u && k === 'nodue' && u.gn >= 0) { u.gn = -1 - u.gn; changed = true; }
+                if (u && k === 'redue' && u.gn < 0) { u.gn = u.gn < -1 ? -1 - u.gn : u.g > 0 ? 2 : 0; changed = true; }
             } else if (k === 'unmem' && name) {
                 const u = l.usage.find(x => same(x.n, name));
                 if (u && u.note) { u.note = ''; changed = true; }
@@ -361,7 +375,7 @@
                 const mem = new Map((data.mem || []).map(([n, note]) => [low(n), note]));
                 return { id: meta.id, n: meta.n, v: 1, order: (data.order || []).slice(),
                     items: data.items.map(i => ({ uid: i.uid, n: i.n, c: i.c, note: i.note || '', by: i.by, at: i.at, got: i.got || 0 })),
-                    usage: data.usage.map(u => ({ n: u.n, c: u.c, cnt: u.cnt, last: u.last, g: u.g, gn: u.gn, note: mem.get(low(u.n)) || '', prev: '' })) };
+                    usage: data.usage.map(u => ({ n: u.n, c: u.c, cnt: u.cnt, last: u.last, g: u.g, gn: u.gn, rs: u.rs || 0, am: u.am || 0, note: mem.get(low(u.n)) || '', prev: '' })) };
             }),
             cbackups: [], seed: a.seed || null };
         const ids = [...db.cats, ...db.products, ...db.tpls, ...db.lists].map(x => x.id);

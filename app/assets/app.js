@@ -117,11 +117,11 @@ const curList = () => S && S.lists.find(l => l.id === cur) || null;
 const userName = id => { const u = S && S.users.find(u => u.id === id); return u ? u.n : ''; };
 const catName = id => { const c = S && S.catalog.cats.find(c => c.id === id); return c ? dc(c.n) : tr('Sonstiges'); };
 const hasCat = id => !!(S && S.catalog.cats.some(c => c.id === id));
-/** Was noch zu kaufen ist, unter diesem Namen. Im Einkaufskorb Liegendes (got = seit wann) zählt hier nicht. */
+/** Was noch zu kaufen ist, unter diesem Namen. Abgehaktes (got = seit wann) zählt hier nicht. */
 const itemByName = n => L ? L.items.find(i => !i.got && low(i.n) === low(n)) : null;
 const inBasket = n => !!L && L.items.some(i => i.got && low(i.n) === low(n));
 const openItems = () => L.items.filter(i => !i.got);
-/** Der Einkaufskorb, zuletzt Abgehaktes zuerst */
+/** Alles Abgehakte, zuletzt Abgehaktes zuerst (früher „Einkaufskorb“, daher die Namen) */
 const basketItems = () => L.items.filter(i => i.got).sort((a, b) => b.got - a.got);
 /** Die Zahl an der Liste („3 offen“): nur was noch zu kaufen ist */
 const countOpen = () => { const l = curList(); if (l && L) l.count = openItems().length; };
@@ -241,11 +241,12 @@ function openList(id) {
 }
 
 /* ---------- Änderungen an der Liste: sofort anzeigen, merken, im Hintergrund abliefern ---------- */
-/** Gekauft: zählt in „Zuletzt gekauft“ und merkt sich die Menge. Den Kaufrhythmus rechnet der Server. */
+/** Gekauft: zählt mit („vor 3 Tagen“) und merkt sich die Menge. Den Kaufrhythmus rechnet der Server. */
 function usageBought(it, now) {
     const u = L.usage.find(u => low(u.n) === low(it.n));
     L.usage = L.usage.filter(x => x !== u);
-    L.usage.unshift({ n: it.n, c: it.c, cnt: (u ? u.cnt : 0) + 1, last: now, g: u ? u.g : 0, gn: u ? u.gn : 0, prev: u ? { ...u, prev: null } : null });
+    L.usage.unshift({ n: it.n, c: it.c, cnt: (u ? u.cnt : 0) + 1, last: now, g: u ? u.g : 0, gn: u ? u.gn : 0, rs: u ? u.rs || 0 : 0, am: u ? u.am || 0 : 0,
+        prev: u ? { ...u, prev: null } : null });
     setMem(it.n, it.note);
 }
 /** Abhaken rückgängig: der Stand von vorher, sonst nur einen weniger */
@@ -254,7 +255,7 @@ function usageUndo(n) {
     if (u && u.prev) L.usage = L.usage.map(x => x === u ? u.prev : x);
     else if (u && --u.cnt <= 0) L.usage = L.usage.filter(x => x !== u);
 }
-/** Liegt es schon im Korb und kommt wieder auf die Liste, wird es eben noch einmal gebraucht: das im Korb ist gekauft und fällt weg */
+/** Ist es schon abgehakt und kommt wieder auf die Liste, wird es eben noch einmal gebraucht: das Abgehakte ist gekauft und fällt weg */
 const dropBasket = n => { L.items = L.items.filter(i => !(i.got && low(i.n) === low(n))); };
 
 function applyLocal(o) {
@@ -265,12 +266,12 @@ function applyLocal(o) {
         if (same) { if (o.note) same.note = o.note; }
         else { dropBasket(o.n); L.items.push({ uid: o.uid, n: o.n, c: o.c || 0, note: o.note || '', by: o.by || S.me.id, at: now, got: 0 }); }
         if (o.t === 'restore') usageUndo(o.n);
-    } else if (o.t === 'got') {   // abgehakt: ab in den Korb
+    } else if (o.t === 'got') {   // abgehakt: bleibt durchgestrichen stehen
         const it = L.items.find(i => i.uid === o.uid && !i.got);
         if (!it) return;
         it.got = now;
         usageBought(it, now);
-    } else if (o.t === 'ungot') {   // aus dem Korb zurück auf die Liste
+    } else if (o.t === 'ungot') {   // Abgehaktes zurück auf die Liste
         const it = L.items.find(i => i.uid === o.uid && i.got);
         if (!it) return;
         it.got = 0;
@@ -293,9 +294,18 @@ function applyLocal(o) {
         setMem(o.n, '');
     } else if (o.t === 'unmem') {
         setMem(o.n, '');
-    } else if (o.t === 'nodue' || o.t === 'redue') {
+    } else if (o.t === 'nodue' || o.t === 'redue') {   // aus: -1 - gn, so bleibt die Zahl der Abstände erhalten (wie auf dem Server)
         const u = L.usage.find(u => low(u.n) === low(o.n));
-        if (u) u.gn = o.t === 'nodue' ? -1 : u.g > 0 ? 2 : 0;
+        if (u && o.t === 'nodue' && u.gn >= 0) u.gn = -1 - u.gn;
+        if (u && o.t === 'redue' && u.gn < 0) u.gn = u.gn < -1 ? -1 - u.gn : u.g > 0 ? 2 : 0;
+    } else if (o.t === 'auto') {   // automatisch auf die Liste, pro Kauf nur einmal
+        const u = usageOf(o.n);
+        if (!u || u.am < 0 || u.am === u.last || L.items.some(i => i.uid === o.uid)) return;
+        u.am = u.last;
+        if (!itemByName(o.n)) { dropBasket(o.n); L.items.push({ uid: o.uid, n: o.n, c: o.c || 0, note: o.note || '', by: S.me.id, at: now, got: 0 }); }
+    } else if (o.t === 'noauto' || o.t === 'reauto') {
+        const u = usageOf(o.n);
+        if (u) u.am = o.t === 'noauto' ? -1 : 0;
     }
 }
 
@@ -764,12 +774,12 @@ function tile(cls, data, name, note, by, ago) {
         p.q && h('span', { class: p.cnt ? 'tt cnt' : 'tt' }, p.q), p.hint && h('span', { class: 'th' }, p.hint), by && h('span', { class: 'tb' }, by),
         ago && h('span', { class: 'ta' }, ago));
 }
-/** Produkt aus Katalog, Suche oder „Zuletzt gekauft“. Was in den letzten zwei Wochen gekauft wurde, sagt es dazu (always: egal wie lange her),
-    was gerade im Einkaufskorb liegt, sagt „im Korb“. */
+/** Produkt aus Katalog, Suche oder „Bald wieder fällig“. Was in den letzten zwei Wochen gekauft wurde, sagt es dazu (always: egal wie lange her),
+    was gerade abgehakt auf der Liste steht, sagt „abgehakt“. */
 const prodTile = (n, c, src, always) => {
     const it = itemByName(n), u = !it && usageOf(n), d = u ? daysAgo(u.last) : 99;
     return tile(it ? 'has' : '', { k: 'prod', n, c, src: src || '' }, dn(n), it ? it.note : memOf(n), '',
-        !it && inBasket(n) ? tr(strikeOn() ? 'abgehakt' : 'im Korb') : u && (always || d < 14) ? agoText(d, true) : '');
+        !it && inBasket(n) ? tr('abgehakt') : u && (always || d < 14) ? agoText(d, true) : '');
 };
 
 /* ---------- Gekauft: wann zuletzt, und was bald wieder fällig ist ---------- */
@@ -784,13 +794,29 @@ const usageOf = n => {
 const daysAgo = ts => { const a = new Date(ts * 1000), b = new Date(); a.setHours(0, 0, 0, 0); b.setHours(0, 0, 0, 0); return Math.max(0, Math.round((b - a) / 864e5)); };
 /** „heute gekauft“ (Kachel, short) bzw. „heute“, dann „gestern“, „vor 3 Tagen“ */
 const agoText = (d, short) => d === 0 ? tr(short ? 'heute gekauft' : 'heute') : d === 1 ? tr(short ? 'gestern gekauft' : 'gestern') : tr('vor {0} Tagen', d);
-/** Bald wieder fällig: mindestens zwei gelernte Abstände, seit dem letzten Kauf sind 90 % des üblichen Abstands vorbei,
-    aber noch nicht das Dreifache (dann kauft ihr es wohl nicht mehr). Am meisten überfällig zuerst, höchstens 8. */
+/** Ist es wieder so weit? Seit dem letzten Kauf sind 90 % des üblichen Abstands vorbei, aber noch nicht das Dreifache (dann kauft ihr es wohl nicht mehr). */
+const dueNow = (u, now) => u.g >= DAY / 2 && now - u.last >= u.g * .9 && now - u.last <= u.g * 3;
+/** Bald wieder fällig: ab dem eingestellten Kauf (look.dn, Standard 2, also nach einem gelernten Abstand). Am meisten überfällig zuerst. */
 function dueList() {
     if (!look.due || !L) return [];
     const now = Date.now() / 1000;
-    return L.usage.filter(u => u.gn >= 2 && u.g >= DAY / 2 && !itemByName(u.n) && now - u.last >= u.g * .9 && now - u.last <= u.g * 3)
-        .sort((a, b) => (now - b.last) / b.g - (now - a.last) / a.g).slice(0, 8);
+    return L.usage.filter(u => u.gn >= look.dn - 1 && dueNow(u, now) && !itemByName(u.n))
+        .sort((a, b) => (now - b.last) / b.g - (now - a.last) / a.g);
+}
+/** So viele zeigt „Bald wieder fällig“, der Rest kommt mit „Alle anzeigen“ */
+const DUE_MAX = 16;
+/**
+ * Regelmäßig Gekauftes automatisch auf die Liste: seit look.auto Tagen im gleichen Abstand gekauft (rs, mindestens drei Käufe) und wieder fällig.
+ * Pro Kauf nur einmal (am), wer es wieder löscht, bekommt es erst nach dem nächsten Kauf wieder. Pro Produkt abschaltbar (am = -1).
+ */
+function autoAdd() {
+    if (!L || !S || !look.auto || !cur) return;
+    const now = Date.now() / 1000;
+    const due = L.usage.filter(u => u.gn >= 2 && (u.am || 0) >= 0 && u.am !== u.last && u.rs > 0 && u.last - u.rs >= look.auto * DAY - DAY / 2
+        && dueNow(u, now) && !itemByName(u.n));
+    if (!due.length) return;
+    op(due.map(u => ({ t: 'auto', uid: newUid(), n: u.n, c: hasCat(u.c) ? u.c : 0, note: memOf(u.n) })));
+    toast(tr('Automatisch auf die Liste: {0}', due.map(u => dn(u.n)).join(', ')));
 }
 
 function render() {
@@ -810,19 +836,21 @@ function render() {
     if (gest) { stopHold(); gest = null; }   // die Kachel unter dem Finger wird gleich ersetzt: Halten gilt nicht mehr
     const q = norm(qInput.value.trim());
     main.replaceChildren(...(q ? viewSearch(q) : [demoBanner(), helpHint(), ...viewHome(l), demoFoot()].filter(Boolean)));
+    if (!q) setTimeout(autoAdd, 0);   // regelmäßig Gekauftes von allein auf die Liste, sobald es fällig ist (nicht mitten im Zeichnen)
 }
+setInterval(() => { if (!document.hidden) render(); }, 15 * 60 * 1000);   // fällig wird es auch, während Kaufen offen ist
 
 function viewHome(l) {
     const out = [];
     const order = catOrder();
     const shared = l.members.length > 1;
-    const todo = openItems(), bask = basketItems(), strike = strikeOn();
+    const todo = openItems(), bask = basketItems();
     out.push(h('h2', null, tr('Noch zu kaufen'), h('small', null, todo.length ? String(todo.length) : '')));
-    if (!todo.length) out.push(h('p', { class: 'hint' }, bask.length ? tr(strike ? 'Alles abgehakt. Wenn du fertig bist, tippe unten auf „Einkauf fertig“.' : 'Alles im Korb. Wenn du fertig bist, tippe unten auf „Einkauf fertig“.')
+    if (!todo.length) out.push(h('p', { class: 'hint' }, bask.length ? tr('Alles abgehakt. Wenn du fertig bist, tippe unten auf „Einkauf fertig“.')
         : tr('Alles erledigt. Tippe unten auf ein Produkt oder such oben danach, dann landet es hier.')));
-    // Durchstreichen statt Korb (Einstellung pro Gerät): Abgehaktes bleibt an seinem Platz stehen, mit Haken und durchgestrichen
+    // Abgehaktes bleibt an seinem Platz stehen, mit Haken und durchgestrichen, bis „Einkauf fertig“
     const groups = new Map(order.map(id => [id, []]));
-    for (const it of strike ? L.items : todo) groups.get(hasCat(it.c) ? it.c : 0).push(it);
+    for (const it of L.items) groups.get(hasCat(it.c) ? it.c : 0).push(it);
     const secs = [];
     for (const [id, items] of groups) {
         if (!items.length) continue;
@@ -831,36 +859,21 @@ function viewHome(l) {
             h('div', { class: 'grid todo' }, items.map(it => it.got ? gotTile(it) : tile('on', { k: 'item', uid: it.uid }, dn(it.n), it.note, shared && look.who && it.by !== S.me.id && userName(it.by))))));
     }
     if (secs.length) out.push(h('div', { class: 'secs' }, secs));
-    // Einkaufskorb: Abgehaktes, durchgestrichen wie auf dem Zettel. Antippen holt es zurück, „Einkauf fertig“ leert den Korb.
-    if (bask.length) {
-        if (!strike) {
-            out.push(h('h2', { class: 'basket' }, tr('Im Einkaufskorb'), h('small', null, String(bask.length))));
-            out.push(h('div', { class: 'secs' }, h('div', { class: 'sec' }, h('div', { class: 'grid todo' }, bask.map(gotTile)))));
-        }
-        out.push(h('button', { class: 'btn wide finish' + (todo.length ? '' : ' primary'), type: 'button', onclick: finishShopping },
-            strike ? tr('Einkauf fertig ({0} abgehakt)', bask.length) : tr('Einkauf fertig')));
-    }
+    // „Einkauf fertig“ nimmt alles Abgehakte von der Liste
+    if (bask.length) out.push(h('button', { class: 'btn wide finish' + (todo.length ? '' : ' primary'), type: 'button', onclick: finishShopping },
+        tr('Einkauf fertig ({0} abgehakt)', bask.length)));
 
     const open = LS.get('open', {});
-    // Bald wieder fällig: von Anfang an aufgeklappt, zuklappen wird gemerkt
+    // Bald wieder fällig: von Anfang an aufgeklappt, zuklappen wird gemerkt. Bis zu DUE_MAX, „Alle anzeigen“ klappt den Rest auf (gemerkt pro Gerät).
     const due = dueList();
     if (due.length) {
-        const isOpen = open.due !== 0;
+        const isOpen = open.due !== 0, all = LS.get('dueAll', false);
         out.push(h('button', { class: 'cat solo due' + (isOpen ? ' open' : ''), type: 'button', data: { k: 'cat', id: 'due' }, 'aria-expanded': String(isOpen) }, tr('Bald wieder fällig'), h('small', null, String(due.length)), icon(I.down)));
-        if (isOpen) out.push(h('div', { class: 'grid' }, due.map(u => prodTile(u.n, hasCat(u.c) ? u.c : 0, 'due', true))));
-    }
-
-    // Zuletzt gekauft: erst die jüngsten, dann aufgefüllt mit den häufigsten
-    const free = L.usage.filter(u => !itemByName(u.n));
-    const recent = free.slice(0, 8);
-    for (const u of [...free].sort((a, b) => b.cnt - a.cnt)) {
-        if (recent.length >= 12) break;
-        if (!recent.includes(u)) recent.push(u);
-    }
-    if (recent.length) {
-        const isOpen = !!open.recent;
-        out.push(h('button', { class: 'cat solo' + (isOpen ? ' open' : ''), type: 'button', data: { k: 'cat', id: 'recent' }, 'aria-expanded': String(isOpen) }, tr('Zuletzt gekauft'), h('small', null, String(recent.length)), icon(I.down)));
-        if (isOpen) out.push(h('div', { class: 'grid' }, recent.map(u => prodTile(u.n, hasCat(u.c) ? u.c : 0, 'recent'))));
+        if (isOpen) {
+            out.push(h('div', { class: 'grid' }, (all ? due : due.slice(0, DUE_MAX)).map(u => prodTile(u.n, hasCat(u.c) ? u.c : 0, 'due', true))));
+            if (due.length > DUE_MAX) out.push(h('button', { class: 'btn wide duemore', type: 'button', onclick: () => { LS.set('dueAll', !all); render(); } },
+                all ? tr('Weniger anzeigen') : tr('Alle anzeigen ({0})', due.length)));
+        }
     }
 
     out.push(h('h2', null, tr('Katalog')));
@@ -1080,8 +1093,8 @@ function guessCat(name) {
 }
 
 /* ---------- Tippen, wischen und lange halten ---------- */
-/** Antippen in der Liste: abgehakt, ab in den Korb. Im Korb antippen: zurück auf die Liste.
-    Beim Durchstreichen braucht das Zurückholen zwei Tipps innerhalb von ARM_MS: der erste macht den Eintrag scharf, erst der zweite holt ihn zurück.
+/** Antippen in der Liste: abgehakt, es bleibt durchgestrichen an seinem Platz.
+    Das Zurückholen braucht zwei Tipps innerhalb von ARM_MS: der erste macht den Eintrag scharf, erst der zweite holt ihn zurück.
     So holt ein Tipp aus Versehen (etwa beim Rollen im Laden) nichts wieder auf die Liste. */
 const ARM_MS = 2000;
 let armUid = '', armTimer = 0;
@@ -1089,7 +1102,7 @@ function tapItem(uid) { if (L.items.some(i => i.uid === uid && !i.got)) { disarm
 function tapGot(uid) {
     const it = L.items.find(i => i.uid === uid && i.got);
     if (!it) return;
-    if (strikeOn() && armUid !== uid) {
+    if (armUid !== uid) {
         disarm();
         armUid = uid;
         for (const t of main.querySelectorAll('.tile[data-k="got"]')) if (t.dataset.uid === uid) t.classList.add('arm');
@@ -1106,21 +1119,21 @@ function disarm() {
     armUid = '';
     for (const t of main.querySelectorAll('.tile.arm')) t.classList.remove('arm');
 }
-/** Ein abgehakter Eintrag, im Korb oder an seinem Platz durchgestrichen */
+/** Ein abgehakter Eintrag, an seinem Platz durchgestrichen */
 const gotTile = it => tile('got' + (armUid === it.uid ? ' arm' : ''), { k: 'got', uid: it.uid }, dn(it.n), it.note);
 /** Ganz von der Liste löschen, ein paar Sekunden lang mit „Rückgängig“ */
 function delItem(it) {
     op({ t: 'remove', uid: it.uid });
     toast(tr('{0} gelöscht', dn(it.n)), tr('Rückgängig'), () => op({ t: 'back', uid: it.uid, n: it.n, c: it.c, note: it.note, by: it.by, at: it.at, got: it.got || 0 }));
 }
-/** „Einkauf fertig“: nach einer Sicherheitsfrage den Korb leeren. Was noch zu kaufen ist, bleibt auf der Liste. */
+/** „Einkauf fertig“: nach einer Sicherheitsfrage alles Abgehakte von der Liste nehmen. Was noch zu kaufen ist, bleibt drauf. */
 function finishShopping() {
     const left = openItems().length;
-    confirmDlg(tr('Einkauf fertig?'), tr(strikeOn() ? 'Ist alles Abgehakte wirklich gekauft? Dann wird es von der Liste genommen.' : 'Ist alles im Korb wirklich gekauft? Dann wird der Korb geleert und alles darin von der Liste genommen.')
+    confirmDlg(tr('Einkauf fertig?'), tr('Ist alles Abgehakte wirklich gekauft? Dann wird es von der Liste genommen.')
         + (left === 1 ? ' ' + tr('Das eine, was noch zu kaufen ist, bleibt drauf.') : left ? ' ' + tr('Die {0} Sachen, die noch zu kaufen sind, bleiben drauf.', left) : ''),
-        tr('Ja, Korb leeren'), () => {
+        tr('Ja, von der Liste nehmen'), () => {
             const bask = basketItems();
-            if (bask.length) { op(bask.map(it => ({ t: 'remove', uid: it.uid }))); toast(tr('Korb geleert')); }
+            if (bask.length) { op(bask.map(it => ({ t: 'remove', uid: it.uid }))); toast(tr('Abgehaktes von der Liste genommen')); }
         });
 }
 function tapProd(n, c) {
@@ -1167,6 +1180,8 @@ function catMenu(it) {
             h('button', { class: 'chip add', type: 'button', onclick: newCat }, tr('+ Neue Warengruppe'))),
         keep && h('label', { class: 'check' }, keep, h('span', null, tr('Auch im Katalog ändern, dann gilt es immer'))),
         h('div', { class: 'btns' },
+            // regelmäßig Gekauftes: hier lässt sich das automatische Draufsetzen abschalten, gerade wenn es eben von allein kam
+            autoOpts(usageOf(it.n)).map(x => h('button', { class: 'btn', type: 'button', onclick: () => { sh.close(); x.fn(); } }, x.label)),
             h('button', { class: 'btn', type: 'button', onclick: () => { sh.close(); itemDialog(it); } }, tr('Menge …')),
             h('button', { class: 'btn danger', type: 'button', onclick: () => { sh.close(); delItem(it); } }, tr('Löschen'))));
 }
@@ -1179,10 +1194,16 @@ function prodDialog(n, c, src) {
         u.cnt > 1 && tr('Insgesamt {0}-mal gekauft', u.cnt), u.g >= DAY / 2 && u.gn !== 0 && tr('Etwa alle {0} Tage', Math.max(1, Math.round(u.g / DAY)))].filter(Boolean).join(' · ');
     ask(dn(n), [{ k: 'note', type: 'qty', value: memOf(n) }, info && { type: 'info', text: info }],
         tr('Auf die Liste'), v => op({ t: 'add', uid: newUid(), n, c, note: v.note.trim() }),
-        [src === 'recent' && { label: tr('Aus „Zuletzt gekauft“ entfernen'), fn: () => op({ t: 'forget', n }) },
-         u && u.gn >= 2 && look.due && { label: tr('Nicht mehr als fällig vorschlagen'), fn: () => op({ t: 'nodue', n }) },
+        [u && u.gn >= look.dn - 1 && look.due && { label: tr('Nicht mehr als fällig vorschlagen'), fn: () => op({ t: 'nodue', n }) },
          u && u.gn < 0 && look.due && { label: tr('Wieder als fällig vorschlagen'), fn: () => op({ t: 'redue', n }) },
+         ...autoOpts(u),
          memOf(n) && { label: tr('Gemerkte Menge vergessen'), fn: () => op({ t: 'unmem', n }) }]);
+}
+/** Automatisch auf die Liste: für dieses Produkt abschalten oder wieder an. Erst, wenn es dafür überhaupt in Frage kommt (ein gelernter Abstand). */
+function autoOpts(u) {
+    if (!u || !look.auto || u.gn === 0) return [];
+    return [(u.am || 0) >= 0 ? { label: tr('Nicht automatisch auf die Liste setzen'), fn: () => op({ t: 'noauto', n: u.n }) }
+        : { label: tr('Wieder automatisch auf die Liste setzen'), fn: () => op({ t: 'reauto', n: u.n }) }];
 }
 /** Neues Produkt aus der Suche oder aus einer Warengruppe heraus */
 function newProduct(name, catId) {
@@ -1203,7 +1224,7 @@ function newProduct(name, catId) {
     });
 }
 
-/* Gesten. Auf Einträgen der Liste und im Korb: Finger drauf und nach links wischen löscht, nach rechts öffnet die Menge,
+/* Gesten. Auf Einträgen der Liste, auch abgehakten: Finger drauf und nach links wischen löscht, nach rechts öffnet die Menge,
    still liegen lassen (LP_ITEM) öffnet das Menü für die Warengruppe. Auf Produkten im Katalog öffnet kurzes Halten (LP_PROD) die Menge.
    Am Rechner: mit der Maus ziehen geht genauso, Rechtsklick statt Halten. */
 const LP_ITEM = 1000, LP_PROD = 500;
@@ -1746,11 +1767,12 @@ const LOOKC = ['mode', 'l', 'd', 'cl', 'cd'];
 const normC = o => ({ mode: o && ['light', 'dark'].includes(o.mode) ? o.mode : 'auto', l: String(o && o.l || ''), d: String(o && o.d || ''), cl: okCols(o && o.cl), cd: okCols(o && o.cd) });
 const normPl = o => Object.fromEntries(Object.entries(o && typeof o === 'object' ? o : {}).filter(([k, v]) => /^[\w-]{1,40}$/.test(k) && v && typeof v === 'object').slice(0, 100).map(([k, v]) => [k, normC(v)]));
 const normLook = o => ({ ...normC(o), pl: normPl(o && o.pl),
-    lang: o && ['de', 'en'].includes(o.lang) ? o.lang : '', keep: !(o && o.keep === false), who: !(o && o.who === false), due: !(o && o.due === false), units: Array.isArray(o && o.units) ? o.units.filter(okUnit).slice(0, 12) : [],
+    lang: o && ['de', 'en'].includes(o.lang) ? o.lang : '', keep: !(o && o.keep === false), who: !(o && o.who === false), due: !(o && o.due === false), dn: [2, 3, 4].includes(o && o.dn) ? o.dn : 2, auto: [0, 28, 56, 84].includes(o && o.auto) ? o.auto : 28, units: Array.isArray(o && o.units) ? o.units.filter(okUnit).slice(0, 12) : [],
     uv: Array.isArray(o && o.uv) ? UNITS.map(x => x[0]).filter(k => o.uv.includes(k)) : null });
 /** Einstellungen des Kontos: mode = auto|light|dark, l/d = gewähltes Design für hell/dunkel, cl/cd = eigene Farben (der Standard für alle Listen),
     pl = dasselbe je Liste ({Listennummer: {mode, l, d, cl, cd}}), sobald an einer Liste das Aussehen eigens eingestellt wurde,
-    lang = Sprache ('' = noch nicht gewählt), keep = zuletzt benutzte Menge merken, who = anzeigen, wer einen Artikel hinzugefügt hat, due = „Bald wieder fällig“ zeigen, units = eigene Einheiten,
+    lang = Sprache ('' = noch nicht gewählt), keep = zuletzt benutzte Menge merken, who = anzeigen, wer einen Artikel hinzugefügt hat, due = „Bald wieder fällig“ zeigen, dn = ab dem wievielten Kauf (2 bis 4),
+    auto = regelmäßig Gekauftes nach so vielen Tagen automatisch auf die Liste setzen (0 = aus), units = eigene Einheiten,
     uv = mitgelieferte Einheiten, die bei der Mengenauswahl immer dastehen (null = Standard). Liegt auf dem Server, hier nur die Kopie. */
 let look = normLook(LS.get('look', null) || { mode: LS.get('theme', 'auto'), l: LS.get('palL', ''), d: LS.get('palD', '') });
 /** Schlüssel fürs Aussehen der offenen Liste in der aktuellen Ansicht, z. B. „5_list“ (null = keine Liste offen) */
@@ -1915,11 +1937,7 @@ function applyView() {
     fill(btn, icon(I[next]));   // der Knopf zeigt, wohin er umschaltet
     btn.title = tr({ tiles: 'Zur Kachel-Ansicht', compact: 'Zur kompakten Ansicht', shop: 'Zum Laden-Modus', list: 'Zur Listen-Ansicht' }[next]);
 }
-/** Was beim Abhaken passiert, gemerkt pro Gerät: strike = immer durchstreichen (Standard); basket = immer in den Korb; auto = in der Listen-Ansicht durchstreichen, sonst in den Korb */
-const TICKS = [['strike', 'Immer durchstreichen'], ['basket', 'Immer in den Korb'], ['auto', 'In der Listen-Ansicht durchstreichen, sonst Korb']];
-const curTick = () => { const v = LS.get('tick', 'strike'); return TICKS.some(x => x[0] === v) ? v : 'strike'; };
-const strikeOn = () => { const t = curTick(); return t === 'strike' || (t === 'auto' && curView() === 'list'); };
-/** Ansicht wechseln: Durchstreichen oder Korb kann davon abhängen, deshalb neu zeichnen */
+/** Ansicht wechseln und neu zeichnen */
 const setView = v => {
     if (cur != null) { const m = LS.get('viewL', {}); m[cur] = v; LS.set('viewL', m); } else LS.set('view', v);
     disarm(); applyListLook(); render();   // jede Ansicht kann ihr eigenes Aussehen haben
@@ -2011,12 +2029,12 @@ function peekOption() {
 /** Fenster für Schriftgrößen, Größe und Abstände: oben eine Vorschau in der Ansicht dieses Geräts, darunter je ein Regler */
 function editFont() {
     const sh = sheet(tr('Schrift, Größe und Abstände'));
-    const v = curView(), strike = strikeOn();
+    const v = curView();
     const prev = h('div', { class: 'prev' + (v === 'tiles' ? '' : ' ' + v), 'aria-hidden': 'true' },
-        h('h2', null, tr('Noch zu kaufen'), h('small', null, strike ? '2' : '3')),
+        h('h2', null, tr('Noch zu kaufen'), h('small', null, '2')),
         h('div', { class: 'secs' }, h('div', { class: 'sec' }, h('div', { class: 'grp' }, dc('Milch & Käse')),
             h('div', { class: 'grid todo' }, tile('on', {}, dn('Milch'), '3'), tile('on', {}, dn('Butter'), '2 Packungen, die guten'),
-                tile(strike ? 'got' : 'on', {}, dn('Quark'), '1,5 kg')))));
+                tile('got', {}, dn('Quark'), '1,5 kg')))));
     prev.querySelectorAll('button').forEach(b => { b.tabIndex = -1; });
     let f = curFont();
     const save = () => { setFontRaw(f); applyFont(); };
@@ -2180,8 +2198,11 @@ function showSettings(top) {
     // Andere Ansicht, anderes Aussehen: das Fenster zeigt danach die Einstellungen dieser Ansicht
     const view = h('select', { onchange: () => { const t = sh.body.scrollTop; setView(view.value); sh.close(); showSettings(t); } },
         VIEW_NAMES.map(([v, s]) => h('option', { value: v, selected: curView() === v }, tr(s))));
-    const tick = h('select', { onchange: () => { LS.set('tick', tick.value); disarm(); render(); } },
-        TICKS.map(([v, s]) => h('option', { value: v, selected: curTick() === v }, tr(s))));
+    const dueN = h('select', { onchange: () => { setLook({ dn: +dueN.value }); render(); } },
+        [2, 3, 4].map(v => h('option', { value: String(v), selected: look.dn === v }, tr('Ab dem {0}. Kauf', v))));
+    const autoSel = h('select', { onchange: () => { setLook({ auto: +autoSel.value }); render(); autoAdd(); } },
+        [[0, 'Aus'], [28, 'Nach 4 Wochen regelmäßigem Kauf'], [56, 'Nach 8 Wochen regelmäßigem Kauf'], [84, 'Nach 12 Wochen regelmäßigem Kauf']]
+            .map(([v, s]) => h('option', { value: String(v), selected: look.auto === v }, tr(s))));
     const swatches = mode => {
         const row = h('div', { class: 'pals', role: 'radiogroup', 'aria-label': mode === 'dark' ? tr('Dunkles Design') : tr('Helles Design') });
         const pk = mode === 'dark' ? 'd' : 'l', ck = mode === 'dark' ? 'cd' : 'cl';
@@ -2199,8 +2220,6 @@ function showSettings(top) {
     };
     put(sh.body,
         h('label', { class: 'field' }, 'Sprache / Language', langSel),
-        h('label', { class: 'field' }, tr('Abgehaktes (nur dieses Gerät)'), tick),
-        h('p', { class: 'info' }, tr('Durchgestrichenes bleibt an seinem Platz stehen. Zurück auf die Liste kommt es mit zwei Tipps innerhalb von 2 Sekunden, so passiert das nicht aus Versehen. Im Korb reicht ein Tipp.')),
         // Aussehen: gilt für die offene Liste, auf Wunsch für alle
         h('h2', { class: 'looksec' }, curList() ? tr('Aussehen der Liste „{0}“', curList().n) : tr('Aussehen')),
         curList() && h('p', { class: 'info' }, tr('Jede Ansicht hat ihr eigenes Aussehen. Wähl die Ansicht, dann stellst du Schrift, Design und Farben genau für sie ein.')),
@@ -2221,7 +2240,10 @@ function showSettings(top) {
         h('label', { class: 'check' }, keepBox, h('span', null, tr('Zuletzt benutzte Menge merken'))),
         h('p', { class: 'info' }, tr('Beim Abhaken merkt sich Kaufen, welche Menge am Produkt stand, und setzt es beim nächsten Mal wieder genauso auf die Liste. Ohne Haken steht immer 1 da.')),
         h('label', { class: 'check' }, dueBox, h('span', null, tr('Vorschlagen, was bald wieder fällig ist'))),
-        h('p', { class: 'info' }, tr('Kaufen lernt beim Abhaken, wie oft ihr etwas kauft, zum Beispiel Milch alle 5 Tage. Ist es wieder so weit, steht es unter der Liste bei „Bald wieder fällig“. Ein Produkt braucht dafür ein paar Einkäufe.')),
+        h('label', { class: 'field' }, tr('Vorschlagen'), dueN),
+        h('p', { class: 'info' }, tr('Kaufen lernt beim Abhaken, wie oft ihr etwas kauft, zum Beispiel Milch alle 7 Tage. Kurz bevor es wieder so weit ist, steht es unter der Liste bei „Bald wieder fällig“. Lang drücken, dann kannst du es dort für ein Produkt abschalten.')),
+        h('label', { class: 'field' }, tr('Regelmäßiges automatisch auf die Liste'), autoSel),
+        h('p', { class: 'info' }, tr('Kauft ihr etwas so lange im gleichen Abstand, setzt Kaufen es von allein auf die Liste, sobald es wieder fällig ist. Lang drücken, dann lässt es sich für ein Produkt abschalten.')),
         h('div', { class: 'qlabel' }, tr('Einheiten bei der Mengenauswahl')), stdBox,
         h('p', { class: 'info' }, tr('Markierte stehen immer da, die anderen findest du dort unter „Weitere …“. Diktieren und Tippen verstehen alle, egal ob „eine Kiste“ oder „zwei Kisten“.')),
         h('div', { class: 'qlabel' }, tr('Eigene Einheiten')), unitBox,
@@ -2365,7 +2387,7 @@ function showLocalBackup() {
         file);
 }
 /** Nach dem Anmelden: liegen noch Listen aus dem lokalen Modus auf dem Gerät, einmal pro Start fragen, ob sie ins Konto sollen.
-    Übernommen wird, was noch zu kaufen ist. Die Warengruppe geht über ihren Namen, der Korb und das Gekaufte bleiben zurück. */
+    Übernommen wird, was noch zu kaufen ist. Die Warengruppe geht über ihren Namen, das Abgehakte bleibt zurück. */
 let importAsked = false;
 function offerImport() {
     if (LOCAL || importAsked || !self.kfLocal || !self.kfLocal.has() || !S) return;
@@ -2410,7 +2432,7 @@ async function logout() {
 }
 
 /* ---------- Drucken und Teilen: Einkaufszettel als PDF (pdf.js), Liste als Text. Und der Weg zurück: aus Text einfügen. ---------- */
-/** Was noch zu kaufen ist, nach Warengruppen in der Reihenfolge des Ladens: [[Warengruppe, [Einträge]]]. Der Einkaufskorb bleibt draußen. */
+/** Was noch zu kaufen ist, nach Warengruppen in der Reihenfolge des Ladens: [[Warengruppe, [Einträge]]]. Abgehaktes bleibt draußen. */
 function listGroups() {
     const groups = new Map(catOrder().map(id => [id, []]));
     for (const it of openItems()) groups.get(hasCat(it.c) ? it.c : 0).push(it);
@@ -2708,7 +2730,7 @@ const demoFoot = () => DEMO && h('footer', { class: 'demofoot' },
 function showHelp() {
     if (!LS.get('helpSeen', false)) { LS.set('helpSeen', true); render(); }
     const sh = sheet(tr('Hilfe'));
-    const strike = strikeOn(), solo = LOCAL || DEMO;
+    const solo = LOCAL || DEMO;
     const sec = (title, ...kids) => [h('h2', null, title), ...kids];
     const p = (...t) => h('p', null, ...t);
     const dl = rows => h('dl', null, rows.map(([g, t]) => [h('dt', null, g), h('dd', null, t)]));
@@ -2718,23 +2740,24 @@ function showHelp() {
         sec(tr('Auf die Liste'),
             p(tr('Ein Produkt im Katalog antippen oder oben ins Suchfeld tippen. Mehrere auf einmal gehen auch, sogar mit Menge: „Milch, 2 kg Äpfel und Brot“, dann Enter. Diktieren klappt genauso. Was es noch nicht gibt, legst du direkt aus der Suche an.'))),
         sec(tr('Auf der Liste'),
-            dl([[tr('Antippen'), strike ? tr('Abhaken, es bleibt durchgestrichen an seinem Platz stehen.') : tr('Abhaken, ab in den Einkaufskorb.')],
-                [tr('Zweimal tippen'), tr('Holt Durchgestrichenes zurück auf die Liste. Im Korb reicht ein Tipp.')],
+            dl([[tr('Antippen'), tr('Abhaken, es bleibt durchgestrichen an seinem Platz stehen.')],
+                [tr('Zweimal tippen'), tr('Holt Durchgestrichenes zurück auf die Liste.')],
                 [tr('Nach links wischen'), tr('Löschen, ein paar Sekunden lang mit „Rückgängig“')],
                 [tr('Nach rechts wischen'), tr('Menge und Hinweis')],
                 [tr('1 Sekunde halten'), tr('Warengruppe wechseln, dazu Menge und Löschen. Ein Ring zeigt, wann es so weit ist.')]])),
         sec(tr('Im Katalog'),
             dl([[tr('Antippen'), tr('Auf die Liste oder wieder runter')],
                 [tr('Kurz halten'), tr('Erst Menge und Hinweis wählen, dann auf die Liste')],
-                [tr('Warengruppe antippen'), tr('Auf- und zuklappen, genauso „Bald wieder fällig“ und „Zuletzt gekauft“. „+ Neu“ legt dort ein Produkt an.')]])),
+                [tr('Warengruppe antippen'), tr('Auf- und zuklappen, genauso „Bald wieder fällig“. „+ Neu“ legt dort ein Produkt an.')]])),
         sec(tr('Menge'),
             p(tr('Plus und Minus zählen, gedrückt halten zählt schneller, ½ gibt Halbe. Dazu eine Einheit antippen, mehr gibt es unter „Weitere …“, eigene mit „+ Einheit“. Darunter ist Platz für einen Hinweis, etwa „die grünen“.'),
                 look.keep ? ' ' + tr('Beim Abhaken merkt sich Kaufen die Menge fürs nächste Mal.') : '')),
         sec(tr('Im Laden'),
-            p(strike ? tr('Abhaken, was im Wagen liegt. „Einkauf fertig“ unten nimmt alles Abgehakte von der Liste, der Rest bleibt für den nächsten Laden.')
-                : tr('Abhaken, was im Wagen liegt. „Einkauf fertig“ unter dem Korb leert ihn, der Rest bleibt für den nächsten Laden.'),
-                ' ' + tr('Ob Abgehaktes durchgestrichen stehen bleibt oder in einen Einkaufskorb wandert, stellst du in den Einstellungen ein.')),
-            p(tr('Unter der Liste schlägt „Bald wieder fällig“ vor, was du regelmäßig kaufst, „Zuletzt gekauft“ hat deine Klassiker.'))),
+            p(tr('Abhaken, was im Wagen liegt. „Einkauf fertig“ unten nimmt alles Abgehakte von der Liste, der Rest bleibt für den nächsten Laden.'))),
+        sec(tr('Bald wieder fällig'),
+            p(tr('Kaufen merkt sich, wie oft du etwas kaufst. Schon nach dem zweiten Kauf schlägt „Bald wieder fällig“ unter der Liste vor, was kurz vor dem nächsten Mal steht. Antippen setzt es auf die Liste, lang drücken schaltet den Vorschlag für dieses Produkt ab. Sind es mehr als 16, zeigt „Alle anzeigen“ den Rest.')),
+            look.auto > 0 && p(tr('Kaufst du etwas {0} Wochen lang im gleichen Abstand, kommt es von allein auf die Liste. Lang drücken, dann lässt sich das für ein Produkt abschalten.', look.auto / 7)),
+            p(tr('Ab dem wievielten Kauf vorgeschlagen wird und ob Regelmäßiges von allein auf die Liste kommt, stellst du in den Einstellungen ein.'))),
         sec(tr('Oben'),
             dl([[tr('Listenname'), tr('Liste wechseln oder eine neue anlegen')],
                 [tr('Suchfeld'), tr('Suchen, eintippen oder diktieren, das ✕ leert es')],
