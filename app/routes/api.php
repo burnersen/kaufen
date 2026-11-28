@@ -368,6 +368,10 @@ try {
                 $c = $v[$k] ?? '';
                 if (is_string($c) && preg_match('/^#[0-9a-f]{6}$/', $c)) $out[$k] = $c;
             }
+            // Ab 1.22: welche Farben selbst eingestellt sind, der Rest stimmt die App auf den Akzent ab. Fehlt es, ist es ein älteres Design.
+            if (isset($v['m']) && is_array($v['m'])) {
+                $out['m'] = array_values(array_intersect(['bg', 'card', 'text', 'head', 'mut', 'at', 'qty', 'ok'], array_filter($v['m'], 'is_string')));
+            }
             return $out;
         };
         $one = function ($v) use ($pal, $cols) {
