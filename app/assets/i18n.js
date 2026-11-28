@@ -47,6 +47,7 @@ ui: {
     // Gekauft, bald wieder fällig
     'heute gekauft': 'bought today', 'gestern gekauft': 'bought yesterday', 'heute': 'today', 'gestern': 'yesterday', 'vor {0} Tagen': '{0} days ago',
     'Bald wieder fällig': 'Due again soon',
+    'Hintergrund und Kacheln sind sehr verschieden hell, eine Schrift passt nicht auf beides. Die Schrift richtet sich nach den Kacheln.': 'Background and tiles differ a lot in brightness, one text color cannot suit both. The text follows the tiles.',
     'Aktuelles Design speichern …': 'Save current design …',
     'Meine Designs …': 'My designs …',
     'Mehr als 30 Designs gehen nicht. Lösch eins unter „Meine Designs“.': 'No more than 30 designs. Delete one under “My designs”.',
@@ -408,7 +409,7 @@ ui: {
     '{0} wieder automatisch': '{0} automatic again',
     '{0}: automatisch': '{0}: automatic',
     'Schwer zu erkennen: {0}': 'Hard to make out: {0}',
-    'Wähl nur die Akzentfarbe, alles andere stimmt Kaufen darauf ab, gut lesbar und in sich stimmig. Jede Farbe lässt sich trotzdem ändern, „A“ heißt automatisch.': 'Just pick the accent color, Kaufen matches everything else to it, easy to read and in tune. You can still change any color, “A” means automatic.',
+    'Wähl nur die Akzentfarbe, alles andere stimmt Kaufen darauf ab, gut lesbar und in sich stimmig. Jede Farbe lässt sich trotzdem ändern, „A“ heißt automatisch. Änderst du Hintergrund oder Kacheln, gehen alle Schriften mit, damit alles lesbar bleibt, auch selbst gewählte.': 'Just pick the accent color, Kaufen matches everything else to it, easy to read and in tune. You can still change any color, “A” means automatic. When you change the background or tiles, all text colors follow so everything stays readable, your own ones too.',
     'Schrift (nur dieses Gerät)': 'Text (this device only)',
     'Schriftgrößen anpassen …': 'Adjust text sizes …',
     'Schriftgrößen': 'Text sizes',
